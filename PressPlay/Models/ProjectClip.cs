@@ -194,96 +194,69 @@ namespace PressPlay.Models
         /// </summary>
         public ProjectClipMetadata GetClipProperties()
         {
-            var extension = Path.GetExtension(FilePath).ToLower();
+            var extension = Path.GetExtension(FilePath).ToLowerInvariant();
+
+            // --- VIDEO ---
             if (FileFormats.SupportedVideoFormats.Contains(extension))
             {
-                try
+                // 1) Open with OpenCvSharp
+                using var cap = new VideoCapture(FilePath);
+                if (!cap.IsOpened())
+                    throw new IOException($"Cannot open video file: {FilePath}");
+
+                // 2) Read FPS and frame count
+                double fps = cap.Fps > 0 ? cap.Fps : 25;
+                double rawFrameCount = (double)cap.FrameCount;
+                long frameCount = (long)Math.Round(rawFrameCount);
+
+                // 3) Compute true duration
+                var duration = TimeSpan.FromSeconds(frameCount / fps);
+
+                return new ProjectClipMetadata
                 {
-                    // Use multiple methods to determine duration reliably
-                    using var capture = new VideoCapture(FilePath);
-                    double captureFps = capture.Fps;
-                    int frameCount = (int)capture.FrameCount;
-
-                    // Try ffprobe analysis first
-                    var analysis = FFProbe.Analyse(FilePath);
-                    double ffprobeFps = analysis.PrimaryVideoStream?.FrameRate ?? 0;
-                    TimeSpan ffprobeDuration = analysis.Duration;
-
-                    // Select the most reliable values
-                    double fps = ffprobeFps > 0 ? ffprobeFps : (captureFps > 0 ? captureFps : 25);
-                    TimeSpan duration;
-
-                    // Determine which duration is more reliable
-                    if (ffprobeDuration.TotalSeconds > 0.5)
-                    {
-                        duration = ffprobeDuration;
-                    }
-                    else if (frameCount > 0 && captureFps > 0)
-                    {
-                        duration = TimeSpan.FromSeconds(frameCount / captureFps);
-                    }
-                    else
-                    {
-                        // Fallback to direct ffprobe call
-                        duration = ProbeDuration(FilePath);
-
-                        // If still invalid, use a reasonable default
-                        if (duration.TotalSeconds < 0.5)
-                        {
-                            duration = TimeSpan.FromMinutes(1);
-                        }
-                    }
-
-                    return new ProjectClipMetadata
-                    {
-                        TrackType = TimelineTrackType.Video,
-                        ItemType = TrackItemType.Video,
-                        Length = TimeCode.FromTimeSpan(duration, fps),
-                        FPS = fps,
-                        Width = analysis.PrimaryVideoStream?.Width ?? capture.FrameWidth,
-                        Height = analysis.PrimaryVideoStream?.Height ?? capture.FrameHeight,
-                        UnlimitedLength = false
-                    };
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error analyzing video: {ex.Message}");
-
-                    // Fallback if analysis completely fails
-                    return new ProjectClipMetadata
-                    {
-                        TrackType = TimelineTrackType.Video,
-                        ItemType = TrackItemType.Video,
-                        Length = TimeCode.FromSeconds(60, 25), // 1 minute default
-                        FPS = 25,
-                        Width = 640,
-                        Height = 480,
-                        UnlimitedLength = false
-                    };
-                }
+                    TrackType = TimelineTrackType.Video,
+                    ItemType = TrackItemType.Video,
+                    FPS = fps,
+                    Length = TimeCode.FromTimeSpan(duration, fps),
+                    Width = cap.FrameWidth,
+                    Height = cap.FrameHeight,
+                    UnlimitedLength = false
+                };
             }
 
+            // --- AUDIO ---
             if (FileFormats.SupportedAudioFormats.Contains(extension))
             {
-                // Use configured FPS or default
-                var fps = FPS > 0 ? FPS : 25;
-                var analysis = FFProbe.Analyse(FilePath);
-                var duration = analysis.Duration;
-                if (duration.TotalSeconds < 0.1)
+                // Try FFProbe first
+                TimeSpan duration;
+                double fps = FPS > 0 ? FPS : 25;
+
+                try
                 {
+                    var info = FFProbe.Analyse(FilePath);
+                    duration = info.Duration;
+                    if (duration.TotalSeconds < 0.1)
+                        throw new InvalidOperationException("FFProbe duration too small");
+                }
+                catch
+                {
+                    // Fallback to your ProbeDuration helper
                     duration = ProbeDuration(FilePath);
                 }
+
                 return new ProjectClipMetadata
                 {
                     TrackType = TimelineTrackType.Audio,
                     ItemType = TrackItemType.Audio,
-                    Length = TimeCode.FromTimeSpan(duration, fps),
                     FPS = fps,
+                    Length = TimeCode.FromTimeSpan(duration, fps),
                     Width = 0,
-                    Height = 0
+                    Height = 0,
+                    UnlimitedLength = false
                 };
             }
 
+            // --- IMAGE ---
             if (FileFormats.SupportedImageFormats.Contains(extension))
             {
                 return new ProjectClipMetadata
@@ -291,15 +264,18 @@ namespace PressPlay.Models
                     TrackType = TimelineTrackType.Video,
                     ItemType = TrackItemType.Image,
                     UnlimitedLength = true,
-                    Length = TimeCode.FromSeconds(5, 25),
+                    // 5 seconds at 25fps by default
                     FPS = 25,
+                    Length = TimeCode.FromSeconds(5, 25),
                     Width = 800,
                     Height = 600
                 };
             }
 
+            // --- UNKNOWN FORMAT ---
             return new ProjectClipMetadata();
         }
+
 
         /// <summary>
         /// Fallback direct ffprobe call to get duration in case FFMpegCore Analyse fails.

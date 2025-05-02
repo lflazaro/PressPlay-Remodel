@@ -30,6 +30,15 @@ namespace PressPlay.Timeline
         public TimelineHeaderControl()
         {
             InitializeComponent();
+
+            // Update timeline rendering when scrolling
+            HeaderScrollViewer.ScrollChanged += (s, e) =>
+            {
+                if (e.HorizontalChange != 0)
+                {
+                    Redraw();
+                }
+            };
         }
 
         private static void OnProjectChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -85,8 +94,11 @@ namespace PressPlay.Timeline
 
             RootCanvas.Children.Clear();
 
-            // Set minimum timeline length if no clips are present
-            double totalFrames = Math.Max(300 * Project.FPS, Project.GetTotalFrames());
+            // Set a very large default timeline duration - 60 minutes
+            double minimumTimelineSeconds = 3600; // 60 minutes
+
+            // Get actual total frames from project or use minimum
+            double totalFrames = Math.Max(minimumTimelineSeconds * Project.FPS, Project.GetTotalFrames());
             double totalSeconds = totalFrames / Project.FPS;
 
             // Calculate pixels per frame and per second
@@ -95,16 +107,29 @@ namespace PressPlay.Timeline
 
             // Determine appropriate label interval based on zoom
             int labelIntervalSeconds = 1;
-            if (pixelsPerSecond < 10) labelIntervalSeconds = 5;
-            if (pixelsPerSecond < 5) labelIntervalSeconds = 10;
-            if (pixelsPerSecond < 2) labelIntervalSeconds = 30;
-            if (pixelsPerSecond < 1) labelIntervalSeconds = 60;
+            if (pixelsPerSecond < 30) labelIntervalSeconds = 5;
+            if (pixelsPerSecond < 15) labelIntervalSeconds = 10;
+            if (pixelsPerSecond < 8) labelIntervalSeconds = 30;
+            if (pixelsPerSecond < 4) labelIntervalSeconds = 60;
+            if (pixelsPerSecond < 2) labelIntervalSeconds = 300; // 5 min
 
-            // Set canvas width to accommodate timeline
-            RootCanvas.Width = Math.Max(2000, totalFrames * pixelsPerFrame);
+            // Set canvas width to a very large value
+            double canvasWidth = totalSeconds * pixelsPerSecond;
+            RootCanvas.Width = Math.Max(10000, canvasWidth);
 
-            // Draw timestamp labels with proper spacing
-            for (int s = 0; s <= totalSeconds; s += labelIntervalSeconds)
+            // Only draw timestamps within a reasonable range to prevent performance issues
+            // Calculate visible range based on scroll position and viewport width
+            double visibleStart = HeaderScrollViewer.HorizontalOffset;
+            double visibleEnd = visibleStart + HeaderScrollViewer.ViewportWidth + 500; // Add a buffer
+
+            // Draw timestamp labels with proper spacing for visible area
+            int startSecond = Math.Max(0, (int)(visibleStart / pixelsPerSecond) - labelIntervalSeconds);
+            int endSecond = (int)(visibleEnd / pixelsPerSecond) + labelIntervalSeconds;
+
+            // Adjust for extremely zoomed out views
+            endSecond = Math.Min(endSecond, (int)totalSeconds);
+
+            for (int s = startSecond; s <= endSecond; s += labelIntervalSeconds)
             {
                 double x = s * pixelsPerSecond;
 
@@ -125,9 +150,14 @@ namespace PressPlay.Timeline
                 // Add text label for major intervals only
                 if (s % (labelIntervalSeconds * 5) == 0)
                 {
+                    TimeSpan time = TimeSpan.FromSeconds(s);
+                    string timeText = time.TotalHours >= 1
+                        ? time.ToString(@"h\:mm\:ss")
+                        : time.ToString(@"mm\:ss");
+
                     var txt = new TextBlock
                     {
-                        Text = TimeSpan.FromSeconds(s).ToString(@"mm\:ss"),
+                        Text = timeText,
                         FontSize = 10,
                         Foreground = Brushes.White
                     };

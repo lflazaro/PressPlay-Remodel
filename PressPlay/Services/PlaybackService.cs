@@ -30,13 +30,14 @@ namespace PressPlay.Services
             _project = project ?? throw new ArgumentNullException(nameof(project));
             _previewControl = previewControl ?? throw new ArgumentNullException(nameof(previewControl));
 
-            // Create timer with proper interval
-            _timer = new DispatcherTimer
+            // Create a more reliable timer
+            _timer = new DispatcherTimer(DispatcherPriority.Render)
             {
-                Interval = TimeSpan.FromSeconds(1.0 / project.FPS)
+                Interval = TimeSpan.FromMilliseconds(1000.0 / project.FPS)
             };
             _timer.Tick += OnTick;
         }
+
 
         /// <summary>
         /// Resets playhead to start. Your Project model already knows which clips are on the timeline.
@@ -51,6 +52,11 @@ namespace PressPlay.Services
         public void Play()
         {
             if (_timer.IsEnabled) return;
+
+            // Make sure we have a valid interval (recalculate in case FPS changed)
+            _timer.Interval = TimeSpan.FromMilliseconds(1000.0 / _project.FPS);
+
+            // Start the timer
             _timer.Start();
         }
 
@@ -97,31 +103,48 @@ namespace PressPlay.Services
 
         private void OnTick(object sender, EventArgs e)
         {
-            // Get current frame and calculate next frame
-            int currentFrame = _project.NeedlePositionTime.TotalFrames;
-            int nextFrame = currentFrame + 1;
-
-            // Check if we've reached the end
-            double totalFrames = _project.GetTotalFrames();
-            if (nextFrame >= totalFrames)
+            try
             {
-                Pause();
-                return;
-            }
+                // Get current frame
+                int currentFrame = _project.NeedlePositionTime.TotalFrames;
 
-            // Seek to next frame without using AddFrames method
-            Seek(new TimeCode(nextFrame, _project.FPS));
+                // Advance by one frame
+                int nextFrame = currentFrame + 1;
+
+                // Check if we've reached the end
+                double totalFrames = _project.GetTotalFrames();
+                if (nextFrame > totalFrames - 1)
+                {
+                    Pause();
+                    return;
+                }
+
+                // Update the time code directly without using Seek to avoid
+                // potentially recursive calls or timer conflicts
+                _project.NeedlePositionTime = new TimeCode(nextFrame, _project.FPS);
+
+                // Render the frame
+                RenderFrame();
+
+                // Notify position change
+                PositionChanged?.Invoke(_project.NeedlePositionTime.ToTimeSpan());
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in playback tick: {ex.Message}");
+                // Continue playback despite errors
+            }
         }
 
         private void RenderFrame()
         {
-            // TODO: Your Project class needs a method that, given a TimeCode,
-            // returns the ProjectClip on the timeline at that time (or null).
-            // I’ll call it GetClipAt(...) here, but implement that lookup in your Project.
-            var clip = _project.GetClipAt(_project.NeedlePositionTime);
+            // Get clip and offset
+            var (clip, clipOffset) = _project.GetClipAtWithOffset(_project.NeedlePositionTime);
+
             if (clip != null)
             {
-                var bmp = clip.GetFrameAt(_project.NeedlePositionTime.ToTimeSpan());
+                // Use the clip offset to get the correct frame
+                var bmp = clip.GetFrameAt(clipOffset);
                 _previewControl.Source = bmp;
             }
             else

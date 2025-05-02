@@ -50,11 +50,11 @@
     <Grid Background="#FF2C2C2C">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <!-- Menu -->
-            <RowDefinition Height="*" />
-            <!-- Main content -->
-            <RowDefinition Height="Auto" />
-            <!-- Timeline -->
+            <!-- Menu bar -->
+            <RowDefinition Height="5*"   />
+            <!-- Clips+Preview area (6 shares) -->
+            <RowDefinition Height="3*"   />
+            <!-- Timeline area       (2 shares) -->
             <RowDefinition Height="Auto" />
             <!-- Status bar -->
         </Grid.RowDefinitions>
@@ -280,9 +280,10 @@
         <timeline:TimelineControl
     Grid.Row="2"
     Project="{Binding CurrentProject}"
-    Height="150"
     HorizontalAlignment="Stretch"
-    Background="#FF2C2C2C" Loaded="TimelineControl_Loaded"/>
+    VerticalAlignment="Stretch"
+    Background="#FF2C2C2C"
+    Loaded="TimelineControl_Loaded"/>
 
         <!-- STATUS BAR -->
         <StatusBar Grid.Row="3" Background="#FF2C2C2C" Foreground="LightGray">

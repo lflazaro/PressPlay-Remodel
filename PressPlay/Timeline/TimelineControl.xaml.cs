@@ -343,14 +343,31 @@ namespace PressPlay.Timeline
             {
                 if (e.OriginalSource is FrameworkElement fe && fe.DataContext is ITimelineTrack tt && clip.IsCompatibleWith(tt.Type))
                 {
+                    // Get position in timeline coordinates
                     var x = e.GetPosition(header).X;
                     var frame = Math.Round(x / Constants.TimelinePixelsInSeparator
                                          * Constants.TimelineZooms[Project.TimelineZoom],
                                          MidpointRounding.ToZero);
-                    var pos = new TimeCode((int)frame, Project.FPS);
-                    ITrackItem ti = clip.TrackType == TimelineTrackType.Audio
-                        ? new AudioTrackItem(clip, pos, TimeCode.Zero, clip.Length)
-                        : new TrackItem(clip, pos, TimeCode.Zero, clip.Length);
+
+                    // Create position timecode
+                    var position = new TimeCode((int)frame, Project.FPS);
+
+                    // Create track item - starting from the beginning of the clip
+                    ITrackItem ti;
+                    if (clip.TrackType == TimelineTrackType.Audio)
+                    {
+                        ti = new AudioTrackItem(clip, position,
+                            new TimeCode(0, clip.FPS), // Start from beginning of clip
+                            clip.Length);
+                    }
+                    else
+                    {
+                        ti = new TrackItem(clip, position,
+                            new TimeCode(0, clip.FPS), // Start from beginning of clip
+                            clip.Length);
+                    }
+
+                    // Add to track
                     tt.AddTrackItem(ti);
                 }
             }

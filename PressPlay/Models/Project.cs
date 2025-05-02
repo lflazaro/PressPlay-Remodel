@@ -338,26 +338,32 @@ namespace PressPlay.Models
                 .SelectMany(t => t.Items)
                 .Max(i => i.Position.TotalFrames + i.Duration.TotalFrames);
         }
-        public ProjectClip GetClipAt(TimeCode time)
+        public (ProjectClip clip, TimeSpan clipOffset) GetClipAtWithOffset(TimeCode time)
         {
-            // 1. Turn the TimeCode into a zero-based frame index
-            int frame = (int)Math.Round((double)time.TotalFrames);
+            // Convert the timeline position to frame number
+            int timelineFrame = time.TotalFrames;
 
-            // 2. Find all track items that span this frame
-            var items = GetItemsAtFrame(frame);
+            // Find all track items that span this frame
+            var items = GetItemsAtFrame(timelineFrame);
             if (items == null || items.Count == 0)
-                return null;
+                return (null, TimeSpan.Zero);
 
-            // 3. Pick the first (or topmost) one
+            // Get the first (or topmost) item
             var item = items.First();
 
-            // 4. Match it to one of your loaded ProjectClips by file path
-            //    (assumes your ITrackItem has a FullPath property)
-            var clip = Clips
-               .FirstOrDefault(c =>
-                   string.Equals(c.FilePath, item.FullPath, StringComparison.OrdinalIgnoreCase));
+            // Find the corresponding project clip
+            var clip = Clips.FirstOrDefault(c =>
+                string.Equals(c.FilePath, item.FilePath, StringComparison.OrdinalIgnoreCase) ||
+                c.Id == (item as AudioTrackItem)?.ClipId);
 
-            return clip;
+            if (clip == null)
+                return (null, TimeSpan.Zero);
+
+            // Calculate how far into the clip we should be
+            int clipRelativeFrame = timelineFrame - item.Position.TotalFrames + item.Start.TotalFrames;
+            TimeSpan clipOffset = TimeSpan.FromSeconds(clipRelativeFrame / clip.FPS);
+
+            return (clip, clipOffset);
         }
         public void Cut()
         {
