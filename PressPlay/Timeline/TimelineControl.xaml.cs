@@ -17,7 +17,7 @@ namespace PressPlay.Timeline
     /// <summary>
     /// Interaction logic for TimelineControl.xaml
     /// </summary>
-    public partial class TimelineControl : Grid
+    public partial class TimelineControl : UserControl
     {
         private bool _tracksCanvasLeftMouseButtonDown;
         private TrackItemControl _mouseDownElement;
