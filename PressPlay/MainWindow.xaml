@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:PressPlay;assembly=PressPlay"
+    xmlns:local="clr-namespace:PressPlay;assembly=PressPlay"
         xmlns:converters="clr-namespace:PressPlay.Converters;assembly=PressPlay"
         xmlns:customcontrols="clr-namespace:PressPlay.CustomControls;assembly=PressPlay"
         xmlns:timeline="clr-namespace:PressPlay.Timeline;assembly=PressPlay"
@@ -13,15 +13,13 @@
         Height="650" Width="1000"
         MinWidth="900" MinHeight="600"
         Background="#FF1F1F1F">
-
-    <!-- Resources -->
     <Window.Resources>
-        <!-- Use the actual ToolConverter type here -->
-        <converters:ToolConverter                       x:Key="ToolConverter" />
+        <converters:TimelineSelectedToolToSelectedConverter x:Key="ToolConverter" />
         <converters:ByteArrayToImageConverter           x:Key="ByteArrayConverter" />
+        <local:MainWindowViewModel                      x:Key="MainWindowViewModel" />
     </Window.Resources>
 
-    <!-- DataContext via the app-level MainWindowViewModel resource -->
+    <!-- DataContext via the window‐scoped resource -->
     <Window.DataContext>
         <StaticResource ResourceKey="MainWindowViewModel" />
     </Window.DataContext>
@@ -29,23 +27,24 @@
     <!-- KeyBindings -->
     <Window.InputBindings>
         <!-- File -->
-        <KeyBinding Modifiers="Ctrl" Key="N" Command="{Binding NewProjectCommand}" />
-        <KeyBinding Modifiers="Ctrl" Key="O" Command="{Binding OpenProjectCommand}" />
-        <KeyBinding Modifiers="Ctrl" Key="S" Command="{Binding SaveProjectCommand}" />
+        <KeyBinding Modifiers="Ctrl" Key="N"    Command="{Binding NewProjectCommand}" />
+        <KeyBinding Modifiers="Ctrl" Key="O"    Command="{Binding OpenProjectCommand}" />
+        <KeyBinding Modifiers="Ctrl" Key="S"    Command="{Binding SaveProjectCommand}" />
         <KeyBinding Modifiers="Ctrl+Shift" Key="S" Command="{Binding SaveProjectAsCommand}" />
-        <KeyBinding Modifiers="Alt" Key="F4" Command="{Binding ExitApplicationCommand}" />
+        <KeyBinding Modifiers="Alt"  Key="F4"   Command="{Binding ExitApplicationCommand}" />
         <!-- Edit -->
-        <KeyBinding Modifiers="Ctrl" Key="Z" Command="{Binding UndoCommand}" />
-        <KeyBinding Modifiers="Ctrl" Key="Y" Command="{Binding RedoCommand}" />
-        <KeyBinding Modifiers="Ctrl" Key="X" Command="{Binding CutCommand}" />
-        <KeyBinding Modifiers="Ctrl" Key="C" Command="{Binding CopyCommand}" />
-        <KeyBinding Modifiers="Ctrl" Key="V" Command="{Binding PasteCommand}" />
-        <KeyBinding Modifiers="Ctrl" Key="A" Command="{Binding SelectAllCommand}" />
+        <KeyBinding Modifiers="Ctrl" Key="Z"    Command="{Binding UndoCommand}" />
+        <KeyBinding Modifiers="Ctrl" Key="Y"    Command="{Binding RedoCommand}" />
+        <KeyBinding Modifiers="Ctrl" Key="X"    Command="{Binding CutCommand}" />
+        <KeyBinding Modifiers="Ctrl" Key="C"    Command="{Binding CopyCommand}" />
+        <KeyBinding Modifiers="Ctrl" Key="V"    Command="{Binding PasteCommand}" />
+        <KeyBinding Modifiers="Ctrl" Key="A"    Command="{Binding SelectAllCommand}" />
         <!-- Playback -->
-        <KeyBinding Key="J" Command="{Binding ProjectRewindCommand}" />
+        <KeyBinding Key="J"    Command="{Binding ProjectRewindCommand}" />
         <KeyBinding Key="Space" Command="{Binding ProjectPlayCommand}" />
-        <KeyBinding Key="L" Command="{Binding ProjectFastForwardCommand}" />
+        <KeyBinding Key="L"    Command="{Binding ProjectFastForwardCommand}" />
     </Window.InputBindings>
+
 
     <!-- MAIN LAYOUT GRID -->
     <Grid Background="#FF2C2C2C">
@@ -73,7 +72,7 @@
                     <MenuItem.ItemContainerStyle>
                         <Style TargetType="MenuItem">
                             <Setter Property="Command" 
-                                    Value="{Binding DataContext.OpenRecentProjectCommand, RelativeSource={RelativeSource AncestorType=Menu}}" />
+                      Value="{Binding DataContext.OpenRecentProjectCommand, RelativeSource={RelativeSource AncestorType=Menu}}" />
                             <Setter Property="CommandParameter" Value="{Binding}" />
                         </Style>
                     </MenuItem.ItemContainerStyle>
@@ -108,17 +107,29 @@
             <!-- TIMELINE Menu -->
             <MenuItem Header="Timeline">
                 <MenuItem Header="Select Tool"
-                          IsChecked="{Binding CurrentProject.SelectedTool,
-                                              Converter={StaticResource ToolConverter},
-                                              ConverterParameter={x:Static timeline:TimelineSelectedTool.SelectionTool}}"
-                          Command="{Binding SelectToolCommand}"
-                          CommandParameter="{x:Static timeline:TimelineSelectedTool.SelectionTool}" />
+                  IsChecked="{Binding CurrentProject.SelectedTool,
+                              Converter={StaticResource ToolConverter},
+                              ConverterParameter={x:Static timeline:TimelineSelectedTool.SelectionTool}}"
+                  Command="{Binding SelectToolCommand}"
+                  CommandParameter="{x:Static timeline:TimelineSelectedTool.SelectionTool}" />
                 <MenuItem Header="Cutting Tool"
-                          IsChecked="{Binding CurrentProject.SelectedTool,
-                                              Converter={StaticResource ToolConverter},
-                                              ConverterParameter={x:Static timeline:TimelineSelectedTool.CuttingTool}}"
-                          Command="{Binding SelectToolCommand}"
-                          CommandParameter="{x:Static timeline:TimelineSelectedTool.CuttingTool}" />
+                  IsChecked="{Binding CurrentProject.SelectedTool,
+                              Converter={StaticResource ToolConverter},
+                              ConverterParameter={x:Static timeline:TimelineSelectedTool.CuttingTool}}"
+                  Command="{Binding SelectToolCommand}"
+                  CommandParameter="{x:Static timeline:TimelineSelectedTool.CuttingTool}" />
+                <MenuItem Header="Verse Resizer"
+                  IsChecked="{Binding CurrentProject.SelectedTool,
+                              Converter={StaticResource ToolConverter},
+                              ConverterParameter={x:Static timeline:TimelineSelectedTool.VerseResizer}}"
+                  Command="{Binding SelectToolCommand}"
+                  CommandParameter="{x:Static timeline:TimelineSelectedTool.VerseResizer}" />
+                <MenuItem Header="Auto Verse"
+                  IsChecked="{Binding CurrentProject.SelectedTool,
+                              Converter={StaticResource ToolConverter},
+                              ConverterParameter={x:Static timeline:TimelineSelectedTool.AutoVerse}}"
+                  Command="{Binding SelectToolCommand}"
+                  CommandParameter="{x:Static timeline:TimelineSelectedTool.AutoVerse}" />
                 <Separator />
                 <MenuItem Header="Add Transition">
                     <MenuItem Header="Fade to White" Command="{Binding AddTransitionCommand}" CommandParameter="FadeToWhite" />
@@ -177,9 +188,9 @@
         <!-- MAIN CONTENT AREA -->
         <Grid Grid.Row="1" Background="#FF2C2C2C">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="40*" />
-                <ColumnDefinition Width="2" />
-                <ColumnDefinition Width="60*" />
+                <ColumnDefinition Width="40*"/>
+                <ColumnDefinition Width="2"/>
+                <ColumnDefinition Width="60*"/>
             </Grid.ColumnDefinitions>
 
             <!-- LEFT PANEL (TABS FOR CLIPS, STEP OUTLINE, ETC.) -->
@@ -189,8 +200,8 @@
                     <TabItem Header="Clips">
                         <Grid>
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
                             <StackPanel Orientation="Horizontal" Margin="-1,0,0,2">
                                 <Button Width="90" Height="24" ToolTip="Add media" Command="{Binding AddMediaCommand}" Margin="1,0" Background="#FF3A3A3A" Foreground="LightGray">
@@ -210,8 +221,8 @@
                     <TabItem Header="Step Outline">
                         <Grid Margin="5">
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <DataGrid Grid.Row="0" ItemsSource="{Binding CurrentProject.StepOutlineEntries}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="False" Background="#FF2B2B2B" Foreground="LightGray">
                                 <DataGrid.Columns>
@@ -236,19 +247,19 @@
             <!-- RIGHT PANEL (PREVIEW) -->
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <!-- Preview Window -->
                 <Border Grid.Row="0" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" BorderBrush="#FF5A5A5A" BorderThickness="1" Margin="2" Background="#FF2B2B2B">
                     <MediaElement x:Name="VideoPreview"
-                                  VerticalAlignment="Stretch"
-                                  HorizontalAlignment="Stretch"
-                                  Stretch="Uniform"
-                                  LoadedBehavior="Manual"
-                                  UnloadedBehavior="Manual"
-                                  ScrubbingEnabled="True"
-                                  Volume="1.0"/>
+                  VerticalAlignment="Stretch"
+                  HorizontalAlignment="Stretch"
+                  Stretch="Uniform"
+                  LoadedBehavior="Manual"
+                  UnloadedBehavior="Manual"
+                  ScrubbingEnabled="True"
+                  Volume="1.0"/>
                 </Border>
                 <!-- Transport Controls -->
                 <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="5" Background="#FF2C2C2C">
@@ -286,11 +297,11 @@
 
         <!-- TIMELINE CONTROL (placed below the main content) -->
         <timeline:TimelineControl
-            Grid.Row="2"
-            Project="{Binding CurrentProject}"
-            Height="150"
-            HorizontalAlignment="Stretch"
-            Background="#FF2C2C2C"/>
+    Grid.Row="2"
+    Project="{Binding CurrentProject}"
+    Height="150"
+    HorizontalAlignment="Stretch"
+    Background="#FF2C2C2C"/>
 
         <!-- STATUS BAR -->
         <StatusBar Grid.Row="3" Background="#FF2C2C2C" Foreground="LightGray">

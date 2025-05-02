@@ -6,8 +6,7 @@
              xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
              xmlns:local="clr-namespace:PressPlay.Timeline;assembly=PressPlay"
              xmlns:converters="clr-namespace:PressPlay.Converters;assembly=PressPlay"
-             xmlns:models="clr-namespace:PressPlay.Models;assembly=PressPlay"
-             xmlns:cc="clr-namespace:PressPlay.CustomControls;assembly=PressPlay"
+             xmlns:customControls="clr-namespace:PressPlay.CustomControls;assembly=PressPlay"
              mc:Ignorable="d"
              Background="#2a2e32"
              MinHeight="150"
@@ -21,73 +20,79 @@
              Focusable="True"
              d:DesignHeight="450" d:DesignWidth="800">
 
-    <!-- Register converters locally so you can reference them via StaticResource -->
+    <!-- Converters -->
     <UserControl.Resources>
-        <converters:TimelineSelectedToolToSelectedConverter x:Key="ToolSelectionConverter" />
-        <converters:TrackDataItemToPositionConverter      x:Key="TrackToPosConverter" />
-        <converters:NeedlePositionConverter               x:Key="NeedlePosConverter" />
+        <converters:TimelineSelectedToolToSelectedConverter x:Key="ToolSelectionConverter"/>
+        <converters:TrackDataItemToPositionConverter      x:Key="TrackToPosConverter"/>
+        <converters:NeedlePositionConverter               x:Key="NeedlePosConverter"/>
     </UserControl.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
         <!-- Tool Buttons -->
         <Border Grid.Row="0" BorderBrush="Gray" BorderThickness="1">
             <StackPanel Orientation="Horizontal">
-                <Grid Width="100" />
+                <Grid Width="100"/>
                 <!-- Selection Tool -->
-                <RadioButton Style="{StaticResource {x:Type ToggleButton}}" Margin="1"
-                     IsChecked="{Binding Project.SelectedTool, 
-                         Converter={StaticResource ToolSelectionConverter}, 
-                         ConverterParameter={x:Static local:TimelineSelectedTool.SelectionTool}}"
-                     Command="{Binding ToolSelectedCommand, 
-                         RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type local:TimelineControl}}}"
+                <RadioButton Style="{StaticResource {x:Type ToggleButton}}"
+                     Margin="1"
+                     IsChecked="{Binding Project.SelectedTool,
+                                         Converter={StaticResource ToolSelectionConverter},
+                                         ConverterParameter={x:Static local:TimelineSelectedTool.SelectionTool}}"
+                     Command="{Binding ToolSelectedCommand,
+                                       RelativeSource={RelativeSource Mode=FindAncestor,
+                                                               AncestorType={x:Type local:TimelineControl}}}"
                      CommandParameter="{x:Static local:TimelineSelectedTool.SelectionTool}"
                      ToolTip="Selection Tool">
                     <svgc:SvgIcon UriSource="/Resources/Icons/select.svg"
-                        Fill="LightGray" Width="14" Height="14" Margin="4" />
+                        Fill="LightGray" Width="14" Height="14" Margin="4"/>
                 </RadioButton>
                 <!-- Cutting Tool -->
-                <RadioButton Style="{StaticResource {x:Type ToggleButton}}" Margin="1"
-                     IsChecked="{Binding Project.SelectedTool, 
-                         Converter={StaticResource ToolSelectionConverter}, 
-                         ConverterParameter={x:Static local:TimelineSelectedTool.CuttingTool}}"
-                     Command="{Binding ToolSelectedCommand, 
-                         RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type local:TimelineControl}}}"
+                <RadioButton Style="{StaticResource {x:Type ToggleButton}}"
+                     Margin="1"
+                     IsChecked="{Binding Project.SelectedTool,
+                                         Converter={StaticResource ToolSelectionConverter},
+                                         ConverterParameter={x:Static local:TimelineSelectedTool.CuttingTool}}"
+                     Command="{Binding ToolSelectedCommand,
+                                       RelativeSource={RelativeSource Mode=FindAncestor,
+                                                               AncestorType={x:Type local:TimelineControl}}}"
                      CommandParameter="{x:Static local:TimelineSelectedTool.CuttingTool}"
                      ToolTip="Cutting Tool">
                     <svgc:SvgIcon UriSource="/Resources/Icons/cut.svg"
-                        Fill="LightGray" Width="14" Height="14" Margin="4" />
+                        Fill="LightGray" Width="14" Height="14" Margin="4"/>
                 </RadioButton>
             </StackPanel>
         </Border>
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
-                <RowDefinition Height="*" />
-                <RowDefinition Height="15" />
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="15"/>
             </Grid.RowDefinitions>
 
             <!-- Track Headers -->
             <Grid Grid.Column="0"
-            Width="{Binding Project.TrackHeadersWidth, 
-                    RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type local:TimelineControl}}}">
+            Width="{Binding Project.TrackHeadersWidth,
+                            RelativeSource={RelativeSource Mode=FindAncestor,
+                                                            AncestorType={x:Type local:TimelineControl}}}">
                 <StackPanel>
                     <Grid Height="30">
                         <TextBlock Text="Tracks"
                        Foreground="WhiteSmoke"
                        VerticalAlignment="Center"
-                       HorizontalAlignment="Center" />
+                       HorizontalAlignment="Center"/>
                     </Grid>
-                    <ItemsControl ItemsSource="{Binding Project.Tracks, 
-                                        RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type local:TimelineControl}}}">
+                    <ItemsControl ItemsSource="{Binding Project.Tracks,
+                                            RelativeSource={RelativeSource Mode=FindAncestor,
+                                                                    AncestorType={x:Type local:TimelineControl}}}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Height="{Binding Height}"
@@ -117,36 +122,42 @@
 
                     <local:TimelineHeaderControl x:Name="header"
                                       Project="{Binding Project,
-                                          RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type local:TimelineControl}}}" />
+                                          RelativeSource={RelativeSource Mode=FindAncestor,
+                                                                  AncestorType={x:Type local:TimelineControl}}}"/>
 
                     <ItemsControl x:Name="tracksControl"
                         ItemsSource="{Binding Project.Tracks,
-                                      RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type local:TimelineControl}}}"
+                                              RelativeSource={RelativeSource Mode=FindAncestor,
+                                                                      AncestorType={x:Type local:TimelineControl}}}"
                         Width="{Binding ActualWidth,
-                                      RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type ItemsControl}}}"
+                                      RelativeSource={RelativeSource Mode=FindAncestor,
+                                                              AncestorType={x:Type ItemsControl}}}"
                         Margin="0,30,0,0">
                         <ItemsControl.ContextMenu>
                             <ContextMenu>
-                                <MenuItem Header="Paste" Click="PasteItem_Click" InputGestureText="Ctrl+V" />
+                                <MenuItem Header="Paste"
+                          Click="PasteItem_Click"
+                          InputGestureText="Ctrl+V"/>
                             </ContextMenu>
                         </ItemsControl.ContextMenu>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Height="{Binding Height}"
                         Width="{Binding Width,
-                                    RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type ItemsControl}}}"
+                                        RelativeSource={RelativeSource Mode=FindAncestor,
+                                                                AncestorType={x:Type ItemsControl}}}"
                         Background="#232629"
                         BorderBrush="Gray"
                         BorderThickness="0.5">
                                     <ItemsControl ItemsSource="{Binding Items}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <local:TrackItemControl />
+                                                <local:TrackItemControl/>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <Canvas />
+                                                <Canvas/>
                                             </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemContainerStyle>
@@ -155,13 +166,15 @@
                                                     <Setter.Value>
                                                         <MultiBinding Converter="{StaticResource TrackToPosConverter}">
                                                             <Binding Path="Project"
-                                       RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType={x:Type local:TimelineControl}}"/>
+                                       RelativeSource="{RelativeSource Mode=FindAncestor,
+                                                               AncestorType={x:Type local:TimelineControl}}"/>
                                                             <Binding Path="Project.TimelineZoom"
-                                       RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType={x:Type local:TimelineControl}}"/>
-                                                            <Binding Path="." />
-                                                            <Binding Path="Position" />
-                                                            <Binding Path="Start" />
-                                                            <Binding Path="End" />
+                                       RelativeSource="{RelativeSource Mode=FindAncestor,
+                                                               AncestorType={x:Type local:TimelineControl}}"/>
+                                                            <Binding Path="."/>
+                                                            <Binding Path="Position"/>
+                                                            <Binding Path="Start"/>
+                                                            <Binding Path="End"/>
                                                         </MultiBinding>
                                                     </Setter.Value>
                                                 </Setter>
@@ -180,11 +193,14 @@
                                     <Setter.Value>
                                         <MultiBinding Converter="{StaticResource NeedlePosConverter}">
                                             <Binding Path="Project"
-                               RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType={x:Type local:TimelineControl}}"/>
+                               RelativeSource="{RelativeSource Mode=FindAncestor,
+                                                               AncestorType={x:Type local:TimelineControl}}"/>
                                             <Binding Path="Project.TimelineZoom"
-                               RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType={x:Type local:TimelineControl}}"/>
+                               RelativeSource="{RelativeSource Mode=FindAncestor,
+                                                               AncestorType={x:Type local:TimelineControl}}"/>
                                             <Binding Path="Project.NeedlePositionTime"
-                               RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType={x:Type local:TimelineControl}}"/>
+                               RelativeSource="{RelativeSource Mode=FindAncestor,
+                                                               AncestorType={x:Type local:TimelineControl}}"/>
                                         </MultiBinding>
                                     </Setter.Value>
                                 </Setter>
@@ -195,12 +211,12 @@
                 </Canvas>
             </ScrollViewer>
 
-            <timeline:BindableScrollBar
-    Grid.Column="1"
-    Grid.Row="1"
-    Orientation="Horizontal"
-    VerticalAlignment="Bottom"
-    BoundScrollViewer="{Binding ElementName=tracksHScrollView}" />
+            <!-- BindableScrollBar comes from PressPlay.Timeline -->
+            <local:BindableScrollBar Grid.Column="1"
+                               Grid.Row="1"
+                               Orientation="Horizontal"
+                               VerticalAlignment="Bottom"
+                               BoundScrollViewer="{Binding ElementName=tracksHScrollView}"/>
         </Grid>
     </Grid>
 </UserControl>
