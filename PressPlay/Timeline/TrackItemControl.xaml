@@ -9,7 +9,7 @@
         mc:Ignorable="d"
         BorderThickness="1"
         VerticalAlignment="Stretch"
-        Height="48"
+        Height="100"
         SizeChanged="Border_SizeChanged"
         d:DesignHeight="50" d:DesignWidth="100">
 
@@ -59,7 +59,7 @@
         <Canvas ClipToBounds="True">
 
             <Grid IsHitTestVisible="False">
-                <Border Height="50">
+                <Border Height="100">
                     <Image x:Name="img" Stretch="UniformToFill">
                         <Image.Style>
                             <Style TargetType="Image">

@@ -6,6 +6,7 @@ namespace PressPlay.Helpers
     {
         // Pixels per frame at zoom level 1
         public static double TimelinePixelsInSeparator = 0.2;
+        public const double TrackHeight = 60;   // whatever looks good
 
         // Zoom levels with multipliers
         public static Dictionary<int, double> TimelineZooms = new Dictionary<int, double>

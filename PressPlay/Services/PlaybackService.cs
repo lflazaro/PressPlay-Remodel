@@ -22,6 +22,9 @@ namespace PressPlay.Services
         private readonly Project _project;
         private readonly DispatcherTimer _timer;
         private readonly Image _previewControl;
+        private DateTime _playStartTimeUtc;
+        private TimeCode _startPosition;
+
 
         public event Action<TimeSpan> PositionChanged;
 
@@ -53,10 +56,12 @@ namespace PressPlay.Services
         {
             if (_timer.IsEnabled) return;
 
-            // Make sure we have a valid interval (recalculate in case FPS changed)
-            _timer.Interval = TimeSpan.FromMilliseconds(1000.0 / _project.FPS);
+            // reset or continue from current needle
+            _playStartTimeUtc = DateTime.UtcNow;
+            _startPosition = _project.NeedlePositionTime;
 
-            // Start the timer
+            // ensure interval matches FPS
+            _timer.Interval = TimeSpan.FromMilliseconds(1000.0 / _project.FPS);
             _timer.Start();
         }
 
@@ -103,37 +108,33 @@ namespace PressPlay.Services
 
         private void OnTick(object sender, EventArgs e)
         {
-            try
+            // elapsed wall-clock time since Play()
+            var elapsed = DateTime.UtcNow - _playStartTimeUtc;
+
+            // compute the desired total frames offset from the start
+            double desiredTotalFrames = _startPosition.TotalFrames
+                                        + elapsed.TotalSeconds * _project.FPS;
+
+            // clamp to [0, lastFrame]
+            double maxFrames = _project.GetTotalFrames();
+            if (desiredTotalFrames >= maxFrames)
             {
-                // Get current frame
-                int currentFrame = _project.NeedlePositionTime.TotalFrames;
-
-                // Advance by one frame
-                int nextFrame = currentFrame + 1;
-
-                // Check if we've reached the end
-                double totalFrames = _project.GetTotalFrames();
-                if (nextFrame > totalFrames - 1)
-                {
-                    Pause();
-                    return;
-                }
-
-                // Update the time code directly without using Seek to avoid
-                // potentially recursive calls or timer conflicts
-                _project.NeedlePositionTime = new TimeCode(nextFrame, _project.FPS);
-
-                // Render the frame
-                RenderFrame();
-
-                // Notify position change
-                PositionChanged?.Invoke(_project.NeedlePositionTime.ToTimeSpan());
+                // compute and render the very last frame, then stop
+                int lastFrame = (int)Math.Ceiling(maxFrames) - 1;
+                var finalTime = new TimeCode(lastFrame, _project.FPS);
+                Seek(finalTime);
+                Pause();
+                return;
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error in playback tick: {ex.Message}");
-                // Continue playback despite errors
-            }
+
+            // jump the needle there
+            var frameIndex = (int)Math.Round(desiredTotalFrames);
+            var newTime = new TimeCode(frameIndex, _project.FPS);
+            _project.NeedlePositionTime = newTime;
+
+            // draw it and notify
+            RenderFrame();
+            PositionChanged?.Invoke(newTime.ToTimeSpan());
         }
 
         private void RenderFrame()

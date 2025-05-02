@@ -91,34 +91,46 @@ namespace PressPlay.Models
         private VideoCapture _capture;
         public BitmapSource GetFrameAt(TimeSpan position)
         {
+            var ext = Path.GetExtension(FilePath).ToLower();
+            if (FileFormats.SupportedImageFormats.Contains(ext))
+            {
+                var bi = new BitmapImage();
+                bi.BeginInit();
+                bi.UriSource = new Uri(FilePath);
+                bi.CacheOption = BitmapCacheOption.OnLoad;
+                bi.EndInit();
+                return bi;
+            }
             if (_capture == null)
                 _capture = new VideoCapture(FilePath);
 
-            // compute and clamp frame index
+            // determine FPS and max frame count
             double fps = _capture.Fps > 0 ? _capture.Fps : FPS;
-            int max = (int)_capture.FrameCount;
+            int maxFrames = (int)_capture.FrameCount;
+
+            // translate TimeSpan → zero-based frame index
             int target = (int)Math.Round(position.TotalSeconds * fps);
-            target = Math.Max(0, Math.Min(target, max - 1));
+            target = Math.Max(0, Math.Min(target, maxFrames - 1));
             _capture.PosFrames = target;
 
-            // manually retrieve & possibly replace the Mat
+            // pull the frame
             Mat mat = _capture.RetrieveMat();
             if (mat.Empty())
             {
-                // ditch the empty one
                 mat.Dispose();
-                // create a black frame of the correct size
+                // produce a black frame as a fallback
                 mat = new Mat(_capture.FrameHeight,
                               _capture.FrameWidth,
                               MatType.CV_8UC3,
                               new Scalar(0, 0, 0));
             }
 
-            // convert to WPF image
+            // convert & clean up
             var bmp = mat.ToBitmapSource();
-            mat.Dispose();  // clean up
+            mat.Dispose();
             return bmp;
         }
+
 
         private void GetInfo()
         {
