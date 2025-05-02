@@ -3,10 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:local="clr-namespace:PressPlay;assembly=PressPlay"
-        xmlns:converters="clr-namespace:PressPlay.Converters;assembly=PressPlay"
-        xmlns:customcontrols="clr-namespace:PressPlay.CustomControls;assembly=PressPlay"
-        xmlns:timeline="clr-namespace:PressPlay.Timeline;assembly=PressPlay"
+    xmlns:local="clr-namespace:PressPlay"
+        xmlns:converters="clr-namespace:PressPlay.Converters"
+        xmlns:customcontrols="clr-namespace:PressPlay.CustomControls"
+        xmlns:timeline="clr-namespace:PressPlay.Timeline"
         xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
         mc:Ignorable="d"
         Title="{Binding Title}"
@@ -118,18 +118,6 @@
                               ConverterParameter={x:Static timeline:TimelineSelectedTool.CuttingTool}}"
                   Command="{Binding SelectToolCommand}"
                   CommandParameter="{x:Static timeline:TimelineSelectedTool.CuttingTool}" />
-                <MenuItem Header="Verse Resizer"
-                  IsChecked="{Binding CurrentProject.SelectedTool,
-                              Converter={StaticResource ToolConverter},
-                              ConverterParameter={x:Static timeline:TimelineSelectedTool.VerseResizer}}"
-                  Command="{Binding SelectToolCommand}"
-                  CommandParameter="{x:Static timeline:TimelineSelectedTool.VerseResizer}" />
-                <MenuItem Header="Auto Verse"
-                  IsChecked="{Binding CurrentProject.SelectedTool,
-                              Converter={StaticResource ToolConverter},
-                              ConverterParameter={x:Static timeline:TimelineSelectedTool.AutoVerse}}"
-                  Command="{Binding SelectToolCommand}"
-                  CommandParameter="{x:Static timeline:TimelineSelectedTool.AutoVerse}" />
                 <Separator />
                 <MenuItem Header="Add Transition">
                     <MenuItem Header="Fade to White" Command="{Binding AddTransitionCommand}" CommandParameter="FadeToWhite" />
