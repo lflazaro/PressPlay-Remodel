@@ -61,7 +61,7 @@ namespace PressPlay.Undo.UndoUnits
         /// </summary>
         public void Redo()
         {
-            Project.Tracks.Remove(Track);
+            Project.Tracks.Remove((Track)Track);
         }
     }
 }

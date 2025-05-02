@@ -62,17 +62,14 @@ namespace PressPlay.Undo.UndoUnits
         /// </summary>
         public void Undo()
         {
-            Item.FadeInFrame = OldFadeInFrame;
-            Item.FadeOutFrame = OldFadeOutFrame;
+            Item.FadeInFrame = (int)OldFadeInFrame;
+            Item.FadeOutFrame = (int)OldFadeOutFrame;
         }
 
-        /// <summary>
-        /// Redoes the fade action by applying the new fade-in and fade-out frame values.
-        /// </summary>
         public void Redo()
         {
-            Item.FadeInFrame = NewFadeInFrame;
-            Item.FadeOutFrame = NewFadeOutFrame;
+            Item.FadeInFrame = (int)NewFadeInFrame;
+            Item.FadeOutFrame = (int)NewFadeOutFrame;
         }
     }
 }

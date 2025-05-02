@@ -56,7 +56,7 @@ namespace PressPlay.Undo.UndoUnits
         {
             foreach (var clip in Clips)
             {
-                Project.Clips.Remove(clip);
+                Project.Clips.Remove((ProjectClip)clip);
             }
         }
 
@@ -67,7 +67,7 @@ namespace PressPlay.Undo.UndoUnits
         {
             foreach (var clip in Clips)
             {
-                Project.Clips.Add(clip);
+                Project.Clips.Add((ProjectClip)clip);
             }
         }
     }

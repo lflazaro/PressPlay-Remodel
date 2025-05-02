@@ -58,6 +58,7 @@ namespace PressPlay
 
         // Playback service – to be set from the view
         public IPlaybackService PlaybackService { get; set; }
+        public static MainWindowViewModel Instance { get; private set; }
 
         #endregion
 
@@ -258,6 +259,7 @@ namespace PressPlay
 
         public MainWindowViewModel()
         {
+            Instance = this;
             // Initialize the project
             CurrentProject = new Project();
 

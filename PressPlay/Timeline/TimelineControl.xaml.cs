@@ -239,9 +239,9 @@ namespace PressPlay.Timeline
 
                 _mouseDownTrackItem.Position = new TimeCode(resultFrame, Project.FPS);
                 if (originTrack != destTrack && destTrack != null
-                    && _mouseDownTrackItem.IsCompatibleWith(destTrack.Type))
+                    && _mouseDownTrackItem.IsCompatibleWith(destTrack.Type.ToString()))
                 {
-                    Project.RemoveAndAddTrackItem(originTrack, destTrack, _mouseDownTrackItem);
+                    Project.RemoveAndAddTrackItem(originTrack, (Track)destTrack, _mouseDownTrackItem);
                 }
             }
             else if (_tracksCanvasLeftMouseButtonDown && _mouseDownTrackItem != null && _resizingLeft)

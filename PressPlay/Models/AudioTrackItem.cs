@@ -174,7 +174,21 @@ namespace PressPlay.Models
                 }
             }
         }
+        private string _clipId;
 
+        // Add this property
+        public string ClipId
+        {
+            get => _clipId;
+            set
+            {
+                if (_clipId != value)
+                {
+                    _clipId = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
         public string FilePath
         {
             get => _filePath;
@@ -227,6 +241,7 @@ namespace PressPlay.Models
 
         public AudioTrackItem(ProjectClip clip, TimeCode position, TimeCode start, TimeCode length)
         {
+            ClipId = clip?.Id;
             Position = position ?? new TimeCode(0, 25);
             Start = start ?? new TimeCode(0, 25);
 

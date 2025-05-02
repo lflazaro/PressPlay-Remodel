@@ -72,7 +72,8 @@ namespace PressPlay.Models
 
         public static bool TryParse(string s, out TimeCode result)
         {
-            result = new TimeCode();
+            // Provide default values for the required constructor parameters
+            result = new TimeCode(0, DefaultFPS); // Use 0 frames and the default FPS
             // simple implementation: parse “hh:mm:ss” or “frames@fps” here
             // for now, if you don’t need string parsing, just return false
             return false;
