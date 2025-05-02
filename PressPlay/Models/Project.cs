@@ -72,7 +72,6 @@ namespace PressPlay.Models
             // Subscribe to changes in the Tracks collection
             Tracks.CollectionChanged += Tracks_CollectionChanged;
         }
-
         private void Tracks_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             // When tracks are added or removed, notify property changed
@@ -339,7 +338,27 @@ namespace PressPlay.Models
                 .SelectMany(t => t.Items)
                 .Max(i => i.Position.TotalFrames + i.Duration.TotalFrames);
         }
+        public ProjectClip GetClipAt(TimeCode time)
+        {
+            // 1. Turn the TimeCode into a zero-based frame index
+            int frame = (int)Math.Round((double)time.TotalFrames);
 
+            // 2. Find all track items that span this frame
+            var items = GetItemsAtFrame(frame);
+            if (items == null || items.Count == 0)
+                return null;
+
+            // 3. Pick the first (or topmost) one
+            var item = items.First();
+
+            // 4. Match it to one of your loaded ProjectClips by file path
+            //    (assumes your ITrackItem has a FullPath property)
+            var clip = Clips
+               .FirstOrDefault(c =>
+                   string.Equals(c.FilePath, item.FullPath, StringComparison.OrdinalIgnoreCase));
+
+            return clip;
+        }
         public void Cut()
         {
             // Implementation for Cut operation

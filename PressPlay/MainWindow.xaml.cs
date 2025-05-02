@@ -21,7 +21,7 @@ namespace PressPlay
             if (DataContext is MainWindowViewModel vm)
             {
                 // Initialize service (now takes just the Project)
-                _playbackService = new PlaybackService(vm.CurrentProject);
+                _playbackService = new PlaybackService(vm.CurrentProject, PreviewImage);
                 vm.PlaybackService = _playbackService;
                 Debug.WriteLine("PlaybackService initialized successfully");
 
@@ -54,10 +54,10 @@ namespace PressPlay
                 Closing += MainWindow_Closing;
 
                 // Enable drag/drop onto the preview
-                VideoPreview.AllowDrop = true;
-                VideoPreview.Drop += VideoPreview_Drop;
-                VideoPreview.DragEnter += VideoPreview_DragEnter;
-                VideoPreview.DragOver += VideoPreview_DragOver;
+                PreviewImage.AllowDrop = true;
+                PreviewImage.Drop += VideoPreview_Drop;
+                PreviewImage.DragEnter += VideoPreview_DragEnter;
+                PreviewImage.DragOver += VideoPreview_DragOver;
             }
         }
 
@@ -142,6 +142,11 @@ namespace PressPlay
                         ? DragDropEffects.Copy
                         : DragDropEffects.None;
             e.Handled = true;
+        }
+
+        private void TimelineControl_Loaded(object sender, RoutedEventArgs e)
+        {
+
         }
     }
 }

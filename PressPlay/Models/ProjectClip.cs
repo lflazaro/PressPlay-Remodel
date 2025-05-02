@@ -1,15 +1,20 @@
 ﻿using FFMpegCore;
+using NAudio.Gui;
 using OpenCvSharp;
+using OpenCvSharp.WpfExtensions;  // for .ToBitmapSource()
 using PressPlay.Helpers;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
+using System.Windows.Media.Imaging;
 
 namespace PressPlay.Models
 {
@@ -18,6 +23,18 @@ namespace PressPlay.Models
     [DebuggerDisplay("{FileName} {Length}")]
     public class ProjectClip : IProjectClip
     {
+        // Static constructor to ensure ffprobe is configured
+        static ProjectClip()
+        {
+            // Configure FFMpegCore to find ffprobe (adjust path or use environment variable as needed)
+            var ffmpegDir = Environment.GetEnvironmentVariable("FFMPEG_CORE_DIR")
+                            ?? @"D:\experimentz\PressPlay-master\PressPlay-master\PressPlay\bin\Debug\net8.0-windows\ffmpeg";
+            GlobalFFOptions.Configure(options =>
+            {
+                options.BinaryFolder = ffmpegDir;
+            });
+        }
+
         private string _id = Guid.NewGuid().ToString().Replace("-", "");
         private TimelineTrackType _trackType;
         private TrackItemType _itemType;
@@ -56,27 +73,52 @@ namespace PressPlay.Models
 
         public bool IsCompatibleWith(TimelineTrackType trackType)
         {
-            // Debug information for troubleshooting
-            System.Diagnostics.Debug.WriteLine($"Checking compatibility: Clip type {ItemType}, Track type {trackType}");
-
+            Debug.WriteLine($"Checking compatibility: Clip type {ItemType}, Track type {trackType}");
             bool isCompatible = trackType switch
             {
                 TimelineTrackType.Video => ItemType == TrackItemType.Video || ItemType == TrackItemType.Image,
                 TimelineTrackType.Audio => ItemType == TrackItemType.Audio,
                 _ => false,
             };
-
-            System.Diagnostics.Debug.WriteLine($"Compatibility result: {isCompatible}");
+            Debug.WriteLine($"Compatibility result: {isCompatible}");
             return isCompatible;
         }
 
         public double GetWidth(int zoomLevel)
-        {
-            return Length.TotalFrames * Constants.TimelinePixelsInSeparator / Constants.TimelineZooms[zoomLevel];
-        }
+            => Length.TotalFrames * Constants.TimelinePixelsInSeparator / Constants.TimelineZooms[zoomLevel];
 
-        // Add ClipId property for AudioTrackItem
         public string ClipId => Id;
+        private VideoCapture _capture;
+        public BitmapSource GetFrameAt(TimeSpan position)
+        {
+            if (_capture == null)
+                _capture = new VideoCapture(FilePath);
+
+            // compute and clamp frame index
+            double fps = _capture.Fps > 0 ? _capture.Fps : FPS;
+            int max = (int)_capture.FrameCount;
+            int target = (int)Math.Round(position.TotalSeconds * fps);
+            target = Math.Max(0, Math.Min(target, max - 1));
+            _capture.PosFrames = target;
+
+            // manually retrieve & possibly replace the Mat
+            Mat mat = _capture.RetrieveMat();
+            if (mat.Empty())
+            {
+                // ditch the empty one
+                mat.Dispose();
+                // create a black frame of the correct size
+                mat = new Mat(_capture.FrameHeight,
+                              _capture.FrameWidth,
+                              MatType.CV_8UC3,
+                              new Scalar(0, 0, 0));
+            }
+
+            // convert to WPF image
+            var bmp = mat.ToBitmapSource();
+            mat.Dispose();  // clean up
+            return bmp;
+        }
 
         private void GetInfo()
         {
@@ -96,11 +138,9 @@ namespace PressPlay.Models
         {
             if (string.IsNullOrWhiteSpace(_fileHash))
             {
-                using (var md5 = MD5.Create())
-                using (var stream = File.OpenRead(FilePath))
-                {
-                    _fileHash = BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLower();
-                }
+                using var md5 = MD5.Create();
+                using var stream = File.OpenRead(FilePath);
+                _fileHash = BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLower();
             }
             return _fileHash;
         }
@@ -116,7 +156,6 @@ namespace PressPlay.Models
             var extension = Path.GetExtension(FilePath).ToLower();
             var thumbnailPath = Path.Combine(Path.GetTempPath(), "PressPlay", $"{GetFileHash()}_thumbnail.png");
 
-            // **NEW**: make sure the target folder exists
             var folder = Path.GetDirectoryName(thumbnailPath);
             if (!Directory.Exists(folder))
                 Directory.CreateDirectory(folder);
@@ -129,63 +168,80 @@ namespace PressPlay.Models
 
             if (FileFormats.SupportedVideoFormats.Contains(extension))
             {
-                using (var capture = new VideoCapture(FilePath))
-                {
-                    var middleFrame = capture.FrameCount / 2;
-                    capture.PosFrames = middleFrame;
-                    using (var originalMat = capture.RetrieveMat())
-                    {
-                        var resizedMat = originalMat.Resize(new OpenCvSharp.Size(320, 240));
-                        resizedMat.SaveImage(thumbnailPath);
-                    }
-                }
+                using var capture = new VideoCapture(FilePath);
+                var middleFrame = capture.FrameCount / 2;
+                capture.PosFrames = middleFrame;
+                using var originalMat = capture.RetrieveMat();
+                var resizedMat = originalMat.Resize(new OpenCvSharp.Size(320, 240));
+                resizedMat.SaveImage(thumbnailPath);
             }
             else if (FileFormats.SupportedAudioFormats.Contains(extension))
             {
-                // placeholder logic—you could generate a waveform here
                 Thumbnail = "audio_placeholder.png";
             }
             else if (FileFormats.SupportedImageFormats.Contains(extension))
             {
-                // now safe to copy
                 File.Copy(FilePath, thumbnailPath);
                 Thumbnail = thumbnailPath;
             }
 
-            // fallback
             if (string.IsNullOrEmpty(Thumbnail))
                 Thumbnail = thumbnailPath;
         }
 
+        /// <summary>
+        /// Uses FFProbe to get media properties, with a fallback direct ffprobe call if duration is invalid.
+        /// </summary>
         public ProjectClipMetadata GetClipProperties()
         {
             var extension = Path.GetExtension(FilePath).ToLower();
             if (FileFormats.SupportedVideoFormats.Contains(extension))
             {
+                // try ffprobe first
                 var analysis = FFProbe.Analyse(FilePath);
+                var duration = analysis.Duration;
+                var fps = analysis.PrimaryVideoStream.FrameRate;
+
+                // fallback if duration looks bogus
+                if (duration.TotalSeconds < 0.1 || fps <= 0)
+                {
+                    using var cap = new VideoCapture(FilePath);
+                    fps = cap.Fps > 0 ? cap.Fps : FPS;
+                    duration = TimeSpan.FromSeconds(cap.FrameCount / fps);
+                }
+
                 return new ProjectClipMetadata
                 {
                     TrackType = TimelineTrackType.Video,
                     ItemType = TrackItemType.Video,
-                    Length = TimeCode.FromTimeSpan(analysis.Duration, analysis.PrimaryVideoStream.FrameRate),
-                    FPS = analysis.PrimaryVideoStream.FrameRate,
+                    Length = TimeCode.FromTimeSpan(duration, fps),
+                    FPS = fps,
                     Width = analysis.PrimaryVideoStream.Width,
                     Height = analysis.PrimaryVideoStream.Height
                 };
             }
+
             if (FileFormats.SupportedAudioFormats.Contains(extension))
             {
+                // Use configured FPS or default
+                var fps = FPS > 0 ? FPS : 25;
                 var analysis = FFProbe.Analyse(FilePath);
+                var duration = analysis.Duration;
+                if (duration.TotalSeconds < 0.1)
+                {
+                    duration = ProbeDuration(FilePath);
+                }
                 return new ProjectClipMetadata
                 {
                     TrackType = TimelineTrackType.Audio,
                     ItemType = TrackItemType.Audio,
-                    Length = TimeCode.FromTimeSpan(analysis.Duration, FPS),
-                    FPS = FPS,
+                    Length = TimeCode.FromTimeSpan(duration, fps),
+                    FPS = fps,
                     Width = 0,
                     Height = 0
                 };
             }
+
             if (FileFormats.SupportedImageFormats.Contains(extension))
             {
                 return new ProjectClipMetadata
@@ -199,7 +255,36 @@ namespace PressPlay.Models
                     Height = 600
                 };
             }
+
             return new ProjectClipMetadata();
+        }
+
+        /// <summary>
+        /// Fallback direct ffprobe call to get duration in case FFMpegCore Analyse fails.
+        /// </summary>
+        private static TimeSpan ProbeDuration(string path)
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "ffprobe",
+                    Arguments = $"-v error -show_entries format=duration " +
+                                $"-of default=nw=1:nk=1 \"{path}\"",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                using var proc = Process.Start(startInfo);
+                var output = proc.StandardOutput.ReadToEnd().Trim();
+                proc.WaitForExit();
+                if (double.TryParse(output, NumberStyles.Any, CultureInfo.InvariantCulture, out var secs))
+                {
+                    return TimeSpan.FromSeconds(secs);
+                }
+            }
+            catch { /* ignore and fallback */ }
+            return TimeSpan.Zero;
         }
 
         public void CacheFrames()
@@ -209,30 +294,24 @@ namespace PressPlay.Models
                 if (!File.Exists(TempFramesCacheFile))
                 {
                     double max = 0;
-                    using (var capture = new VideoCapture(FilePath))
+                    using var capture = new VideoCapture(FilePath);
+                    var mat = new Mat();
+                    max = capture.FrameCount;
+                    while (capture.Read(mat))
                     {
-                        var mat = new OpenCvSharp.Mat();
-                        max = capture.FrameCount;
-                        while (capture.Read(mat))
-                        {
-                            FramesCache.Add(new FrameCache(capture.PosFrames, mat.ToBytes(".jpg")));
-                            var progress = ((double)capture.PosFrames / max) * 100d;
-                            CacheProgress?.Invoke(this, progress);
-                        }
+                        FramesCache.Add(new FrameCache(capture.PosFrames, mat.ToBytes(".jpg")));
+                        var progress = ((double)capture.PosFrames / max) * 100d;
+                        CacheProgress?.Invoke(this, progress);
                     }
-                    using (var writer = File.Create(TempFramesCacheFile))
-                    {
-                        JsonSerializer.Serialize(writer, FramesCache);
-                    }
+                    using var writer = File.Create(TempFramesCacheFile);
+                    JsonSerializer.Serialize(writer, FramesCache);
                 }
                 else
                 {
-                    using (var reader = File.OpenRead(TempFramesCacheFile))
-                    {
-                        var cache = JsonSerializer.Deserialize<List<FrameCache>>(reader);
-                        FramesCache.AddRange(cache);
-                        CacheProgress?.Invoke(this, 100);
-                    }
+                    using var reader = File.OpenRead(TempFramesCacheFile);
+                    var cache = JsonSerializer.Deserialize<List<FrameCache>>(reader);
+                    FramesCache.AddRange(cache);
+                    CacheProgress?.Invoke(this, 100);
                 }
             }
             else if (ItemType == TrackItemType.Image)

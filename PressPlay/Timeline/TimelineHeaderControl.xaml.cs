@@ -1,6 +1,10 @@
 ﻿using PressPlay.Helpers;
 using PressPlay.Models;
+using System;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -8,121 +12,117 @@ using System.Windows.Shapes;
 
 namespace PressPlay.Timeline
 {
-    /// <summary>
-    /// Interaction logic for TimelineHeader.xaml
-    /// </summary>
     public partial class TimelineHeaderControl : UserControl
     {
+        public static readonly DependencyProperty ProjectProperty =
+            DependencyProperty.Register(
+                nameof(Project),
+                typeof(Project),
+                typeof(TimelineHeaderControl),
+                new PropertyMetadata(null, OnProjectChanged));
+
         public Project Project
         {
-            get { return (Project)GetValue(ProjectProperty); }
-            set { SetValue(ProjectProperty, value); }
+            get => (Project)GetValue(ProjectProperty);
+            set => SetValue(ProjectProperty, value);
         }
-
-        // Using a DependencyProperty as the backing store for Project.  This enables animation, styling, binding, etc...
-        public static readonly DependencyProperty ProjectProperty = DependencyProperty.Register("Project", typeof(Project), typeof(TimelineHeaderControl), new PropertyMetadata(null, OnProjectChangedCallback));
 
         public TimelineHeaderControl()
         {
             InitializeComponent();
         }
 
-        private void InitializeHeader()
+        private static void OnProjectChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (DataContext == null)
+            var ctl = (TimelineHeaderControl)d;
+
+            if (e.OldValue is Project old) ctl.Unwire(old);
+            if (e.NewValue is Project @new) ctl.Wire(@new);
+
+            ctl.Redraw();
+        }
+
+        void Wire(Project proj)
+        {
+            proj.PropertyChanged += Project_PropertyChanged;
+            proj.Tracks.CollectionChanged += TracksChanged;
+            foreach (var t in proj.Tracks)
+                t.Items.CollectionChanged += TracksChanged;
+        }
+
+        void Unwire(Project proj)
+        {
+            proj.PropertyChanged -= Project_PropertyChanged;
+            proj.Tracks.CollectionChanged -= TracksChanged;
+            foreach (var t in proj.Tracks)
+                t.Items.CollectionChanged -= TracksChanged;
+        }
+
+        private void Project_PropertyChanged(object s, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(Project.TimelineZoom))
+                Redraw();
+        }
+
+        private void TracksChanged(object s, NotifyCollectionChangedEventArgs e)
+        {
+            // hook/unhook new track-items
+            if (s is ObservableCollection<Track>)
             {
-                return;
+                if (e.NewItems != null)
+                    foreach (Track t in e.NewItems)
+                        t.Items.CollectionChanged += TracksChanged;
+                if (e.OldItems != null)
+                    foreach (Track t in e.OldItems)
+                        t.Items.CollectionChanged -= TracksChanged;
             }
+            Redraw();
+        }
+
+        private void Redraw()
+        {
+            if (Project == null) return;
 
             RootCanvas.Children.Clear();
 
-            var max = TimeSpan.FromMinutes(10);
-            var totalFrames = max.TotalSeconds * Project.FPS;
+            double totalFrames = Project.GetTotalFrames();
+            double totalSeconds = totalFrames / Project.FPS;
+            double pxPerSec = Constants.TimelinePixelsInSeparator
+                                 / Constants.TimelineZooms[Project.TimelineZoom];
 
-            var width = (totalFrames * Constants.TimelinePixelsInSeparator);
-
-            var curX = 0d;
-            var spike = true;
-            var count = 1;
-
-            while (curX < width)
+            int secCount = (int)Math.Ceiling(totalSeconds);
+            for (int s = 0; s <= secCount; s++)
             {
-                RootCanvas.Children.Add(new Line()
+                double x = s * pxPerSec;
+
+                // tick
+                var line = new Line
                 {
-                    X1 = curX,
-                    X2 = curX,
-                    Y1 = spike ? 24 : 26,
-                    Y2 = this.ActualHeight,
-                    Stroke = Brushes.WhiteSmoke,
-                    StrokeThickness = 0.5
-                });
+                    X1 = 0,
+                    Y1 = 0,
+                    X2 = 0,
+                    Y2 = 8,
+                    Stroke = Brushes.White,
+                    StrokeThickness = 1
+                };
+                Canvas.SetLeft(line, x);
+                Canvas.SetTop(line, 0);
+                RootCanvas.Children.Add(line);
 
-                if (spike)
+                // label
+                var txt = new TextBlock
                 {
-                    var currentFrame = curX / Constants.TimelinePixelsInSeparator * Constants.TimelineZooms[Project.TimelineZoom];
-
-                    var txt = new TextBlock()
-                    {
-                        Text = new TimeCode((int)currentFrame, Project.FPS).ToString(),
-                        Foreground = Brushes.WhiteSmoke,
-                        Tag = new TimeLabelInfo() { Number = count, X = curX },
-                    };
-
-                    RootCanvas.Children.Add(txt);
-
-                    Canvas.SetTop(txt, 8);
-                    Canvas.SetLeft(txt, curX);
-                }
-
-                curX += Constants.TimelinePixelsInSeparator;
-                spike = !spike;
+                    Text = TimeSpan.FromSeconds(s).ToString(@"mm\:ss"),
+                    FontSize = 10,
+                    Foreground = Brushes.White
+                };
+                Canvas.SetLeft(txt, x + 2);
+                Canvas.SetTop(txt, 10);
+                RootCanvas.Children.Add(txt);
             }
 
-            ApplyCurrentZoom();
-        }
-
-        private void ApplyCurrentZoom()
-        {
-            var items = RootCanvas.Children.OfType<TextBlock>().OrderBy(x => ((TimeLabelInfo)x.Tag).Number);
-
-            foreach (var item in items)
-            {
-                var info = item.Tag as TimeLabelInfo;
-                var currentFrame = info.X / Constants.TimelinePixelsInSeparator * Constants.TimelineZooms[Project.TimelineZoom];
-                var currentSecond = Math.Round(currentFrame / Project.FPS, MidpointRounding.ToZero);
-                var t = TimeSpan.FromSeconds(currentSecond);
-                var currentFrameStr = currentFrame - (currentSecond * Project.FPS);
-                item.Text = $"{t:hh\\:mm\\:ss}:{currentFrameStr:00}";
-            }
-
-            var frames = Project.GetTotalFrames() + (TimeSpan.FromMinutes(30).TotalSeconds * Project.FPS);
-
-            this.Width = (frames * Constants.TimelinePixelsInSeparator) / Constants.TimelineZooms[Project.TimelineZoom];
-        }
-
-        private static void OnProjectChangedCallback(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-            if (e.OldValue is Project oldProject)
-            {
-                oldProject.PropertyChanged -= (d as TimelineHeaderControl).Project_PropertyChanged;
-            }
-
-            if (e.NewValue is Project newProject)
-            {
-                newProject.PropertyChanged -= (d as TimelineHeaderControl).Project_PropertyChanged;
-                newProject.PropertyChanged += (d as TimelineHeaderControl).Project_PropertyChanged;
-
-                (d as TimelineHeaderControl).InitializeHeader();
-            }
-        }
-
-        private void Project_PropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == nameof(Project.TimelineZoom))
-            {
-                ApplyCurrentZoom();
-                //InitializeHeader();
-            }
+            // update scrollable width
+            RootCanvas.Width = totalSeconds * pxPerSec;
         }
     }
 }

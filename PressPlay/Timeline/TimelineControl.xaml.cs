@@ -48,6 +48,8 @@ namespace PressPlay.Timeline
         public TimelineControl()
         {
             InitializeComponent();
+            tracksHScrollView.ScrollChanged += (s, e) =>
+    header.HeaderScrollViewer.ScrollToHorizontalOffset(e.HorizontalOffset);
         }
 
         [RelayCommand]
@@ -211,16 +213,23 @@ namespace PressPlay.Timeline
                 && !_mouseDownTrackItem.IsChangingFadeIn
                 && !_mouseDownTrackItem.IsChangingFadeOut)
             {
-                double x = Math.Round(e.GetPosition(tracksControl).X - _mouseDownX);
-                if (x < 0) x = 0;
+                // Get current mouse position relative to the original click position
+                double mouseX = e.GetPosition(tracksControl).X;
+                double offsetX = mouseX - _mouseDownX;
 
-                int startFrame = Convert.ToInt32(Math.Round(x / Constants.TimelinePixelsInSeparator
-                                                          * Constants.TimelineZooms[Project.TimelineZoom],
-                                                          MidpointRounding.ToZero));
-                int endFrame = startFrame + _mouseDownTrackItem.Duration.TotalFrames;
-                int resultFrame = startFrame;
+                // Calculate frame offset from the original position
+                int frameOffset = Convert.ToInt32(Math.Round(offsetX / Constants.TimelinePixelsInSeparator
+                                                           * Constants.TimelineZooms[Project.TimelineZoom],
+                                                           MidpointRounding.ToZero));
 
-                if (startFrame <= 0) resultFrame = 0;
+                // Calculate new position based on original item position plus offset
+                int newFramePos = _mouseDownTrackItemPosition.TotalFrames + frameOffset;
+                if (newFramePos < 0) newFramePos = 0;
+
+                int endFrame = newFramePos + _mouseDownTrackItem.Duration.TotalFrames;
+                int resultFrame = newFramePos;
+
+                if (newFramePos <= 0) resultFrame = 0;
 
                 var originTrack = Project.Tracks.First(t => t.Items.Contains(_mouseDownTrackItem));
                 ITimelineTrack destTrack = null;
@@ -231,9 +240,9 @@ namespace PressPlay.Timeline
                 var others = checkTrack.Items.Where(i => i != _mouseDownTrackItem).ToArray();
                 foreach (var o in others)
                 {
-                    if (o.Position.TotalFrames < endFrame && startFrame <= (o.Position.TotalFrames + o.Duration.TotalFrames))
+                    if (o.Position.TotalFrames < endFrame && newFramePos <= (o.Position.TotalFrames + o.Duration.TotalFrames))
                         resultFrame = Convert.ToInt32(o.Position.TotalFrames + o.Duration.TotalFrames);
-                    if (endFrame >= o.Position.TotalFrames && startFrame < o.Position.TotalFrames)
+                    if (endFrame >= o.Position.TotalFrames && newFramePos < o.Position.TotalFrames)
                         resultFrame = Convert.ToInt32(o.Position.TotalFrames - _mouseDownTrackItem.Duration.TotalFrames);
                 }
 
