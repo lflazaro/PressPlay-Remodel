@@ -23,7 +23,6 @@
     <!-- Converters -->
     <UserControl.Resources>
         <converters:TimelineSelectedToolToSelectedConverter x:Key="ToolSelectionConverter"/>
-        <converters:TrackDataItemToPositionConverter      x:Key="TrackToPosConverter"/>
         <converters:NeedlePositionConverter               x:Key="NeedlePosConverter"/>
     </UserControl.Resources>
 
@@ -116,22 +115,22 @@
                     HorizontalScrollBarVisibility="Hidden"
                     VerticalScrollBarVisibility="Hidden"
                     PreviewMouseWheel="TracksScrollView_PreviewMouseWheel">
-                <Canvas Width="2000"
-                HorizontalAlignment="Left"
-                PreviewMouseLeftButtonDown="TracksCanvas_PreviewMouseLeftButtonDown">
+                <Canvas x:Name="RootCanvas" Width="2000"
+          HorizontalAlignment="Left"
+          PreviewMouseLeftButtonDown="TracksCanvas_PreviewMouseLeftButtonDown">
 
                     <local:TimelineHeaderControl x:Name="header"
-                                      Project="{Binding Project,
-                                          RelativeSource={RelativeSource Mode=FindAncestor,
-                                                                  AncestorType={x:Type local:TimelineControl}}}"/>
+                      Project="{Binding Project,
+                          RelativeSource={RelativeSource Mode=FindAncestor,
+                                                  AncestorType={x:Type local:TimelineControl}}}"
+                      Width="{Binding ActualWidth, ElementName=RootCanvas}" />
 
                     <ItemsControl x:Name="tracksControl"
                         ItemsSource="{Binding Project.Tracks,
                                               RelativeSource={RelativeSource Mode=FindAncestor,
                                                                       AncestorType={x:Type local:TimelineControl}}}"
-                        Width="{Binding ActualWidth,
-                                      RelativeSource={RelativeSource Mode=FindAncestor,
-                                                              AncestorType={x:Type ItemsControl}}}"
+                        Width="{Binding ActualWidth, ElementName=tracksHScrollView}"
+
                         Margin="0,30,0,0">
                         <ItemsControl.ContextMenu>
                             <ContextMenu>
@@ -211,7 +210,7 @@
                 </Canvas>
             </ScrollViewer>
 
-            <!-- BindableScrollBar comes from PressPlay.Timeline -->
+            <!-- BindableScrollBar from PressPlay.Timeline -->
             <local:BindableScrollBar Grid.Column="1"
                                Grid.Row="1"
                                Orientation="Horizontal"

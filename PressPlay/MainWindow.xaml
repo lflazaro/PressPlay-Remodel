@@ -14,7 +14,7 @@
         MinWidth="900" MinHeight="600"
         Background="#FF1F1F1F">
     <Window.Resources>
-        <converters:TimelineSelectedToolToSelectedConverter x:Key="ToolConverter" />
+        <converters:TimelineSelectedToolToSelectedConverter x:Key="TimelineSelectedToolToSelectedConverter" />
         <converters:ByteArrayToImageConverter           x:Key="ByteArrayConverter" />
         <local:MainWindowViewModel                      x:Key="MainWindowViewModel" />
     </Window.Resources>
@@ -108,13 +108,13 @@
             <MenuItem Header="Timeline">
                 <MenuItem Header="Select Tool"
                   IsChecked="{Binding CurrentProject.SelectedTool,
-                              Converter={StaticResource ToolConverter},
+                              Converter={StaticResource TimelineSelectedToolToSelectedConverter},
                               ConverterParameter={x:Static timeline:TimelineSelectedTool.SelectionTool}}"
                   Command="{Binding SelectToolCommand}"
                   CommandParameter="{x:Static timeline:TimelineSelectedTool.SelectionTool}" />
                 <MenuItem Header="Cutting Tool"
                   IsChecked="{Binding CurrentProject.SelectedTool,
-                              Converter={StaticResource ToolConverter},
+                              Converter={StaticResource TimelineSelectedToolToSelectedConverter},
                               ConverterParameter={x:Static timeline:TimelineSelectedTool.CuttingTool}}"
                   Command="{Binding SelectToolCommand}"
                   CommandParameter="{x:Static timeline:TimelineSelectedTool.CuttingTool}" />

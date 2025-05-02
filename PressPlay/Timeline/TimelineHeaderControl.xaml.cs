@@ -11,7 +11,7 @@ namespace PressPlay.Timeline
     /// <summary>
     /// Interaction logic for TimelineHeader.xaml
     /// </summary>
-    public partial class TimelineHeaderControl : Canvas
+    public partial class TimelineHeaderControl : UserControl
     {
         public Project Project
         {
@@ -34,7 +34,7 @@ namespace PressPlay.Timeline
                 return;
             }
 
-            this.Children.Clear();
+            RootCanvas.Children.Clear();
 
             var max = TimeSpan.FromMinutes(10);
             var totalFrames = max.TotalSeconds * Project.FPS;
@@ -47,7 +47,7 @@ namespace PressPlay.Timeline
 
             while (curX < width)
             {
-                this.Children.Add(new Line()
+                RootCanvas.Children.Add(new Line()
                 {
                     X1 = curX,
                     X2 = curX,
@@ -68,7 +68,7 @@ namespace PressPlay.Timeline
                         Tag = new TimeLabelInfo() { Number = count, X = curX },
                     };
 
-                    this.Children.Add(txt);
+                    RootCanvas.Children.Add(txt);
 
                     Canvas.SetTop(txt, 8);
                     Canvas.SetLeft(txt, curX);
@@ -83,7 +83,7 @@ namespace PressPlay.Timeline
 
         private void ApplyCurrentZoom()
         {
-            var items = this.Children.OfType<TextBlock>().OrderBy(x => ((TimeLabelInfo)x.Tag).Number);
+            var items = RootCanvas.Children.OfType<TextBlock>().OrderBy(x => ((TimeLabelInfo)x.Tag).Number);
 
             foreach (var item in items)
             {

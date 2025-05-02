@@ -10,7 +10,6 @@
         <ResourceDictionary>
 
             <!-- Converters -->
-            <converters:ToolConverter                           x:Key="ToolConverter" />
             <converters:TimelineSelectedToolToSelectedConverter x:Key="TimelineSelectedToolToSelectedConverter" />
             <converters:ByteArrayToImageConverter               x:Key="ByteArrayToImageConverter" />
             <converters:FrameToPositionConverter                x:Key="FrameToPositionConverter" />
