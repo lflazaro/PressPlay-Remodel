@@ -738,7 +738,7 @@ namespace PressPlay
 
                     // Log the actual detected duration
                     System.Diagnostics.Debug.WriteLine($"Imported {Path.GetFileName(filePath)}: {projectClip.Length.TotalFrames} frames, {projectClip.Length.TotalSeconds:F2} seconds");
-
+                    
                     // Add to project clips
                     CurrentProject.Clips.Add(projectClip);
 

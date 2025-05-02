@@ -2,7 +2,10 @@
 using System.Windows.Controls;
 using System.Windows.Threading;
 using PressPlay.Models;
-using OpenCvSharp.WpfExtensions;   // for Mat.ToBitmapSource()
+using OpenCvSharp.WpfExtensions;
+using System.Windows.Media.Imaging;
+using System.Windows.Media;
+using System.Windows;   // for Mat.ToBitmapSource()
 
 namespace PressPlay.Services
 {
@@ -139,19 +142,60 @@ namespace PressPlay.Services
 
         private void RenderFrame()
         {
-            // Get clip and offset
-            var (clip, clipOffset) = _project.GetClipAtWithOffset(_project.NeedlePositionTime);
-
-            if (clip != null)
-            {
-                // Use the clip offset to get the correct frame
-                var bmp = clip.GetFrameAt(clipOffset);
-                _previewControl.Source = bmp;
-            }
-            else
+            if (_project.ProjectWidth == 0 || _project.ProjectHeight == 0)
             {
                 _previewControl.Source = null;
+                return;
             }
+
+            int width = _project.ProjectWidth;
+            int height = _project.ProjectHeight;
+            int frameIndex = (int)Math.Round((double)_project.NeedlePositionTime.TotalFrames);
+
+            var dv = new DrawingVisual();
+            using (var dc = dv.RenderOpen())
+            {
+                // 1) Paint a solid black background
+                dc.DrawRectangle(Brushes.Black, null, new Rect(0, 0, width, height));
+
+                // 2) Draw each track in reverse order (bottom track first,
+                //    top track last, so overlays actually show up)
+                foreach (var track in _project.Tracks.OfType<Track>().Reverse())
+                {
+                    // find the item on this track at the current frame
+                    var item = track.Items.FirstOrDefault(i =>
+                        i.Position.TotalFrames <= frameIndex &&
+                        frameIndex < i.Position.TotalFrames + i.Duration.TotalFrames);
+
+                    if (item == null)
+                        continue;
+
+                    // match it back to your ProjectClip
+                    var clip = _project.Clips.FirstOrDefault(c =>
+                        string.Equals(c.FilePath, item.FilePath, StringComparison.OrdinalIgnoreCase) ||
+                        c.Id == (item as AudioTrackItem)?.ClipId);
+                    if (clip == null)
+                        continue;
+
+                    // compute in-clip frame offset
+                    int clipFrame = frameIndex
+                                    - item.Position.TotalFrames
+                                    + item.Start.TotalFrames;
+                    clipFrame = Math.Clamp(clipFrame, 0, (int)clip.Length.TotalFrames - 1);
+                    var clipOffset = TimeSpan.FromSeconds(clipFrame / clip.FPS);
+
+                    // grab the bitmap for that frame
+                    var bmp = clip.GetFrameAt(clipOffset);
+
+                    // draw it full-frame (it will respect PNG alpha)
+                    dc.DrawImage(bmp, new Rect(0, 0, width, height));
+                }
+            }
+
+            // push the composite to your Image control
+            var rtb = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+            rtb.Render(dv);
+            _previewControl.Source = rtb;
         }
 
         public void Dispose()

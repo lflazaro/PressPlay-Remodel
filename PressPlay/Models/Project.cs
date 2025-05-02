@@ -66,7 +66,20 @@ namespace PressPlay.Models
                 }
             }
         }
+        public int ProjectWidth { get; private set; }
+        public int ProjectHeight { get; private set; }
 
+        // Call this when you first add a clip to the timeline:
+        public void SetProjectResolution(int width, int height)
+        {
+            if (ProjectWidth == 0 && ProjectHeight == 0)
+            {
+                ProjectWidth = width;
+                ProjectHeight = height;
+                OnPropertyChanged(nameof(ProjectWidth));
+                OnPropertyChanged(nameof(ProjectHeight));
+            }
+        }
         public Project()
         {
             // Subscribe to changes in the Tracks collection
@@ -338,20 +351,20 @@ namespace PressPlay.Models
                 .SelectMany(t => t.Items)
                 .Max(i => i.Position.TotalFrames + i.Duration.TotalFrames);
         }
-        public (ProjectClip clip, TimeSpan clipOffset) GetClipAtWithOffset(TimeCode time)
+        public (ProjectClip clip, TimeSpan clipOffset) GetClipAtWithOffset(TimeCode time, Track track)
         {
-            // Convert the timeline position to frame number
-            int timelineFrame = time.TotalFrames;
+            // 1) Which frame is the playhead on?
+            int frame = (int)Math.Round((double)time.TotalFrames);
 
-            // Find all track items that span this frame
-            var items = GetItemsAtFrame(timelineFrame);
-            if (items == null || items.Count == 0)
+            // 2) Find the track‐item in this track that spans that frame
+            var item = track.Items.FirstOrDefault(i =>
+                i.Position.TotalFrames <= frame &&
+                frame < i.Position.TotalFrames + i.Duration.TotalFrames);
+
+            if (item == null)
                 return (null, TimeSpan.Zero);
 
-            // Get the first (or topmost) item
-            var item = items.First();
-
-            // Find the corresponding project clip
+            // 3) Find the matching ProjectClip
             var clip = Clips.FirstOrDefault(c =>
                 string.Equals(c.FilePath, item.FilePath, StringComparison.OrdinalIgnoreCase) ||
                 c.Id == (item as AudioTrackItem)?.ClipId);
@@ -359,9 +372,12 @@ namespace PressPlay.Models
             if (clip == null)
                 return (null, TimeSpan.Zero);
 
-            // Calculate how far into the clip we should be
-            int clipRelativeFrame = timelineFrame - item.Position.TotalFrames + item.Start.TotalFrames;
-            TimeSpan clipOffset = TimeSpan.FromSeconds(clipRelativeFrame / clip.FPS);
+            // 4) Compute how many frames into the clip we are
+            int clipRelativeFrame = frame - item.Position.TotalFrames + item.Start.TotalFrames;
+            clipRelativeFrame = Math.Max(0, Math.Min(clipRelativeFrame, (int)clip.Length.TotalFrames - 1));
+
+            // 5) Turn that into a TimeSpan offset
+            var clipOffset = TimeSpan.FromSeconds(clipRelativeFrame / clip.FPS);
 
             return (clip, clipOffset);
         }

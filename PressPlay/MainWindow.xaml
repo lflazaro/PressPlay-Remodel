@@ -239,7 +239,7 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <!-- Preview Window -->
-                <Border Grid.Row="0" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" BorderBrush="#FF5A5A5A" BorderThickness="1" Margin="2" Background="#FF2B2B2B">
+                <Border Grid.Row="0" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" BorderBrush="#FF5A5A5A" BorderThickness="1" Margin="2" Background="Black">
                     <Image x:Name="PreviewImage" Stretch="Uniform" />
                 </Border>
                 <!-- Transport Controls -->

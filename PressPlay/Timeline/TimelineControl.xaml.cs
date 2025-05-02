@@ -369,6 +369,7 @@ namespace PressPlay.Timeline
 
                     // Add to track
                     tt.AddTrackItem(ti);
+                    Project.SetProjectResolution(clip.Width, clip.Height);
                 }
             }
         }
