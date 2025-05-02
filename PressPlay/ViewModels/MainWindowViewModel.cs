@@ -704,6 +704,7 @@ namespace PressPlay
                 return;
 
             int importedCount = 0;
+            int errorCount = 0;
 
             foreach (var filePath in files)
             {
@@ -713,7 +714,6 @@ namespace PressPlay
 
                 // Check if it's a supported file format
                 string extension = Path.GetExtension(filePath).ToLower();
-
                 bool isSupported = FileFormats.SupportedVideoFormats.Contains(extension) ||
                                   FileFormats.SupportedAudioFormats.Contains(extension) ||
                                   FileFormats.SupportedImageFormats.Contains(extension);
@@ -723,24 +723,21 @@ namespace PressPlay
 
                 try
                 {
-                    // Create a new project clip
+                    // Create a new project clip with proper analysis
                     var projectClip = new ProjectClip(filePath, CurrentProject.FPS);
 
-                    // Calculate and set length based on file type
+                    // ProjectClip's constructor should now properly analyze and set the Length
+                    // via the GetClipProperties method - no need to manually set it
+
+                    // For images, we can still override with a default duration
                     if (FileFormats.SupportedImageFormats.Contains(extension))
                     {
                         // Images default to 5 seconds
                         projectClip.Length = new TimeCode((int)(5 * CurrentProject.FPS), CurrentProject.FPS);
                     }
-                    else
-                    {
-                        // For video and audio, try to get actual duration or set a reasonable default
-                        // In a full implementation, you would use FFmpeg or MediaInfo to get actual duration
-                        // For now, use a fixed default (10 seconds)
-                        projectClip.Length = new TimeCode((int)(10 * CurrentProject.FPS), CurrentProject.FPS);
-                    }
 
-                    System.Diagnostics.Debug.WriteLine($"Set clip length for {Path.GetFileName(filePath)}: {projectClip.Length.TotalFrames} frames");
+                    // Log the actual detected duration
+                    System.Diagnostics.Debug.WriteLine($"Imported {Path.GetFileName(filePath)}: {projectClip.Length.TotalFrames} frames, {projectClip.Length.TotalSeconds:F2} seconds");
 
                     // Add to project clips
                     CurrentProject.Clips.Add(projectClip);
@@ -754,14 +751,31 @@ namespace PressPlay
                 }
                 catch (Exception ex)
                 {
+                    errorCount++;
                     System.Diagnostics.Debug.WriteLine($"Error importing file '{filePath}': {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine(ex.StackTrace);
                 }
             }
 
             if (importedCount > 0)
             {
                 HasUnsavedChanges = true;
-                MessageBox.Show($"Successfully imported {importedCount} file(s).", "Import Media", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                if (errorCount > 0)
+                {
+                    MessageBox.Show($"Successfully imported {importedCount} file(s).\nFailed to import {errorCount} file(s).\nCheck the debug output for details.",
+                        "Import Media", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show($"Successfully imported {importedCount} file(s).",
+                        "Import Media", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            else if (errorCount > 0)
+            {
+                MessageBox.Show($"Failed to import {errorCount} file(s). Check the debug output for details.",
+                    "Import Media", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

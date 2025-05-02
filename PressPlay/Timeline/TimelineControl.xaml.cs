@@ -209,44 +209,37 @@ namespace PressPlay.Timeline
         private void TimelineControl_PreviewMouseMove(object sender, MouseEventArgs e)
         {
             if (_tracksCanvasLeftMouseButtonDown && _mouseDownTrackItem != null
-                && !_resizingLeft && !_resizingRight
-                && !_mouseDownTrackItem.IsChangingFadeIn
-                && !_mouseDownTrackItem.IsChangingFadeOut)
+    && !_resizingLeft && !_resizingRight
+    && !_mouseDownTrackItem.IsChangingFadeIn
+    && !_mouseDownTrackItem.IsChangingFadeOut)
             {
-                // Get current mouse position relative to the original click position
+                // Get mouse position relative to the tracks canvas
                 double mouseX = e.GetPosition(tracksControl).X;
-                double offsetX = mouseX - _mouseDownX;
 
-                // Calculate frame offset from the original position
-                int frameOffset = Convert.ToInt32(Math.Round(offsetX / Constants.TimelinePixelsInSeparator
-                                                           * Constants.TimelineZooms[Project.TimelineZoom],
-                                                           MidpointRounding.ToZero));
+                // Calculate movement delta from the starting position
+                double mouseDeltaX = mouseX - _trackMouseDownX;
 
-                // Calculate new position based on original item position plus offset
-                int newFramePos = _mouseDownTrackItemPosition.TotalFrames + frameOffset;
-                if (newFramePos < 0) newFramePos = 0;
+                // Convert pixel delta to frames accurately
+                double pixelsPerFrame = Constants.TimelinePixelsInSeparator / Constants.TimelineZooms[Project.TimelineZoom];
+                int frameDelta = (int)Math.Round(mouseDeltaX / pixelsPerFrame);
 
-                int endFrame = newFramePos + _mouseDownTrackItem.Duration.TotalFrames;
-                int resultFrame = newFramePos;
+                // Calculate new position based on the original position
+                int newPositionFrames = _mouseDownTrackItemPosition.TotalFrames + frameDelta;
+                if (newPositionFrames < 0) newPositionFrames = 0;
 
-                if (newFramePos <= 0) resultFrame = 0;
+                // Update track item position
+                _mouseDownTrackItem.Position = new TimeCode(newPositionFrames, Project.FPS);
 
+                // Handle moving between tracks
                 var originTrack = Project.Tracks.First(t => t.Items.Contains(_mouseDownTrackItem));
                 ITimelineTrack destTrack = null;
-                if (e.OriginalSource is FrameworkElement fe && fe.DataContext is ITimelineTrack tt)
-                    destTrack = tt;
 
-                var checkTrack = destTrack ?? originTrack;
-                var others = checkTrack.Items.Where(i => i != _mouseDownTrackItem).ToArray();
-                foreach (var o in others)
+                if (e.OriginalSource is FrameworkElement fe && fe.DataContext is ITimelineTrack tt)
                 {
-                    if (o.Position.TotalFrames < endFrame && newFramePos <= (o.Position.TotalFrames + o.Duration.TotalFrames))
-                        resultFrame = Convert.ToInt32(o.Position.TotalFrames + o.Duration.TotalFrames);
-                    if (endFrame >= o.Position.TotalFrames && newFramePos < o.Position.TotalFrames)
-                        resultFrame = Convert.ToInt32(o.Position.TotalFrames - _mouseDownTrackItem.Duration.TotalFrames);
+                    destTrack = tt;
                 }
 
-                _mouseDownTrackItem.Position = new TimeCode(resultFrame, Project.FPS);
+                // Move to different track if compatible
                 if (originTrack != destTrack && destTrack != null
                     && _mouseDownTrackItem.IsCompatibleWith(destTrack.Type.ToString()))
                 {

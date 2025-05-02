@@ -197,28 +197,70 @@ namespace PressPlay.Models
             var extension = Path.GetExtension(FilePath).ToLower();
             if (FileFormats.SupportedVideoFormats.Contains(extension))
             {
-                // try ffprobe first
-                var analysis = FFProbe.Analyse(FilePath);
-                var duration = analysis.Duration;
-                var fps = analysis.PrimaryVideoStream.FrameRate;
-
-                // fallback if duration looks bogus
-                if (duration.TotalSeconds < 0.1 || fps <= 0)
+                try
                 {
-                    using var cap = new VideoCapture(FilePath);
-                    fps = cap.Fps > 0 ? cap.Fps : FPS;
-                    duration = TimeSpan.FromSeconds(cap.FrameCount / fps);
+                    // Use multiple methods to determine duration reliably
+                    using var capture = new VideoCapture(FilePath);
+                    double captureFps = capture.Fps;
+                    int frameCount = (int)capture.FrameCount;
+
+                    // Try ffprobe analysis first
+                    var analysis = FFProbe.Analyse(FilePath);
+                    double ffprobeFps = analysis.PrimaryVideoStream?.FrameRate ?? 0;
+                    TimeSpan ffprobeDuration = analysis.Duration;
+
+                    // Select the most reliable values
+                    double fps = ffprobeFps > 0 ? ffprobeFps : (captureFps > 0 ? captureFps : 25);
+                    TimeSpan duration;
+
+                    // Determine which duration is more reliable
+                    if (ffprobeDuration.TotalSeconds > 0.5)
+                    {
+                        duration = ffprobeDuration;
+                    }
+                    else if (frameCount > 0 && captureFps > 0)
+                    {
+                        duration = TimeSpan.FromSeconds(frameCount / captureFps);
+                    }
+                    else
+                    {
+                        // Fallback to direct ffprobe call
+                        duration = ProbeDuration(FilePath);
+
+                        // If still invalid, use a reasonable default
+                        if (duration.TotalSeconds < 0.5)
+                        {
+                            duration = TimeSpan.FromMinutes(1);
+                        }
+                    }
+
+                    return new ProjectClipMetadata
+                    {
+                        TrackType = TimelineTrackType.Video,
+                        ItemType = TrackItemType.Video,
+                        Length = TimeCode.FromTimeSpan(duration, fps),
+                        FPS = fps,
+                        Width = analysis.PrimaryVideoStream?.Width ?? capture.FrameWidth,
+                        Height = analysis.PrimaryVideoStream?.Height ?? capture.FrameHeight,
+                        UnlimitedLength = false
+                    };
                 }
-
-                return new ProjectClipMetadata
+                catch (Exception ex)
                 {
-                    TrackType = TimelineTrackType.Video,
-                    ItemType = TrackItemType.Video,
-                    Length = TimeCode.FromTimeSpan(duration, fps),
-                    FPS = fps,
-                    Width = analysis.PrimaryVideoStream.Width,
-                    Height = analysis.PrimaryVideoStream.Height
-                };
+                    System.Diagnostics.Debug.WriteLine($"Error analyzing video: {ex.Message}");
+
+                    // Fallback if analysis completely fails
+                    return new ProjectClipMetadata
+                    {
+                        TrackType = TimelineTrackType.Video,
+                        ItemType = TrackItemType.Video,
+                        Length = TimeCode.FromSeconds(60, 25), // 1 minute default
+                        FPS = 25,
+                        Width = 640,
+                        Height = 480,
+                        UnlimitedLength = false
+                    };
+                }
             }
 
             if (FileFormats.SupportedAudioFormats.Contains(extension))

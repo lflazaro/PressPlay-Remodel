@@ -30,11 +30,12 @@ namespace PressPlay.Services
             _project = project ?? throw new ArgumentNullException(nameof(project));
             _previewControl = previewControl ?? throw new ArgumentNullException(nameof(previewControl));
 
-            _timer = new DispatcherTimer(
-                TimeSpan.FromSeconds(1.0 / _project.FPS),
-                DispatcherPriority.Render,
-                OnTick,
-                Dispatcher.CurrentDispatcher);
+            // Create timer with proper interval
+            _timer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1.0 / project.FPS)
+            };
+            _timer.Tick += OnTick;
         }
 
         /// <summary>
@@ -96,12 +97,20 @@ namespace PressPlay.Services
 
         private void OnTick(object sender, EventArgs e)
         {
-            // advance one frame
-            Seek(_project.NeedlePositionTime.AddFrames(1));
+            // Get current frame and calculate next frame
+            int currentFrame = _project.NeedlePositionTime.TotalFrames;
+            int nextFrame = currentFrame + 1;
 
-            // if we hit the end, Seek will clamp and render, but let's also stop
-            if (_project.NeedlePositionTime.TotalFrames >= _project.GetTotalFrames())
+            // Check if we've reached the end
+            double totalFrames = _project.GetTotalFrames();
+            if (nextFrame >= totalFrames)
+            {
                 Pause();
+                return;
+            }
+
+            // Seek to next frame without using AddFrames method
+            Seek(new TimeCode(nextFrame, _project.FPS));
         }
 
         private void RenderFrame()

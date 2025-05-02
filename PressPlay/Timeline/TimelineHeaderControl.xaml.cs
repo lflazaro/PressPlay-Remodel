@@ -85,23 +85,36 @@ namespace PressPlay.Timeline
 
             RootCanvas.Children.Clear();
 
-            double totalFrames = Project.GetTotalFrames();
+            // Set minimum timeline length if no clips are present
+            double totalFrames = Math.Max(300 * Project.FPS, Project.GetTotalFrames());
             double totalSeconds = totalFrames / Project.FPS;
-            double pxPerSec = Constants.TimelinePixelsInSeparator
-                                 / Constants.TimelineZooms[Project.TimelineZoom];
 
-            int secCount = (int)Math.Ceiling(totalSeconds);
-            for (int s = 0; s <= secCount; s++)
+            // Calculate pixels per frame and per second
+            double pixelsPerFrame = Constants.TimelinePixelsInSeparator / Constants.TimelineZooms[Project.TimelineZoom];
+            double pixelsPerSecond = pixelsPerFrame * Project.FPS;
+
+            // Determine appropriate label interval based on zoom
+            int labelIntervalSeconds = 1;
+            if (pixelsPerSecond < 10) labelIntervalSeconds = 5;
+            if (pixelsPerSecond < 5) labelIntervalSeconds = 10;
+            if (pixelsPerSecond < 2) labelIntervalSeconds = 30;
+            if (pixelsPerSecond < 1) labelIntervalSeconds = 60;
+
+            // Set canvas width to accommodate timeline
+            RootCanvas.Width = Math.Max(2000, totalFrames * pixelsPerFrame);
+
+            // Draw timestamp labels with proper spacing
+            for (int s = 0; s <= totalSeconds; s += labelIntervalSeconds)
             {
-                double x = s * pxPerSec;
+                double x = s * pixelsPerSecond;
 
-                // tick
+                // Draw tick mark
                 var line = new Line
                 {
                     X1 = 0,
                     Y1 = 0,
                     X2 = 0,
-                    Y2 = 8,
+                    Y2 = s % (labelIntervalSeconds * 5) == 0 ? 12 : 8, // Longer ticks for major intervals
                     Stroke = Brushes.White,
                     StrokeThickness = 1
                 };
@@ -109,20 +122,20 @@ namespace PressPlay.Timeline
                 Canvas.SetTop(line, 0);
                 RootCanvas.Children.Add(line);
 
-                // label
-                var txt = new TextBlock
+                // Add text label for major intervals only
+                if (s % (labelIntervalSeconds * 5) == 0)
                 {
-                    Text = TimeSpan.FromSeconds(s).ToString(@"mm\:ss"),
-                    FontSize = 10,
-                    Foreground = Brushes.White
-                };
-                Canvas.SetLeft(txt, x + 2);
-                Canvas.SetTop(txt, 10);
-                RootCanvas.Children.Add(txt);
+                    var txt = new TextBlock
+                    {
+                        Text = TimeSpan.FromSeconds(s).ToString(@"mm\:ss"),
+                        FontSize = 10,
+                        Foreground = Brushes.White
+                    };
+                    Canvas.SetLeft(txt, x + 2);
+                    Canvas.SetTop(txt, 14);
+                    RootCanvas.Children.Add(txt);
+                }
             }
-
-            // update scrollable width
-            RootCanvas.Width = totalSeconds * pxPerSec;
         }
     }
 }
