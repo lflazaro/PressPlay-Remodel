@@ -10,26 +10,38 @@ namespace PressPlay.Converters
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            var bitmap = new BitmapImage();
-
-            if (value is byte[] byteArray)
+            if (value is byte[] bytes && bytes.Length > 0)
             {
-                using (var ms = new MemoryStream(byteArray))
+                var bi = new BitmapImage();
+                using (var ms = new MemoryStream(bytes))
                 {
-                    bitmap.BeginInit();
-                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                    bitmap.StreamSource = ms;
-                    bitmap.EndInit();
+                    bi.BeginInit();
+                    bi.CacheOption = BitmapCacheOption.OnLoad;
+                    bi.StreamSource = ms;
+                    bi.EndInit();
+                    bi.Freeze();
                 }
+                return bi;
             }
 
-            return bitmap;
+            if (value is string path && File.Exists(path))
+            {
+                var bi = new BitmapImage();
+                bi.BeginInit();
+                bi.CacheOption = BitmapCacheOption.OnLoad;
+                bi.UriSource = new Uri(path);
+                bi.DecodePixelWidth = 200;      // optional: limit size
+                bi.EndInit();
+                bi.Freeze();
+                return bi;
+            }
+
+            return null;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
+            => throw new NotImplementedException();
+    
 
         public override object ProvideValue(IServiceProvider serviceProvider)
         {
