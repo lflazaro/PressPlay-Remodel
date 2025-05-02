@@ -70,6 +70,14 @@ namespace PressPlay.Models
             return isCompatible;
         }
 
+        public double GetWidth(int zoomLevel)
+        {
+            return Length.TotalFrames * Constants.TimelinePixelsInSeparator / Constants.TimelineZooms[zoomLevel];
+        }
+
+        // Add ClipId property for AudioTrackItem
+        public string ClipId => Id;
+
         private void GetInfo()
         {
             var properties = GetClipProperties();

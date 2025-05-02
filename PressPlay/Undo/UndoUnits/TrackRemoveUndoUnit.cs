@@ -20,7 +20,7 @@ namespace PressPlay.Undo.UndoUnits
         /// <summary>
         /// Gets or sets the track associated with this undo unit.
         /// </summary>
-        public TimelineTrack Track { get; set; }
+        public ITimelineTrack Track { get; set; }
 
         /// <summary>
         /// Gets or sets the index of the track in the project's track collection.
@@ -41,7 +41,7 @@ namespace PressPlay.Undo.UndoUnits
         /// <param name="project">The project associated with this undo unit.</param>
         /// <param name="track">The track associated with this undo unit.</param>
         /// <param name="trackIndex">The index of the track in the project's track collection.</param>
-        public TrackRemoveUndoUnit(Project project, TimelineTrack track, int trackIndex)
+        public TrackRemoveUndoUnit(Project project, ITimelineTrack track, int trackIndex)
         {
             Project = project;
             Track = track;
@@ -53,7 +53,7 @@ namespace PressPlay.Undo.UndoUnits
         /// </summary>
         public void Undo()
         {
-            Project.Tracks.Insert(TrackIndex, Track);
+            Project.Tracks.Insert(TrackIndex, (Track)Track);
         }
 
         /// <summary>

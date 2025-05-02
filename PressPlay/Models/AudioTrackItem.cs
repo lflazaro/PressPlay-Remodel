@@ -48,7 +48,6 @@ namespace PressPlay.Models
                 }
             }
         }
-
         public TimeCode Position
         {
             get => _position;
@@ -208,7 +207,11 @@ namespace PressPlay.Models
 
         public bool IsCompatibleWith(string trackType)
         {
-            return trackType == TimelineTrackType.Audio.ToString();
+            if (Enum.TryParse<TimelineTrackType>(trackType, out var parsedType))
+            {
+                return parsedType == TimelineTrackType.Audio;
+            }
+            return false;
         }
 
         public AudioTrackItem()

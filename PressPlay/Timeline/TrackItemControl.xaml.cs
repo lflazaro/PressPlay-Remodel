@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using PressPlay.Helpers;
 using PressPlay.Models;
+using PressPlay.Utilities;
 
 namespace PressPlay.Timeline
 {

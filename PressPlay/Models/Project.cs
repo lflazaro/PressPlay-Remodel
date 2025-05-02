@@ -320,10 +320,46 @@ namespace PressPlay.Models
 
             return position;
         }
-
+        public ObservableCollection<object> PreviewRenderedTranslations { get; set; } = new ObservableCollection<object>();
+        public string PreviewRenderedTranslation { get; set; }
+        public double TrackHeadersWidth { get; set; } = 100; // Default width for track headers
         public void OnPropertyChanged([CallerMemberName] string propName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
+        }
+        // Add these properties and methods
+        public int FrameInterval => (int)(1000 / FPS); // milliseconds per frame
+
+        public double GetTotalFrames()
+        {
+            if (Tracks.Count == 0 || !Tracks.SelectMany(t => t.Items).Any())
+                return 0;
+
+            return Tracks
+                .SelectMany(t => t.Items)
+                .Max(i => i.Position.TotalFrames + i.Duration.TotalFrames);
+        }
+
+        public void Cut()
+        {
+            // Implementation for Cut operation
+            var selectedItems = Tracks
+                .SelectMany(t => t.Items.Where(i => i.IsSelected))
+                .ToList();
+
+            // Example implementation - copy items to clipboard
+            // Then delete them from timeline
+            DeleteSelectedItems();
+        }
+
+        public void Copy()
+        {
+            // Implementation for Copy operation
+            var selectedItems = Tracks
+                .SelectMany(t => t.Items.Where(i => i.IsSelected))
+                .ToList();
+
+            // Example implementation - copy items to clipboard
         }
     }
 }

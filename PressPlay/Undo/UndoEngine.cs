@@ -8,6 +8,24 @@ namespace PressPlay.Undo
     /// <summary>
     /// Interface for an undo engine that manages undo and redo operations.
     /// </summary>
+    /// 
+    public interface IUndoUnit
+    {
+        /// <summary>
+        /// Gets the name of the undo unit.
+        /// </summary>
+        string Name { get; }
+
+        /// <summary>
+        /// Undoes the operation.
+        /// </summary>
+        void Undo();
+
+        /// <summary>
+        /// Redoes the operation that was previously undone.
+        /// </summary>
+        void Redo();
+    }
     public interface IUndoEngine : INotifyPropertyChanged
     {
         event EventHandler<IUndoUnit> OnUndoing;

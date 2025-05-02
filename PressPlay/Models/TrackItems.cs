@@ -195,7 +195,20 @@ namespace PressPlay.Models
             set => _fullPath = value;
         }
 
-        public bool IsCompatibleWith(string trackType) => true;
+        public bool IsCompatibleWith(string trackType)
+        {
+            // Check if trackType is a TimelineTrackType string
+            if (Enum.TryParse<TimelineTrackType>(trackType, out var parsedType))
+            {
+                // Now compare with appropriate types
+                if (parsedType == TimelineTrackType.Video)
+                    return true; // For video tracks
+                else if (parsedType == TimelineTrackType.Audio)
+                    return false; // For audio tracks
+            }
+
+            return false; // Default fallback
+        }
 
         public TrackItem()
         {

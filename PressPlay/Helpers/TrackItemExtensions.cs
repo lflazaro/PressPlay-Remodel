@@ -15,5 +15,8 @@ namespace PressPlay.Helpers
         public static double GetFadeOutXPosition(this ITrackItem item, int zoomLevel)
             => item.FadeOutFrame * Constants.TimelinePixelsInSeparator
                / Constants.TimelineZooms[zoomLevel];
+        public static double GetXPosition(this ITrackItem item, int zoomLevel)
+            => item.Position.TotalFrames * Constants.TimelinePixelsInSeparator
+               / Constants.TimelineZooms[zoomLevel];
     }
 }
