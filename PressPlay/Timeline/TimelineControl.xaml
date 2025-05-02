@@ -23,6 +23,7 @@
     <!-- Converters -->
     <UserControl.Resources>
         <converters:TimelineSelectedToolToSelectedConverter x:Key="ToolSelectionConverter"/>
+        <converters:TrackItemDataToPositionConverter      x:Key="TrackToPosConverter"/>
         <converters:NeedlePositionConverter               x:Key="NeedlePosConverter"/>
     </UserControl.Resources>
 
@@ -37,7 +38,7 @@
             <StackPanel Orientation="Horizontal">
                 <Grid Width="100"/>
                 <!-- Selection Tool -->
-                <RadioButton Style="{StaticResource {x:Type ToggleButton}}"
+                <RadioButton 
                      Margin="1"
                      IsChecked="{Binding Project.SelectedTool,
                                          Converter={StaticResource ToolSelectionConverter},
@@ -51,7 +52,7 @@
                         Fill="LightGray" Width="14" Height="14" Margin="4"/>
                 </RadioButton>
                 <!-- Cutting Tool -->
-                <RadioButton Style="{StaticResource {x:Type ToggleButton}}"
+                <RadioButton 
                      Margin="1"
                      IsChecked="{Binding Project.SelectedTool,
                                          Converter={StaticResource ToolSelectionConverter},
