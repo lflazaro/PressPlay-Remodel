@@ -381,6 +381,9 @@ namespace PressPlay.Timeline
             if (!(e.Data.GetData(typeof(ProjectClip)) is ProjectClip clip))
                 return;
 
+            // Debug info
+            Debug.WriteLine($"Drop detected: Clip={clip.FileName}, Type={clip.TrackType}, ItemType={clip.ItemType}");
+
             // 2) Compute the timeline frame from X
             //    Use the header control to get X in timeline coords
             double dropX = e.GetPosition(header).X;
@@ -391,35 +394,63 @@ namespace PressPlay.Timeline
               MidpointRounding.ToZero);
             var position = new TimeCode(frame, Project.FPS);
 
-            // 3) Compute Y relative to the top of the first track
-            //    We get the drop point in the RootCanvas, then subtract header height
-            Point canvasPoint = e.GetPosition(RootCanvas);
-            double yInTracks = canvasPoint.Y - header.ActualHeight;
-            if (yInTracks < 0) yInTracks = 0;
+            Debug.WriteLine($"Drop position: X={dropX}, Frame={frame}");
 
-            // 4) Find which track row this Y falls into
+            // 3) Find target track based on position and type
             Track targetTrack = null;
-            double cumulative = 0;
-            foreach (var t in Project.Tracks)
+
+            // For audio clips, we might want to auto-create an audio track
+            if (clip.TrackType == TimelineTrackType.Audio)
             {
-                cumulative += t.Height;
-                if (yInTracks <= cumulative)
+                // Either get the track under mouse or ensure an audio track exists
+                targetTrack = GetTrackAtPosition(e.GetPosition(RootCanvas));
+
+                // If target track is incompatible or null, get/create an audio track
+                if (targetTrack == null || targetTrack.Type != TimelineTrackType.Audio)
                 {
-                    targetTrack = t;
-                    break;
+                    targetTrack = EnsureAudioTrackExists();
+                    Debug.WriteLine($"Using audio track: {targetTrack.Name}");
                 }
             }
+            else
+            {
+                // For non-audio clips, use normal track finding logic
+                Point canvasPoint = e.GetPosition(RootCanvas);
+                double yInTracks = canvasPoint.Y - header.ActualHeight;
+                if (yInTracks < 0) yInTracks = 0;
+
+                // Find which track row this Y falls into
+                double cumulative = 0;
+                foreach (var t in Project.Tracks)
+                {
+                    cumulative += t.Height;
+                    if (yInTracks <= cumulative)
+                    {
+                        targetTrack = t as Track;
+                        break;
+                    }
+                }
+            }
+
+            // Abort if no target track found
             if (targetTrack == null)
+            {
+                Debug.WriteLine("Drop aborted: No target track found");
                 return;
+            }
 
-            // 5) Only proceed if the clip is compatible with that track type
+            // 4) Check compatibility
             if (!clip.IsCompatibleWith(targetTrack.Type))
+            {
+                Debug.WriteLine($"Drop aborted: Incompatible clip ({clip.ItemType}) and track ({targetTrack.Type})");
                 return;
+            }
 
-            // 6) Create the correct ITrackItem
+            // 5) Create the correct ITrackItem
             ITrackItem ti;
             if (clip.TrackType == TimelineTrackType.Audio)
             {
+                Debug.WriteLine("Creating AudioTrackItem");
                 ti = new AudioTrackItem(
                         clip,
                         position,
@@ -428,6 +459,7 @@ namespace PressPlay.Timeline
             }
             else
             {
+                Debug.WriteLine("Creating TrackItem");
                 ti = new TrackItem(
                         clip,
                         position,
@@ -435,10 +467,11 @@ namespace PressPlay.Timeline
                         clip.Length);
             }
 
-            // 7) Add it to that track
+            // 6) Add it to the track
             targetTrack.AddTrackItem(ti);
+            Debug.WriteLine($"Item added to track: {targetTrack.Name}");
 
-            // 8) Optionally, update project resolution if this is a video
+            // 7) Optionally, update project resolution if this is a video
             if (clip.TrackType == TimelineTrackType.Video)
                 Project.SetProjectResolution(clip.Width, clip.Height);
 
@@ -475,6 +508,32 @@ namespace PressPlay.Timeline
         private void PasteItem_Click(object sender, RoutedEventArgs e)
         {
             Project.Paste();
+        }
+
+        private Track EnsureAudioTrackExists()
+        {
+            // Look for existing audio tracks
+            var audioTrack = Project.Tracks.FirstOrDefault(t => t.Type == TimelineTrackType.Audio) as Track;
+
+            // If no audio track exists, create one
+            if (audioTrack == null)
+            {
+                int audioTrackCount = Project.Tracks.Count(t => t.Type == TimelineTrackType.Audio) + 1;
+                audioTrack = new Track
+                {
+                    Name = $"Audio {audioTrackCount}",
+                    Type = TimelineTrackType.Audio,
+                    Height = (int)Constants.TrackHeight // Use standard track height
+                };
+
+                // Add the track to the project
+                Project.Tracks.Add(audioTrack);
+
+                // Log the action
+                Debug.WriteLine($"Created new audio track: {audioTrack.Name}");
+            }
+
+            return audioTrack;
         }
     }
 }

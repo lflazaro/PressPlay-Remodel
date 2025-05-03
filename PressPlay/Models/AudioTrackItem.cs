@@ -226,8 +226,21 @@ namespace PressPlay.Models
 
         public bool IsCompatibleWith(string trackType)
         {
-            return Enum.TryParse<TimelineTrackType>(trackType, out var t)
-                   && t == TimelineTrackType.Audio;
+            // Better debugging to track compatibility issues
+            Debug.WriteLine($"AudioTrackItem.IsCompatibleWith check: TrackType={trackType}, FilePath={FilePath}");
+
+            // Parse the trackType string to TimelineTrackType enum
+            if (Enum.TryParse<TimelineTrackType>(trackType, out var parsedType))
+            {
+                bool isCompatible = parsedType == TimelineTrackType.Audio;
+                Debug.WriteLine($"Compatibility result: {isCompatible}");
+                return isCompatible;
+            }
+
+            // Direct string comparison as fallback
+            bool stringCompatible = trackType.Equals("Audio", StringComparison.OrdinalIgnoreCase);
+            Debug.WriteLine($"String compatibility fallback result: {stringCompatible}");
+            return stringCompatible;
         }
 
         // Default ctor for serialization etc.
@@ -286,20 +299,42 @@ namespace PressPlay.Models
             // 4) Generate waveform image if this clip has audio
             try
             {
-                // Only for non-zero-length audio
-                if (SourceLength.TotalFrames > 0)
+                // Only proceed if clip and SourceLength are not null
+                if (clip != null && SourceLength != null && SourceLength.TotalFrames > 0)
                 {
                     // Prepare temp folder
                     var folder = Path.Combine(
                         Path.GetTempPath(),
                         "PressPlay", "waveforms");
-                    Directory.CreateDirectory(folder);
+
+                    // Ensure directory exists
+                    if (!Directory.Exists(folder))
+                    {
+                        Directory.CreateDirectory(folder);
+                    }
 
                     // Unique PNG name per clip
-                    var hash = clip.GetFileHash();
-                    WaveformImagePath = Path.Combine(
-                        folder,
-                        $"{hash}.png");
+                    string hash;
+                    try
+                    {
+                        hash = clip.GetFileHash();
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Error getting file hash: {ex.Message}");
+                        // Use filename as fallback if hash fails
+                        hash = Path.GetFileNameWithoutExtension(clip.FilePath)
+                            .Replace(" ", "_")
+                            .Replace(".", "_");
+
+                        if (string.IsNullOrEmpty(hash))
+                        {
+                            hash = Guid.NewGuid().ToString();
+                        }
+                    }
+
+                    WaveformImagePath = Path.Combine(folder, $"{hash}.png");
+                    Debug.WriteLine($"Waveform path: {WaveformImagePath}");
 
                     if (!File.Exists(WaveformImagePath))
                     {
@@ -307,21 +342,51 @@ namespace PressPlay.Models
                         double pxPerFrame = Constants.TimelinePixelsInSeparator
                                             / Constants.TimelineZooms[1];
                         int width = (int)Math.Ceiling(Duration.TotalFrames * pxPerFrame);
-                        int height = (int)Constants.TrackHeight; // you can adjust this
+                        width = Math.Max(200, width); // Ensure minimum width for visibility
+                        int height = (int)Constants.TrackHeight - 4; // Slightly smaller than track
 
-                        WaveFormGenerator.Generate(
-                            width,
-                            height,
-                            Color.Black,     // background
-                            clip.FilePath,
-                            WaveformImagePath);
+                        Debug.WriteLine($"Generating waveform: width={width}, height={height}, path={clip.FilePath}");
+
+                        try
+                        {
+                            WaveFormGenerator.Generate(
+                                width,
+                                height,
+                                System.Drawing.Color.Transparent, // Transparent background
+                                clip.FilePath,
+                                WaveformImagePath);
+                            Debug.WriteLine($"Waveform generated successfully: {WaveformImagePath}");
+
+                            // Notify property change to update UI
+                            OnPropertyChanged(nameof(WaveformImagePath));
+                            OnPropertyChanged(nameof(HasWaveform));
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"WaveFormGenerator.Generate failed: {ex.Message}");
+                            // Don't set to null, as this will make future attempts impossible
+                        }
                     }
+                    else
+                    {
+                        Debug.WriteLine($"Using existing waveform: {WaveformImagePath}");
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine("Skipping waveform generation: clip or SourceLength is null or zero");
+                    if (clip == null)
+                        Debug.WriteLine("Clip is null");
+                    else if (SourceLength == null)
+                        Debug.WriteLine("SourceLength is null");
+                    else
+                        Debug.WriteLine($"SourceLength.TotalFrames is {SourceLength.TotalFrames}");
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Waveform generation failed: {ex.Message}");
-                WaveformImagePath = null;
+                Debug.WriteLine(ex.StackTrace);
             }
         }
 
