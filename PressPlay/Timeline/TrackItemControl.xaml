@@ -47,9 +47,12 @@
 
                 <DataTrigger Binding="{Binding IsSelected}" Value="False">
                     <Setter Property="BorderBrush" Value="Black" />
+                    <Setter Property="Opacity" Value="0.9" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                    <Setter Property="BorderBrush" Value="WhiteSmoke" />
+                    <Setter Property="BorderBrush" Value="White" />
+                    <Setter Property="BorderThickness" Value="2" />
+                    <Setter Property="Opacity" Value="1.0" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>

@@ -24,6 +24,21 @@ namespace PressPlay.Models
         private string _filePath;
         private byte[] _thumbnail;
         private TimeCode _sourceLength;
+        private TimeCode _originalEnd;
+
+        public TimeCode OriginalEnd
+        {
+            get => _originalEnd;
+            set
+            {
+                if (_originalEnd != value)
+                {
+                    _originalEnd = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public TimeCode SourceLength
         {
             get => _sourceLength;
@@ -91,7 +106,7 @@ namespace PressPlay.Models
                             FileFormats.SupportedAudioFormats.Contains(Path.GetExtension(FilePath).ToLowerInvariant()))
                         {
                             // For audio, source length is fixed
-                            maxDuration = End?.TotalFrames ?? 0; // Use original end value as max
+                            maxDuration = OriginalEnd?.TotalFrames ?? End?.TotalFrames ?? 0; // Use original end value as max
                         }
 
                         if (value.TotalFrames > maxDuration)
@@ -233,6 +248,7 @@ namespace PressPlay.Models
             Position = new TimeCode(0, 25);
             Start = new TimeCode(0, 25);
             End = new TimeCode(10, 25); // Default to a small duration
+            OriginalEnd = End; // Initialize OriginalEnd
             FadeInFrame = 0;
             FadeOutFrame = 0;
             IsSelected = false;
@@ -248,6 +264,7 @@ namespace PressPlay.Models
             // Compute End by adding length (in frames) to Start.TotalFrames
             int endFrames = (start?.TotalFrames ?? 0) + (length?.TotalFrames ?? 10);
             End = new TimeCode(endFrames, start?.FPS ?? 25);
+            OriginalEnd = End; // Save original end value
 
             // Set default fade values and other properties.
             FadeInFrame = 0;
@@ -261,6 +278,7 @@ namespace PressPlay.Models
                 FileName = clip.FileName;
                 FilePath = clip.FilePath;
                 FullPath = clip.FilePath;
+                SourceLength = clip.Length;
 
                 // Try to set thumbnail if available
                 if (!string.IsNullOrEmpty(clip.Thumbnail) && File.Exists(clip.Thumbnail))
@@ -285,6 +303,7 @@ namespace PressPlay.Models
             if (Position == null) Position = new TimeCode(0, 25);
             if (Start == null) Start = new TimeCode(0, 25);
             if (End == null) End = new TimeCode(10, 25);
+            if (OriginalEnd == null) OriginalEnd = End;
 
             System.Diagnostics.Debug.WriteLine($"Audio track item initialized: {FileName}, Position: {Position?.TotalFrames}, " +
                 $"Start: {Start?.TotalFrames}, End: {End?.TotalFrames}");

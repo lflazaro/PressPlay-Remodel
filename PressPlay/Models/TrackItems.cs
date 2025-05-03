@@ -23,7 +23,19 @@ namespace PressPlay.Models
         private string _fileName;
         private string _filePath;
         private byte[] _thumbnail;
-
+        private TimeCode _originalEnd;
+        public TimeCode OriginalEnd
+        {
+            get => _originalEnd;
+            set
+            {
+                if (_originalEnd != value)
+                {
+                    _originalEnd = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
         public double StartTime
         {
             get => _startTime;
@@ -236,8 +248,9 @@ namespace PressPlay.Models
             }
 
             // Compute End by adding length (in frames) to Start.TotalFrames
-            int endFrames = (start?.TotalFrames ?? 0) + (validLength?.TotalFrames ?? 10);
+            int endFrames = (start?.TotalFrames ?? 0) + (length?.TotalFrames ?? 10);
             End = new TimeCode(endFrames, start?.FPS ?? 25);
+            OriginalEnd = End; // Save original end value
 
             // Set default fade values and other properties.
             FadeInFrame = 0;

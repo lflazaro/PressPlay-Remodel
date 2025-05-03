@@ -38,33 +38,7 @@
             <StackPanel Orientation="Horizontal">
                 <Grid Width="100"/>
                 <!-- Selection Tool -->
-                <RadioButton 
-                     Margin="1"
-                     IsChecked="{Binding Project.SelectedTool,
-                                         Converter={StaticResource ToolSelectionConverter},
-                                         ConverterParameter={x:Static local:TimelineSelectedTool.SelectionTool}}"
-                     Command="{Binding ToolSelectedCommand,
-                                       RelativeSource={RelativeSource Mode=FindAncestor,
-                                                               AncestorType={x:Type local:TimelineControl}}}"
-                     CommandParameter="{x:Static local:TimelineSelectedTool.SelectionTool}"
-                     ToolTip="Selection Tool">
-                    <svgc:SvgIcon UriSource="/Resources/Icons/select.svg"
-                        Fill="LightGray" Width="14" Height="14" Margin="4"/>
-                </RadioButton>
                 <!-- Cutting Tool -->
-                <RadioButton 
-                     Margin="1"
-                     IsChecked="{Binding Project.SelectedTool,
-                                         Converter={StaticResource ToolSelectionConverter},
-                                         ConverterParameter={x:Static local:TimelineSelectedTool.CuttingTool}}"
-                     Command="{Binding ToolSelectedCommand,
-                                       RelativeSource={RelativeSource Mode=FindAncestor,
-                                                               AncestorType={x:Type local:TimelineControl}}}"
-                     CommandParameter="{x:Static local:TimelineSelectedTool.CuttingTool}"
-                     ToolTip="Cutting Tool">
-                    <svgc:SvgIcon UriSource="/Resources/Icons/cut.svg"
-                        Fill="LightGray" Width="14" Height="14" Margin="4"/>
-                </RadioButton>
             </StackPanel>
         </Border>
 
@@ -114,9 +88,9 @@
             <ScrollViewer x:Name="tracksHScrollView"
                     Grid.Column="1"
                     HorizontalScrollBarVisibility="Hidden"
-                    VerticalScrollBarVisibility="Hidden"
+              VerticalScrollBarVisibility="Auto"
                     PreviewMouseWheel="TracksScrollView_PreviewMouseWheel">
-                <Canvas x:Name="RootCanvas" Width="2000"
+                <Canvas x:Name="RootCanvas" Width="1700"
           HorizontalAlignment="Left"
           PreviewMouseLeftButtonDown="TracksCanvas_PreviewMouseLeftButtonDown">
 
@@ -148,7 +122,8 @@
                                                                 AncestorType={x:Type ItemsControl}}}"
                         Background="#FF2C2C2C"
                         BorderBrush="Gray"
-                        BorderThickness="0.5">
+                        BorderThickness="0.5"
+                MinHeight="80">
                                     <ItemsControl ItemsSource="{Binding Items}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>

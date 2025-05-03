@@ -615,9 +615,9 @@ namespace PressPlay
             Title = $"{projectName}{(HasUnsavedChanges ? "*" : "")} - PressPlay";
         }
 
-        private void AddNewTrack(TimelineTrackType trackType)
+private void AddNewTrack(TimelineTrackType trackType)
         {
-            // Create new track with default name
+            // Create new track with default name  
             string trackName;
 
             if (trackType == TimelineTrackType.Video)
@@ -637,14 +637,15 @@ namespace PressPlay
                 Type = trackType
             };
 
-            // Add to project
+            // Add to project  
             CurrentProject.Tracks.Add(newTrack);
 
-            // Register for undo
+            // Register for undo  
             var undoUnit = new TrackAddUndoUnit(CurrentProject, newTrack, CurrentProject.Tracks.Count - 1);
             UndoEngine.Instance.AddUndoUnit(undoUnit);
 
             HasUnsavedChanges = true;
+
         }
 
         private void RemoveLastTrack()

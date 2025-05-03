@@ -11,6 +11,20 @@ namespace PressPlay.Models
 
         private byte[] _thumbnailBytes;
         private BitmapImage _thumbnailImage;
+        private TimeCode _originalEnd;
+
+        public TimeCode OriginalEnd
+        {
+            get => _originalEnd;
+            set
+            {
+                if (_originalEnd != value)
+                {
+                    _originalEnd = value;
+                    OnPropertyChanged(nameof(OriginalEnd));
+                }
+            }
+        }
 
         public double StartTime { get; set; }
         public string FileName { get; set; }
@@ -94,9 +108,24 @@ namespace PressPlay.Models
             return trackType == "Video";
         }
 
+        public Clip()
+        {
+            // Initialize with default values
+            Position = new TimeCode(0, 25);
+            Start = new TimeCode(0, 25);
+            End = new TimeCode(10, 25);
+            OriginalEnd = End;
+            FadeInFrame = 0;
+            FadeOutFrame = 0;
+        }
+
         public void Initialize()
         {
-            // No special setup needed for Clip, but this satisfies the interface.
+            // Ensure we have valid objects
+            if (Position == null) Position = new TimeCode(0, 25);
+            if (Start == null) Start = new TimeCode(0, 25);
+            if (End == null) End = new TimeCode(10, 25);
+            if (OriginalEnd == null) OriginalEnd = End;
         }
 
         // Added missing methods required by ITrackItem interface

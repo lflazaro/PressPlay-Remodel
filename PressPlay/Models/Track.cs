@@ -14,6 +14,7 @@ namespace PressPlay.Models
         TimeCode Start { get; set; }
         TimeCode End { get; set; }
         TimeCode Duration { get; }
+        TimeCode OriginalEnd { get; set; }  // Added this property
 
         // Visual properties
         int FadeInFrame { get; set; }
@@ -36,12 +37,7 @@ namespace PressPlay.Models
         void Initialize();
         double GetScaledPosition(int zoomLevel);
         double GetScaledWidth(int zoomLevel);
-
-        // We won't require PropertyChanged directly in the interface
-        // This allows implementations to handle property change notifications
-        // in their own way, as long as they implement the interface methods
     }
-
     public class Track : ITimelineTrack
     {
         public event PropertyChangedEventHandler PropertyChanged;

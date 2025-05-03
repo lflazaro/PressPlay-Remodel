@@ -2,6 +2,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PressPlay.Helpers;
 using PressPlay.Models;
 using PressPlay.Utilities;
@@ -14,52 +15,77 @@ namespace PressPlay.Timeline
     public partial class TrackItemControl : Border
     {
         private TimelineControl _timelineControl;
+        private Point _startPoint;
 
         public TrackItemControl()
         {
             InitializeComponent();
+            // Add mouse down handler at the Border level
+            this.PreviewMouseLeftButtonDown += TrackItem_PreviewMouseLeftButtonDown;
+        }
+        private void TrackItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            // Get the parent timeline control
+            _timelineControl ??= VisualHelper.GetAncestor<TimelineControl>(this);
+
+            if (DataContext is TrackItem trackItem)
+            {
+                // Mark item as selected
+                trackItem.IsSelected = true;
+
+                // Store mouse position for potential dragging
+                _startPoint = e.GetPosition(this);
+
+                // Important: Capture the mouse to get mouse move events
+                this.CaptureMouse();
+
+                // Mark the event as handled to prevent it bubbling up
+                e.Handled = true;
+            }
+        }
+        protected override void OnMouseEnter(MouseEventArgs e)
+        {
+            base.OnMouseEnter(e);
+            Cursor = Cursors.Hand; // Show hand cursor by default to indicate draggable
         }
 
         protected override void OnPreviewMouseMove(MouseEventArgs e)
         {
             _timelineControl ??= VisualHelper.GetAncestor<TimelineControl>(this);
-            var project = _timelineControl.Project;
 
-            if (project.SelectedTool == TimelineSelectedTool.SelectionTool
-                && DataContext is TrackItem trackItem
-                && !trackItem.IsChangingFadeIn
-                && !trackItem.IsChangingFadeOut)
+            if (DataContext is TrackItem trackItem && !trackItem.IsSelected)
             {
-                var mouseX = e.GetPosition(this).X;
+                double mouseX = e.GetPosition(this).X;
+                double width = this.ActualWidth;
 
-                // resize on borders
-                if (Math.Abs(mouseX) <= 3)
+                // Show appropriate cursor
+                if (mouseX <= 5)
                 {
-                    Cursor = Cursors.SizeWE;
+                    Cursor = Cursors.SizeWE; // Left resize
                     resizeBorder.BorderThickness = new Thickness(2, 0, 0, 0);
                 }
-                else if (Math.Abs(mouseX - Width) <= 3)
+                else if (mouseX >= width - 5)
                 {
-                    Cursor = Cursors.SizeWE;
+                    Cursor = Cursors.SizeWE; // Right resize
                     resizeBorder.BorderThickness = new Thickness(0, 0, 2, 0);
                 }
                 else
                 {
-                    Cursor = Cursors.Arrow;
+                    Cursor = Cursors.Hand; // Draggable
                     resizeBorder.BorderThickness = new Thickness(0);
                 }
             }
-            else if (project.SelectedTool == TimelineSelectedTool.CuttingTool)
-            {
-                Cursor = Cursors.IBeam;
-            }
-            else
-            {
-                resizeBorder.BorderThickness = new Thickness(0);
-                Cursor = Cursors.Arrow;
-            }
 
             base.OnPreviewMouseMove(e);
+        }
+        protected override void OnPreviewMouseLeftButtonUp(MouseButtonEventArgs e)
+        {
+            if (this.IsMouseCaptured)
+            {
+                this.ReleaseMouseCapture();
+            }
+
+            base.OnPreviewMouseLeftButtonUp(e);
         }
 
         protected override void OnMouseLeave(MouseEventArgs e)
