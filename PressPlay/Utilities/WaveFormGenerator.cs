@@ -1,69 +1,58 @@
-﻿using NAudio.Wave;
-using NAudio.WaveFormRenderer;
+﻿using System;
+using System.Drawing;
 using System.IO;
+using NAudio.Wave;
+using NAudio.WaveFormRenderer;
 
 namespace PressPlay.Utilities
 {
     public static class WaveFormGenerator
     {
-        public static void Generate(int width, int height, System.Drawing.Color background, string audioFilePath, string outputFilePath)
+        /// <summary>
+        /// Generate a waveform PNG from any file MediaFoundation/NAudio can read (MP3, WAV, etc.).
+        /// </summary>
+        public static void Generate(int width, int height, Color background, string audioFilePath, string outputFilePath)
         {
-            var settings = new StandardWaveFormRendererSettings
+            // AudioFileReader handles MP3, WAV, WMA, AAC, etc. via MediaFoundation under the covers
+            using (var reader = new AudioFileReader(audioFilePath))
             {
-                Width = width,
-                TopHeight = height / 2,
-                BottomHeight = height / 2,
-                BackgroundColor = background,
-                TopPeakPen = new System.Drawing.Pen(System.Drawing.Color.LightGreen, 1),
-                BottomPeakPen = new System.Drawing.Pen(System.Drawing.Color.LightGreen, 1),
-            };
-
-            var renderer = new WaveFormRenderer();
-
-            using (var audioFileReader = new AudioFileReader(audioFilePath))
-            {
-                var img = renderer.Render(audioFileReader, settings);
-                img.Save(outputFilePath);
+                Generate(width, height, background, (WaveStream)reader, outputFilePath);
             }
         }
 
-        public static void Generate(int width, int height, System.Drawing.Color background, WaveStream waveStream, string outputFilePath)
+        /// <summary>
+        /// Core renderer: from any WaveStream, draw and save a PNG.
+        /// </summary>
+        public static void Generate(int width, int height, Color background, WaveStream waveStream, string outputFilePath)
         {
-            var settings = new StandardWaveFormRendererSettings
-            {
-                Width = width,
-                TopHeight = height / 2,
-                BottomHeight = height / 2,
-                BackgroundColor = background,
-                TopPeakPen = new System.Drawing.Pen(System.Drawing.Color.LightGreen, 1),
-                BottomPeakPen = new System.Drawing.Pen(System.Drawing.Color.LightGreen, 1),
-            };
-
+            var settings = CreateSettings(width, height, background);
             var renderer = new WaveFormRenderer();
 
-            var img = renderer.Render(waveStream, settings);
-            img.Save(outputFilePath);
+            // Render returns a System.Drawing.Bitmap
+            using (var bmp = renderer.Render(waveStream, settings))
+            {
+                // Ensure target directory exists
+                Directory.CreateDirectory(Path.GetDirectoryName(outputFilePath) ?? ".");
+                bmp.Save(outputFilePath);
+            }
         }
 
-        public static void Generate(int width, int height, System.Drawing.Color background, byte[] audioData, string outputFilePath)
+        /// <summary>
+        /// Shared waveform‐style settings.
+        /// </summary>
+        private static StandardWaveFormRendererSettings CreateSettings(int width, int height, Color background)
         {
-            var settings = new StandardWaveFormRendererSettings
+            return new StandardWaveFormRendererSettings
             {
                 Width = width,
                 TopHeight = height / 2,
                 BottomHeight = height / 2,
                 BackgroundColor = background,
-                TopPeakPen = new System.Drawing.Pen(System.Drawing.Color.LightGreen, 1),
-                BottomPeakPen = new System.Drawing.Pen(System.Drawing.Color.LightGreen, 1),
+
+                // Customize these pens however you like
+                TopPeakPen = new Pen(Color.LightGreen, 1),
+                BottomPeakPen = new Pen(Color.LightGreen, 1),
             };
-
-            var renderer = new WaveFormRenderer();
-
-            using (var audioFileReader = new RawSourceWaveStream(new MemoryStream(audioData), new WaveFormat()))
-            {
-                var img = renderer.Render(audioFileReader, settings);
-                img.Save(outputFilePath);
-            }
         }
     }
 }

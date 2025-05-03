@@ -3,6 +3,8 @@ using PressPlay.Services;
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;                  // ← for File.Exists
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -17,16 +19,14 @@ namespace PressPlay
         {
             InitializeComponent();
 
-            // Grab VM
             if (DataContext is MainWindowViewModel vm)
             {
-                // Initialize service (now takes just the Project)
+                // 1) Initialize playback service
                 _playbackService = new PlaybackService(vm.CurrentProject, PreviewImage);
                 vm.PlaybackService = _playbackService;
                 Debug.WriteLine("PlaybackService initialized successfully");
 
-                // Whenever our service ticks a new Position,
-                // update the Project's needle – TimelineControl will react.
+                // 2) Sync timeline needle when audio/video plays
                 _playbackService.PositionChanged += position =>
                 {
                     vm.CurrentProject.NeedlePositionTime =
@@ -34,26 +34,16 @@ namespace PressPlay
                     Debug.WriteLine($"Updated needle position to: {position}");
                 };
 
-                // Watch for when the Project's media path changes
-                vm.CurrentProject.PropertyChanged += (s, e) =>
-                {
-                    if (e.PropertyName == nameof(Project.CurrentMediaPath))
-                    {
-                        var path = vm.CurrentProject.CurrentMediaPath;
-                        if (!string.IsNullOrEmpty(path))
-                        {
-                            Debug.WriteLine($"Loading media: {path}");
-                            _playbackService.LoadMedia(path);
-                        }
-                    }
-                };
+                // 3) React whenever someone sets CurrentMediaPath on the project
+                vm.CurrentProject.PropertyChanged += OnProjectPropertyChanged;
 
-                // Handle initial load
+                // 4) Initial load if there’s already a path set
                 Loaded += MainWindow_Loaded;
-                // Handle unsaved‐changes on close
+
+                // 5) Clean up on close
                 Closing += MainWindow_Closing;
 
-                // Enable drag/drop onto the preview
+                // 6) Enable drag/drop onto the preview
                 PreviewImage.AllowDrop = true;
                 PreviewImage.Drop += VideoPreview_Drop;
                 PreviewImage.DragEnter += VideoPreview_DragEnter;
@@ -61,10 +51,25 @@ namespace PressPlay
             }
         }
 
+        private void OnProjectPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(Project.CurrentMediaPath))
+            {
+                var project = (Project)sender;
+                var path = project.CurrentMediaPath;
+                if (!string.IsNullOrEmpty(path) && File.Exists(path))
+                {
+                    Debug.WriteLine($"[MainWindow] Loading media: {path}");
+                    _playbackService.LoadMedia(path);
+                }
+            }
+        }
+
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             if (DataContext is MainWindowViewModel vm &&
-                !string.IsNullOrEmpty(vm.CurrentProject.CurrentMediaPath))
+                !string.IsNullOrEmpty(vm.CurrentProject.CurrentMediaPath) &&
+                File.Exists(vm.CurrentProject.CurrentMediaPath))
             {
                 Debug.WriteLine($"Initial media load: {vm.CurrentProject.CurrentMediaPath}");
                 _playbackService.LoadMedia(vm.CurrentProject.CurrentMediaPath);
@@ -83,7 +88,6 @@ namespace PressPlay
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    // You can call your Save command or method here:
                     if (!vm.SaveProjectToFile())
                         e.Cancel = true;
                 }
@@ -93,7 +97,6 @@ namespace PressPlay
                 }
             }
 
-            // Gracefully pause playback on exit
             _playbackService.Pause();
         }
 
@@ -119,7 +122,16 @@ namespace PressPlay
                 var files = (string[])e.Data.GetData(DataFormats.FileDrop);
                 if (files?.Length > 0)
                 {
+                    // Import into your project
                     vm.ImportMediaFiles(files);
+
+                    // Pick the first imported file as the “current” media
+                    var first = files.First();
+                    vm.CurrentProject.CurrentMediaPath = first;
+
+                    if (vm.AutoPlayNewMedia)
+                        _playbackService.Play();
+
                     e.Handled = true;
                 }
             }
@@ -136,7 +148,6 @@ namespace PressPlay
 
         private void VideoPreview_DragOver(object sender, DragEventArgs e)
         {
-            // Same logic as DragEnter
             e.Effects = (e.Data.GetDataPresent(typeof(ProjectClip)) ||
                          e.Data.GetDataPresent(DataFormats.FileDrop))
                         ? DragDropEffects.Copy
@@ -146,7 +157,7 @@ namespace PressPlay
 
         private void TimelineControl_Loaded(object sender, RoutedEventArgs e)
         {
-
+            // (No changes here)
         }
     }
 }

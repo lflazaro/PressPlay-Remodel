@@ -5,10 +5,13 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Media.Imaging;
 using PressPlay.Helpers;
-using PressPlay.Utilities;            // for WaveFormGenerator
-using System.Drawing;               // for Color
+using PressPlay.Utilities;
+using System.Drawing;
 using PressPlay.Models;
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Threading.Tasks;
+using System.Windows;
 
 namespace PressPlay.Models
 {
@@ -32,12 +35,27 @@ namespace PressPlay.Models
         private byte[] _thumbnail;
         private TimeCode _sourceLength;
         private TimeCode _originalEnd;
+        private string _waveformImagePath;
+        private bool _waveformGenerationInProgress;
 
-        // Waveform image
-        public string WaveformImagePath { get; private set; }
-        public bool HasWaveform => !string.IsNullOrEmpty(WaveformImagePath)
-                                            && File.Exists(WaveformImagePath);
+        // Waveform related properties
+        public string WaveformImagePath
+        {
+            get => _waveformImagePath;
+            private set
+            {
+                if (_waveformImagePath != value)
+                {
+                    _waveformImagePath = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(HasWaveform));
+                }
+            }
+        }
 
+        public bool HasWaveform => !string.IsNullOrEmpty(WaveformImagePath) && File.Exists(WaveformImagePath);
+
+        // Standard ITrackItem properties implementation
         public TimeCode OriginalEnd
         {
             get => _originalEnd;
@@ -110,7 +128,7 @@ namespace PressPlay.Models
             {
                 if (_end?.TotalFrames != value?.TotalFrames)
                 {
-                    // clamp against source length
+                    // Clamp against source length
                     if (!UnlimitedSourceLength && SourceLength != null)
                     {
                         int maxFrames = (int)SourceLength.TotalFrames;
@@ -127,8 +145,9 @@ namespace PressPlay.Models
 
         public TimeCode Duration
             => new TimeCode(
-                    (End.TotalFrames - Start.TotalFrames),
-                    Start.FPS);
+                    (End?.TotalFrames - Start?.TotalFrames) ?? 0,
+                    Start?.FPS ?? 25);
+
         private string _clipId;
         public string ClipId
         {
@@ -208,6 +227,15 @@ namespace PressPlay.Models
                 {
                     _filePath = value;
                     OnPropertyChanged();
+
+                    // Generate waveform when file path changes
+                    if (!string.IsNullOrEmpty(value) &&
+                        File.Exists(value) &&
+                        FileFormats.SupportedAudioFormats.Contains(
+                            Path.GetExtension(value).ToLowerInvariant()))
+                    {
+                        GenerateWaveformAsync();
+                    }
                 }
             }
         }
@@ -227,7 +255,7 @@ namespace PressPlay.Models
         public bool IsCompatibleWith(string trackType)
         {
             // Better debugging to track compatibility issues
-            Debug.WriteLine($"AudioTrackItem.IsCompatibleWith check: TrackType={trackType}, FilePath={FilePath}");
+            Debug.WriteLine($"AudioTrackItem.IsCompatibleWith: TrackType={trackType}, FilePath={FilePath}");
 
             // Parse the trackType string to TimelineTrackType enum
             if (Enum.TryParse<TimelineTrackType>(trackType, out var parsedType))
@@ -243,7 +271,7 @@ namespace PressPlay.Models
             return stringCompatible;
         }
 
-        // Default ctor for serialization etc.
+        // Default constructor for serialization
         public AudioTrackItem()
         {
             Position = new TimeCode(0, 25);
@@ -258,135 +286,157 @@ namespace PressPlay.Models
 
         /// <summary>
         /// Main constructor used when dropping an audio clip onto the timeline.
-        /// Generates a waveform PNG under %TEMP%\PressPlay\waveforms\.
         /// </summary>
         public AudioTrackItem(ProjectClip clip,
                               TimeCode position,
                               TimeCode start,
                               TimeCode length)
         {
-            // 1) Basic timing
+            Debug.WriteLine($"Creating AudioTrackItem: Clip={clip?.FileName}, Position={position?.TotalFrames}, Start={start?.TotalFrames}, Length={length?.TotalFrames}");
+
+            // Basic timing
             Position = position ?? new TimeCode(0, 25);
             Start = start ?? new TimeCode(0, 25);
-            int endF = (Start.TotalFrames + (length?.TotalFrames ?? 0));
-            End = new TimeCode(endF, Start.FPS);
+
+            // Calculate end frame
+            int endFrame = Start.TotalFrames;
+            if (length != null)
+                endFrame += length.TotalFrames;
+
+            End = new TimeCode(endFrame, Start.FPS);
             OriginalEnd = End;
 
+            // Default settings
             FadeInFrame = 0;
             FadeOutFrame = 0;
             IsSelected = false;
             _unlimitedSourceLength = false;
 
-            // 2) Clip info
+            // Clip info
             if (clip != null)
             {
                 FileName = clip.FileName;
                 FilePath = clip.FilePath;
                 FullPath = clip.FilePath;
                 SourceLength = clip.Length;
-            }
+                ClipId = clip.Id;
 
-            // 3) Try to load thumbnail for icon
-            if (clip != null && !string.IsNullOrEmpty(clip.Thumbnail))
-            {
-                try
+                Debug.WriteLine($"Audio item source length: {SourceLength?.TotalFrames} frames");
+
+                // Try to load thumbnail
+                if (!string.IsNullOrEmpty(clip.Thumbnail) && File.Exists(clip.Thumbnail))
                 {
-                    Thumbnail = File.ReadAllBytes(clip.Thumbnail);
-                }
-                catch { /* ignore */ }
-            }
-
-            // 4) Generate waveform image if this clip has audio
-            try
-            {
-                // Only proceed if clip and SourceLength are not null
-                if (clip != null && SourceLength != null && SourceLength.TotalFrames > 0)
-                {
-                    // Prepare temp folder
-                    var folder = Path.Combine(
-                        Path.GetTempPath(),
-                        "PressPlay", "waveforms");
-
-                    // Ensure directory exists
-                    if (!Directory.Exists(folder))
-                    {
-                        Directory.CreateDirectory(folder);
-                    }
-
-                    // Unique PNG name per clip
-                    string hash;
                     try
                     {
-                        hash = clip.GetFileHash();
+                        Thumbnail = File.ReadAllBytes(clip.Thumbnail);
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"Error getting file hash: {ex.Message}");
-                        // Use filename as fallback if hash fails
-                        hash = Path.GetFileNameWithoutExtension(clip.FilePath)
-                            .Replace(" ", "_")
-                            .Replace(".", "_");
-
-                        if (string.IsNullOrEmpty(hash))
-                        {
-                            hash = Guid.NewGuid().ToString();
-                        }
-                    }
-
-                    WaveformImagePath = Path.Combine(folder, $"{hash}.png");
-                    Debug.WriteLine($"Waveform path: {WaveformImagePath}");
-
-                    if (!File.Exists(WaveformImagePath))
-                    {
-                        // Compute pixel width at zoom 1
-                        double pxPerFrame = Constants.TimelinePixelsInSeparator
-                                            / Constants.TimelineZooms[1];
-                        int width = (int)Math.Ceiling(Duration.TotalFrames * pxPerFrame);
-                        width = Math.Max(200, width); // Ensure minimum width for visibility
-                        int height = (int)Constants.TrackHeight - 4; // Slightly smaller than track
-
-                        Debug.WriteLine($"Generating waveform: width={width}, height={height}, path={clip.FilePath}");
-
-                        try
-                        {
-                            WaveFormGenerator.Generate(
-                                width,
-                                height,
-                                System.Drawing.Color.Transparent, // Transparent background
-                                clip.FilePath,
-                                WaveformImagePath);
-                            Debug.WriteLine($"Waveform generated successfully: {WaveformImagePath}");
-
-                            // Notify property change to update UI
-                            OnPropertyChanged(nameof(WaveformImagePath));
-                            OnPropertyChanged(nameof(HasWaveform));
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"WaveFormGenerator.Generate failed: {ex.Message}");
-                            // Don't set to null, as this will make future attempts impossible
-                        }
-                    }
-                    else
-                    {
-                        Debug.WriteLine($"Using existing waveform: {WaveformImagePath}");
+                        Debug.WriteLine($"Error loading thumbnail: {ex.Message}");
                     }
                 }
-                else
+
+                // Generate waveform
+                if (!string.IsNullOrEmpty(FilePath) &&
+                    File.Exists(FilePath) &&
+                    FileFormats.SupportedAudioFormats.Contains(
+                        Path.GetExtension(FilePath).ToLowerInvariant()))
                 {
-                    Debug.WriteLine("Skipping waveform generation: clip or SourceLength is null or zero");
-                    if (clip == null)
-                        Debug.WriteLine("Clip is null");
-                    else if (SourceLength == null)
-                        Debug.WriteLine("SourceLength is null");
-                    else
-                        Debug.WriteLine($"SourceLength.TotalFrames is {SourceLength.TotalFrames}");
+                    GenerateWaveformAsync();
                 }
+            }
+        }
+
+        /// <summary>
+        /// Asynchronously generates a waveform image for the audio file
+        /// </summary>
+        private async void GenerateWaveformAsync()
+        {
+            // Skip if already generating or no file
+            if (_waveformGenerationInProgress || string.IsNullOrEmpty(FilePath) || !File.Exists(FilePath))
+                return;
+
+            _waveformGenerationInProgress = true;
+            Debug.WriteLine($"Starting waveform generation for {FileName}");
+
+            try
+            {
+                await Task.Run(() =>
+                {
+                    try
+                    {
+                        // Create directory for waveforms
+                        var waveformDir = Path.Combine(Path.GetTempPath(), "PressPlay", "Waveforms");
+                        Directory.CreateDirectory(waveformDir);
+
+                        // Create a unique hash for this audio file
+                        string hash;
+                        using (var md5 = MD5.Create())
+                        using (var stream = File.OpenRead(FilePath))
+                        {
+                            hash = BitConverter.ToString(md5.ComputeHash(stream))
+                                .Replace("-", "")
+                                .ToLowerInvariant();
+                        }
+
+                        // Path to store waveform image
+                        string waveformPath = Path.Combine(waveformDir, $"{hash}.png");
+
+                        // If waveform image already exists, use it
+                        if (File.Exists(waveformPath))
+                        {
+                            Debug.WriteLine($"Using existing waveform: {waveformPath}");
+                            WaveformImagePath = waveformPath;
+                            return;
+                        }
+
+                        // Calculate width based on duration
+                        int width = 600; // Default width
+                        if (Duration != null && Duration.TotalFrames > 0)
+                        {
+                            // Scale width based on duration
+                            double pixelsPerSecond = 100; // 100 pixels per second
+                            width = (int)(Duration.TotalSeconds * pixelsPerSecond);
+                            width = Math.Max(300, width); // Minimum width
+                        }
+
+                        // Set height to match track height minus padding
+                        int height = (int)Constants.TrackHeight - 10;
+
+                        Debug.WriteLine($"Generating waveform ({width}x{height}) for {FileName}");
+
+                        // Generate the waveform
+                        WaveFormGenerator.Generate(
+                            width,
+                            height,
+                            Color.Transparent,  // Transparent background
+                            FilePath,
+                            waveformPath
+                        );
+
+                        Debug.WriteLine($"Waveform generated: {waveformPath}");
+
+                        // Update property on UI thread
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            WaveformImagePath = waveformPath;
+                            Debug.WriteLine("Waveform path set on UI thread");
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Error in waveform generation task: {ex.Message}");
+                        Debug.WriteLine(ex.StackTrace);
+                    }
+                });
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Waveform generation failed: {ex.Message}");
-                Debug.WriteLine(ex.StackTrace);
+                Debug.WriteLine($"Error starting waveform generation: {ex.Message}");
+            }
+            finally
+            {
+                _waveformGenerationInProgress = false;
             }
         }
 
@@ -400,7 +450,17 @@ namespace PressPlay.Models
             Debug.WriteLine($"[AudioTrackItem] Initialized: " +
                 $"{FileName} | Pos={Position.TotalFrames} " +
                 $"Start={Start.TotalFrames} End={End.TotalFrames}");
+
+            // Ensure waveform is generated if needed
+            if (!string.IsNullOrEmpty(FilePath) &&
+                File.Exists(FilePath) &&
+                FileFormats.SupportedAudioFormats.Contains(Path.GetExtension(FilePath).ToLowerInvariant()) &&
+                string.IsNullOrEmpty(WaveformImagePath))
+            {
+                GenerateWaveformAsync();
+            }
         }
+
         public double GetScaledPosition(int zoomLevel) =>
             Position.TotalFrames
             * Constants.TimelinePixelsInSeparator

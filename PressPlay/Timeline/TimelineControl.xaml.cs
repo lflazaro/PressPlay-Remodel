@@ -400,17 +400,27 @@ namespace PressPlay.Timeline
             Track targetTrack = null;
 
             // For audio clips, we might want to auto-create an audio track
-            if (clip.TrackType == TimelineTrackType.Audio)
+            if (clip.ItemType == TrackItemType.Audio)
             {
-                // Either get the track under mouse or ensure an audio track exists
-                targetTrack = GetTrackAtPosition(e.GetPosition(RootCanvas));
+                // If there's no audio track, create one now
+                var audioTrack = Project.Tracks
+                    .OfType<Track>()
+                    .FirstOrDefault(t => t.Type == TimelineTrackType.Audio);
 
-                // If target track is incompatible or null, get/create an audio track
-                if (targetTrack == null || targetTrack.Type != TimelineTrackType.Audio)
+                if (audioTrack == null)
                 {
-                    targetTrack = EnsureAudioTrackExists();
-                    Debug.WriteLine($"Using audio track: {targetTrack.Name}");
+                    // Insert at the bottom:
+                    audioTrack = new Track
+                    {
+                        Name = $"Audio {Project.Tracks.Count(t => t.Type == TimelineTrackType.Audio) + 1}",
+                        Type = TimelineTrackType.Audio
+                    };
+                    Project.Tracks.Add(audioTrack);
+                    Debug.WriteLine("[TimelineControl] Auto-added Audio track");
                 }
+
+                // Now fall through to your existing logic that creates an AudioTrackItem
+                // and adds it to `audioTrack.Items`
             }
             else
             {
@@ -526,11 +536,37 @@ namespace PressPlay.Timeline
                     Height = (int)Constants.TrackHeight // Use standard track height
                 };
 
-                // Add the track to the project
+                // Add to project tracks collection
                 Project.Tracks.Add(audioTrack);
+
+                // Create undo unit for track addition
+                var undoUnit = new TrackAddUndoUnit(Project, audioTrack, Project.Tracks.Count - 1);
+                UndoEngine.Instance.AddUndoUnit(undoUnit);
 
                 // Log the action
                 Debug.WriteLine($"Created new audio track: {audioTrack.Name}");
+
+                // Mark project as having unsaved changes
+                if (MainWindowViewModel.Instance != null)
+                {
+                    MainWindowViewModel.Instance.HasUnsavedChanges = true;
+                }
+            }
+
+            // Find the track again (in case another thread modified the collection)
+            audioTrack = Project.Tracks.FirstOrDefault(t => t.Type == TimelineTrackType.Audio) as Track;
+
+            // If still null (highly unlikely), create one without undo support as a fallback
+            if (audioTrack == null)
+            {
+                audioTrack = new Track
+                {
+                    Name = "Audio Track",
+                    Type = TimelineTrackType.Audio,
+                    Height = (int)Constants.TrackHeight
+                };
+                Project.Tracks.Add(audioTrack);
+                Debug.WriteLine("Created fallback audio track");
             }
 
             return audioTrack;

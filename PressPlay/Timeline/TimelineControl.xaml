@@ -30,24 +30,54 @@
         <converters:NeedlePositionConverter               x:Key="NeedlePosConverter"/>
         <converters:DurationToWidthConverter              x:Key="DurationToWidthConverter"/>
         <converters:ByteArrayToImageConverter             x:Key="WaveformImageConverter"/>
-
+        <converters:BoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" Invert="True" />
+        <converters:BoolToBrushConverter x:Key="SelectedBorderConverter" 
+                                TrueValue="{StaticResource {x:Static SystemColors.HighlightBrushKey}}" 
+                                FalseValue="#444444" />
+        <converters:BoolToThicknessConverter x:Key="SelectedBorderThicknessConverter"
+                                    TrueValue="2" FalseValue="1" />
         <!-- AudioTrackItem DataTemplate -->
         <DataTemplate DataType="{x:Type models:AudioTrackItem}">
-            <Grid>
-                <!-- background bar for the audio clip -->
-                <Border Background="#FF2C2C2C"
-                Height="{x:Static helpers:Constants.TrackHeight}"
-                CornerRadius="2"
-                SnapsToDevicePixels="True">
-                    <!-- waveform image overlay -->
-                    <Image Source="{Binding WaveformImagePath, Converter={StaticResource ByteArrayToImageConverter}}"
+            <local:TrackItemControl Background="#0d3a20" 
+                           BorderBrush="{Binding IsSelected, Converter={StaticResource SelectedBorderConverter}}"
+                           BorderThickness="{Binding IsSelected, Converter={StaticResource SelectedBorderThicknessConverter}}">
+                <Grid>
+                    <!-- Waveform display -->
+                    <Image Source="{Binding WaveformImagePath}"
                    Stretch="Fill"
-                   Height="{x:Static helpers:Constants.TrackHeight}"
-                   Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Border}}"
-                   SnapsToDevicePixels="True"
-                   RenderOptions.BitmapScalingMode="HighQuality"/>
-                </Border>
-            </Grid>
+                   Height="48"
+                   Margin="0,1"
+                   RenderOptions.BitmapScalingMode="HighQuality"
+                   Opacity="0.9" />
+
+                    <!-- Clip name -->
+                    <TextBlock Text="{Binding FileName}" 
+                       Margin="5,2"
+                       Foreground="White"
+                       VerticalAlignment="Top"
+                       HorizontalAlignment="Left">
+                        <TextBlock.Background>
+                            <SolidColorBrush Color="#444444" Opacity="0.5" />
+                        </TextBlock.Background>
+                    </TextBlock>
+
+                    <!-- Loading indicator -->
+                    <Border Background="#3F000000" 
+                    BorderBrush="#777"
+                    BorderThickness="1"
+                    CornerRadius="2"
+                    Width="120"
+                    Height="24"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Visibility="{Binding HasWaveform, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                        <TextBlock Text="Loading waveform..." 
+                          Foreground="White"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"/>
+                    </Border>
+                </Grid>
+            </local:TrackItemControl>
         </DataTemplate>
     </UserControl.Resources>
 
