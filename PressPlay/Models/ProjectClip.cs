@@ -45,7 +45,7 @@ namespace PressPlay.Models
         private TimeCode _length;
         private int _width;
         private int _height;
-
+        public bool HasAudio { get; set; }
         public event PropertyChangedEventHandler PropertyChanged;
         public event EventHandler<double> CacheProgress;
 
@@ -223,11 +223,14 @@ namespace PressPlay.Models
 
                 // 3) Compute true duration
                 var duration = TimeSpan.FromSeconds(frameCount / fps);
+                var analysis = FFProbe.Analyse(FilePath);
 
+                bool hasAudio = analysis.PrimaryAudioStream != null;
                 return new ProjectClipMetadata
                 {
                     TrackType = TimelineTrackType.Video,
                     ItemType = TrackItemType.Video,
+                    HasAudio = hasAudio,
                     FPS = fps,
                     Length = TimeCode.FromTimeSpan(duration, fps),
                     Width = cap.FrameWidth,

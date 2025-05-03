@@ -210,7 +210,25 @@ namespace PressPlay.Timeline
             _resizingRight = false;
             _tracksCanvasLeftMouseButtonDown = false;
         }
+        private Track GetTrackAtPosition(Point position)
+        {
+            // Handle by vertical position (Y coordinate)
+            double accumulatedHeight = 30; // Account for the header height
 
+            foreach (var track in Project.Tracks)
+            {
+                double trackHeight = track.Height;
+                if (position.Y >= accumulatedHeight &&
+                    position.Y < accumulatedHeight + trackHeight)
+                {
+                    return track as Track;
+                }
+                accumulatedHeight += trackHeight;
+            }
+
+            // If we're here, we might be below all tracks or in an invalid area
+            return null;
+        }
         private void TimelineControl_PreviewMouseMove(object sender, MouseEventArgs e)
         {
             if (_tracksCanvasLeftMouseButtonDown && _mouseDownTrackItem != null
@@ -235,20 +253,15 @@ namespace PressPlay.Timeline
                 // Update track item position
                 _mouseDownTrackItem.Position = new TimeCode(newPositionFrames, Project.FPS);
 
-                // Handle moving between tracks
                 var originTrack = Project.Tracks.First(t => t.Items.Contains(_mouseDownTrackItem));
-                ITimelineTrack destTrack = null;
-
-                if (e.OriginalSource is FrameworkElement fe && fe.DataContext is ITimelineTrack tt)
-                {
-                    destTrack = tt;
-                }
+                var mousePosition = e.GetPosition(tracksControl.Parent as IInputElement);
+                var destTrack = GetTrackAtPosition(mousePosition);
 
                 // Move to different track if compatible
-                if (originTrack != destTrack && destTrack != null
-                    && _mouseDownTrackItem.IsCompatibleWith(destTrack.Type.ToString()))
+                if (originTrack != destTrack && destTrack != null &&
+                    _mouseDownTrackItem.IsCompatibleWith(destTrack.Type.ToString()))
                 {
-                    Project.RemoveAndAddTrackItem(originTrack, (Track)destTrack, _mouseDownTrackItem);
+                    Project.RemoveAndAddTrackItem((Track)originTrack, destTrack, _mouseDownTrackItem);
                 }
             }
             else if (_tracksCanvasLeftMouseButtonDown && _mouseDownTrackItem != null && _resizingLeft)
@@ -282,13 +295,33 @@ namespace PressPlay.Timeline
                 double x = e.GetPosition(tracksControl).X;
                 double itemX = _mouseDownElement.TranslatePoint(new Point(), tracksControl).X;
                 double frame0 = Math.Round(itemX / Constants.TimelinePixelsInSeparator
-                                            * Constants.TimelineZooms[Project.TimelineZoom],
-                                            MidpointRounding.ToZero);
+                                           * Constants.TimelineZooms[Project.TimelineZoom],
+                                           MidpointRounding.ToZero);
                 double currentFrame = Math.Round(x / Constants.TimelinePixelsInSeparator
                                                 * Constants.TimelineZooms[Project.TimelineZoom],
                                                 MidpointRounding.ToZero);
-                int diff = (int)(frame0 - currentFrame);
-                _mouseDownTrackItem.End = new TimeCode(_mouseDownTrackItem.Start.TotalFrames - diff, Project.FPS);
+                int diff = (int)(currentFrame - frame0);
+
+                // Calculate desired end frame based on mouse position
+                int desiredEndFrame = _mouseDownTrackItemStart.TotalFrames + diff;
+
+                // For media with limited source length (audio/video), cap at original length
+                if (!_mouseDownTrackItem.UnlimitedSourceLength)
+                {
+                    // Get max possible end frame (original source length)
+                    int maxEndFrame = _mouseDownTrackItem.OriginalEnd != null
+                        ? _mouseDownTrackItem.OriginalEnd.TotalFrames
+                        : _mouseDownTrackItem.End.TotalFrames;
+
+                    // Ensure we don't exceed the original media length
+                    desiredEndFrame = Math.Min(desiredEndFrame, maxEndFrame);
+                }
+
+                // Ensure we don't make the clip shorter than 1 frame
+                desiredEndFrame = Math.Max(desiredEndFrame, _mouseDownTrackItem.Start.TotalFrames + 1);
+
+                // Set the new End position
+                _mouseDownTrackItem.End = new TimeCode(desiredEndFrame, Project.FPS);
             }
             else if (_mouseDownTrackItem != null
                      && (_mouseDownTrackItem.IsChangingFadeIn || _mouseDownTrackItem.IsChangingFadeOut))
@@ -344,39 +377,84 @@ namespace PressPlay.Timeline
 
         private void Timeline_PreviewDrop(object sender, DragEventArgs e)
         {
-            if (e.Data.GetData(typeof(ProjectClip)) is ProjectClip clip)
+            // 1) Pull out the ProjectClip being dragged
+            if (!(e.Data.GetData(typeof(ProjectClip)) is ProjectClip clip))
+                return;
+
+            // 2) Compute the timeline frame from X
+            //    Use the header control to get X in timeline coords
+            double dropX = e.GetPosition(header).X;
+            int frame = (int)Math.Round(
+                dropX
+              / Constants.TimelinePixelsInSeparator
+              * Constants.TimelineZooms[Project.TimelineZoom],
+              MidpointRounding.ToZero);
+            var position = new TimeCode(frame, Project.FPS);
+
+            // 3) Compute Y relative to the top of the first track
+            //    We get the drop point in the RootCanvas, then subtract header height
+            Point canvasPoint = e.GetPosition(RootCanvas);
+            double yInTracks = canvasPoint.Y - header.ActualHeight;
+            if (yInTracks < 0) yInTracks = 0;
+
+            // 4) Find which track row this Y falls into
+            Track targetTrack = null;
+            double cumulative = 0;
+            foreach (var t in Project.Tracks)
             {
-                if (e.OriginalSource is FrameworkElement fe && fe.DataContext is ITimelineTrack tt && clip.IsCompatibleWith(tt.Type))
+                cumulative += t.Height;
+                if (yInTracks <= cumulative)
                 {
-                    // Get position in timeline coordinates
-                    var x = e.GetPosition(header).X;
-                    var frame = Math.Round(x / Constants.TimelinePixelsInSeparator
-                                         * Constants.TimelineZooms[Project.TimelineZoom],
-                                         MidpointRounding.ToZero);
-
-                    // Create position timecode
-                    var position = new TimeCode((int)frame, Project.FPS);
-
-                    // Create track item - starting from the beginning of the clip
-                    ITrackItem ti;
-                    if (clip.TrackType == TimelineTrackType.Audio)
-                    {
-                        ti = new AudioTrackItem(clip, position,
-                            new TimeCode(0, clip.FPS), // Start from beginning of clip
-                            clip.Length);
-                    }
-                    else
-                    {
-                        ti = new TrackItem(clip, position,
-                            new TimeCode(0, clip.FPS), // Start from beginning of clip
-                            clip.Length);
-                    }
-
-                    // Add to track
-                    tt.AddTrackItem(ti);
-                    Project.SetProjectResolution(clip.Width, clip.Height);
+                    targetTrack = t;
+                    break;
                 }
             }
+            if (targetTrack == null)
+                return;
+
+            // 5) Only proceed if the clip is compatible with that track type
+            if (!clip.IsCompatibleWith(targetTrack.Type))
+                return;
+
+            // 6) Create the correct ITrackItem
+            ITrackItem ti;
+            if (clip.TrackType == TimelineTrackType.Audio)
+            {
+                ti = new AudioTrackItem(
+                        clip,
+                        position,
+                        new TimeCode(0, clip.FPS),
+                        clip.Length);
+            }
+            else
+            {
+                ti = new TrackItem(
+                        clip,
+                        position,
+                        new TimeCode(0, clip.FPS),
+                        clip.Length);
+            }
+
+            // 7) Add it to that track
+            targetTrack.AddTrackItem(ti);
+
+            // 8) Optionally, update project resolution if this is a video
+            if (clip.TrackType == TimelineTrackType.Video)
+                Project.SetProjectResolution(clip.Width, clip.Height);
+
+            e.Handled = true;
+        }
+
+
+        private Track AddAudioTrackAtBottom()
+        {
+            var newTrack = new Track
+            {
+                Name = "Audio",
+                Type = TimelineTrackType.Audio
+            };
+            Project.Tracks.Add(newTrack);
+            return newTrack;
         }
 
         private void Timeline_PreviewDragOver(object sender, DragEventArgs e)

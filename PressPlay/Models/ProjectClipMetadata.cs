@@ -12,5 +12,6 @@
         public int Width { get; set; }
         public int Height { get; set; }
         public bool UnlimitedLength { get; set; }
+        public bool HasAudio { get; set; }
     }
 }

@@ -1,8 +1,14 @@
 ﻿using System;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Windows.Media.Imaging;
 using PressPlay.Helpers;
+using PressPlay.Utilities;            // for WaveFormGenerator
+using System.Drawing;               // for Color
+using PressPlay.Models;
+using System.Diagnostics;
 
 namespace PressPlay.Models
 {
@@ -10,6 +16,7 @@ namespace PressPlay.Models
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
+        // Backing fields
         private double _startTime;
         private TimeCode _position;
         private TimeCode _start;
@@ -25,6 +32,11 @@ namespace PressPlay.Models
         private byte[] _thumbnail;
         private TimeCode _sourceLength;
         private TimeCode _originalEnd;
+
+        // Waveform image
+        public string WaveformImagePath { get; private set; }
+        public bool HasWaveform => !string.IsNullOrEmpty(WaveformImagePath)
+                                            && File.Exists(WaveformImagePath);
 
         public TimeCode OriginalEnd
         {
@@ -51,6 +63,7 @@ namespace PressPlay.Models
                 }
             }
         }
+
         public double StartTime
         {
             get => _startTime;
@@ -63,6 +76,7 @@ namespace PressPlay.Models
                 }
             }
         }
+
         public TimeCode Position
         {
             get => _position;
@@ -72,7 +86,6 @@ namespace PressPlay.Models
                 {
                     _position = value;
                     OnPropertyChanged();
-                    System.Diagnostics.Debug.WriteLine($"AudioTrackItem Position updated to frame {value?.TotalFrames}");
                 }
             }
         }
@@ -97,22 +110,12 @@ namespace PressPlay.Models
             {
                 if (_end?.TotalFrames != value?.TotalFrames)
                 {
-                    // If not unlimited source length, validate against source length
-                    if (!UnlimitedSourceLength)
+                    // clamp against source length
+                    if (!UnlimitedSourceLength && SourceLength != null)
                     {
-                        // Determine max duration from file type
-                        int maxDuration = int.MaxValue;
-                        if (Path.GetExtension(FilePath)?.ToLowerInvariant() != null &&
-                            FileFormats.SupportedAudioFormats.Contains(Path.GetExtension(FilePath).ToLowerInvariant()))
-                        {
-                            // For audio, source length is fixed
-                            maxDuration = OriginalEnd?.TotalFrames ?? End?.TotalFrames ?? 0; // Use original end value as max
-                        }
-
-                        if (value.TotalFrames > maxDuration)
-                        {
-                            value = new TimeCode(maxDuration, value.FPS);
-                        }
+                        int maxFrames = (int)SourceLength.TotalFrames;
+                        if (value.TotalFrames > maxFrames)
+                            value = new TimeCode(maxFrames, value.FPS);
                     }
 
                     _end = value;
@@ -123,13 +126,20 @@ namespace PressPlay.Models
         }
 
         public TimeCode Duration
+            => new TimeCode(
+                    (End.TotalFrames - Start.TotalFrames),
+                    Start.FPS);
+        private string _clipId;
+        public string ClipId
         {
-            get
+            get => _clipId;
+            set
             {
-                int startFrames = Start?.TotalFrames ?? 0;
-                int endFrames = End?.TotalFrames ?? 0;
-                double fps = Start?.FPS ?? 25;
-                return new TimeCode(endFrames - startFrames, fps);
+                if (_clipId != value)
+                {
+                    _clipId = value;
+                    OnPropertyChanged();
+                }
             }
         }
 
@@ -176,7 +186,6 @@ namespace PressPlay.Models
         public bool IsChangingFadeOut => _isChangingFadeOut;
         public bool UnlimitedSourceLength => _unlimitedSourceLength;
 
-        // Additional properties to help with visualization
         public string FileName
         {
             get => _fileName;
@@ -189,21 +198,7 @@ namespace PressPlay.Models
                 }
             }
         }
-        private string _clipId;
 
-        // Add this property
-        public string ClipId
-        {
-            get => _clipId;
-            set
-            {
-                if (_clipId != value)
-                {
-                    _clipId = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
         public string FilePath
         {
             get => _filePath;
@@ -217,12 +212,7 @@ namespace PressPlay.Models
             }
         }
 
-        private string _fullPath;
-        public string FullPath
-        {
-            get => string.IsNullOrEmpty(_fullPath) ? FilePath : _fullPath;
-            set => _fullPath = value;
-        }
+        public string FullPath { get; set; }
 
         public byte[] Thumbnail
         {
@@ -236,99 +226,127 @@ namespace PressPlay.Models
 
         public bool IsCompatibleWith(string trackType)
         {
-            if (Enum.TryParse<TimelineTrackType>(trackType, out var parsedType))
-            {
-                return parsedType == TimelineTrackType.Audio;
-            }
-            return false;
+            return Enum.TryParse<TimelineTrackType>(trackType, out var t)
+                   && t == TimelineTrackType.Audio;
         }
 
+        // Default ctor for serialization etc.
         public AudioTrackItem()
         {
             Position = new TimeCode(0, 25);
             Start = new TimeCode(0, 25);
-            End = new TimeCode(10, 25); // Default to a small duration
-            OriginalEnd = End; // Initialize OriginalEnd
+            End = new TimeCode(10, 25);
+            OriginalEnd = End;
             FadeInFrame = 0;
             FadeOutFrame = 0;
             IsSelected = false;
             _unlimitedSourceLength = false;
         }
 
-        public AudioTrackItem(ProjectClip clip, TimeCode position, TimeCode start, TimeCode length)
+        /// <summary>
+        /// Main constructor used when dropping an audio clip onto the timeline.
+        /// Generates a waveform PNG under %TEMP%\PressPlay\waveforms\.
+        /// </summary>
+        public AudioTrackItem(ProjectClip clip,
+                              TimeCode position,
+                              TimeCode start,
+                              TimeCode length)
         {
-            ClipId = clip?.Id;
+            // 1) Basic timing
             Position = position ?? new TimeCode(0, 25);
             Start = start ?? new TimeCode(0, 25);
+            int endF = (Start.TotalFrames + (length?.TotalFrames ?? 0));
+            End = new TimeCode(endF, Start.FPS);
+            OriginalEnd = End;
 
-            // Compute End by adding length (in frames) to Start.TotalFrames
-            int endFrames = (start?.TotalFrames ?? 0) + (length?.TotalFrames ?? 10);
-            End = new TimeCode(endFrames, start?.FPS ?? 25);
-            OriginalEnd = End; // Save original end value
-
-            // Set default fade values and other properties.
             FadeInFrame = 0;
             FadeOutFrame = 0;
             IsSelected = false;
-            _unlimitedSourceLength = false; // Audio files always have fixed length
+            _unlimitedSourceLength = false;
 
-            // Save clip info for visualization
+            // 2) Clip info
             if (clip != null)
             {
                 FileName = clip.FileName;
                 FilePath = clip.FilePath;
                 FullPath = clip.FilePath;
                 SourceLength = clip.Length;
+            }
 
-                // Try to set thumbnail if available
-                if (!string.IsNullOrEmpty(clip.Thumbnail) && File.Exists(clip.Thumbnail))
+            // 3) Try to load thumbnail for icon
+            if (clip != null && !string.IsNullOrEmpty(clip.Thumbnail))
+            {
+                try
                 {
-                    try
+                    Thumbnail = File.ReadAllBytes(clip.Thumbnail);
+                }
+                catch { /* ignore */ }
+            }
+
+            // 4) Generate waveform image if this clip has audio
+            try
+            {
+                // Only for non-zero-length audio
+                if (SourceLength.TotalFrames > 0)
+                {
+                    // Prepare temp folder
+                    var folder = Path.Combine(
+                        Path.GetTempPath(),
+                        "PressPlay", "waveforms");
+                    Directory.CreateDirectory(folder);
+
+                    // Unique PNG name per clip
+                    var hash = clip.GetFileHash();
+                    WaveformImagePath = Path.Combine(
+                        folder,
+                        $"{hash}.png");
+
+                    if (!File.Exists(WaveformImagePath))
                     {
-                        Thumbnail = File.ReadAllBytes(clip.Thumbnail);
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Error loading thumbnail: {ex.Message}");
+                        // Compute pixel width at zoom 1
+                        double pxPerFrame = Constants.TimelinePixelsInSeparator
+                                            / Constants.TimelineZooms[1];
+                        int width = (int)Math.Ceiling(Duration.TotalFrames * pxPerFrame);
+                        int height = (int)Constants.TrackHeight; // you can adjust this
+
+                        WaveFormGenerator.Generate(
+                            width,
+                            height,
+                            Color.Black,     // background
+                            clip.FilePath,
+                            WaveformImagePath);
                     }
                 }
             }
-
-            Initialize();
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Waveform generation failed: {ex.Message}");
+                WaveformImagePath = null;
+            }
         }
 
         public void Initialize()
         {
-            // Make sure we have valid objects
             if (Position == null) Position = new TimeCode(0, 25);
             if (Start == null) Start = new TimeCode(0, 25);
             if (End == null) End = new TimeCode(10, 25);
             if (OriginalEnd == null) OriginalEnd = End;
 
-            System.Diagnostics.Debug.WriteLine($"Audio track item initialized: {FileName}, Position: {Position?.TotalFrames}, " +
-                $"Start: {Start?.TotalFrames}, End: {End?.TotalFrames}");
+            Debug.WriteLine($"[AudioTrackItem] Initialized: " +
+                $"{FileName} | Pos={Position.TotalFrames} " +
+                $"Start={Start.TotalFrames} End={End.TotalFrames}");
         }
+        public double GetScaledPosition(int zoomLevel) =>
+            Position.TotalFrames
+            * Constants.TimelinePixelsInSeparator
+            / Constants.TimelineZooms[zoomLevel];
 
-        // Methods needed for interface implementation
-        public double GetScaledPosition(int zoomLevel)
-        {
-            double zoomFactor = Constants.TimelineZooms.ContainsKey(zoomLevel) ?
-                Constants.TimelineZooms[zoomLevel] : 1.0;
+        public double GetScaledWidth(int zoomLevel) =>
+            Duration.TotalFrames
+            * Constants.TimelinePixelsInSeparator
+            / Constants.TimelineZooms[zoomLevel];
 
-            return Position.TotalFrames * Constants.TimelinePixelsInSeparator / zoomFactor;
-        }
-
-        public double GetScaledWidth(int zoomLevel)
-        {
-            double zoomFactor = Constants.TimelineZooms.ContainsKey(zoomLevel) ?
-                Constants.TimelineZooms[zoomLevel] : 1.0;
-
-            return Duration.TotalFrames * Constants.TimelinePixelsInSeparator / zoomFactor;
-        }
-
-        protected void OnPropertyChanged([CallerMemberName] string propName = null)
-        {
+        protected void OnPropertyChanged([CallerMemberName] string propName = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
-        }
     }
 }

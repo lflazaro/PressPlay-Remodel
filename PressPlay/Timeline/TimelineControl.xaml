@@ -7,6 +7,8 @@
              xmlns:local="clr-namespace:PressPlay.Timeline"
              xmlns:converters="clr-namespace:PressPlay.Converters"
              xmlns:customControls="clr-namespace:PressPlay.CustomControls"
+             xmlns:models="clr-namespace:PressPlay.Models"
+             xmlns:helpers="clr-namespace:PressPlay.Helpers"
              mc:Ignorable="d"
              Background="#2a2e32"
              MinHeight="150"
@@ -20,11 +22,31 @@
              Focusable="True"
              d:DesignHeight="450" d:DesignWidth="800">
 
-    <!-- Converters -->
+    <!-- Converters & DataTemplates -->
     <UserControl.Resources>
+        <!-- existing converters -->
         <converters:TimelineSelectedToolToSelectedConverter x:Key="ToolSelectionConverter"/>
         <converters:TrackItemDataToPositionConverter      x:Key="TrackToPosConverter"/>
         <converters:NeedlePositionConverter               x:Key="NeedlePosConverter"/>
+
+        <!-- AudioTrackItem DataTemplate -->
+        <DataTemplate DataType="{x:Type models:AudioTrackItem}">
+            <Grid>
+                <!-- background bar for the audio clip -->
+                <Border Background="#FF2C2C2C"
+                        Height="{x:Static helpers:Constants.TrackHeight}"
+                        CornerRadius="2"
+                        SnapsToDevicePixels="True">
+                    <!-- waveform image overlay -->
+                    <Image Source="{Binding WaveformImagePath}"
+                           Stretch="Fill"
+                           Height="{x:Static helpers:Constants.TrackHeight}"
+                           Width="{Binding Duration, Converter={StaticResource DurationToWidthConverter}}"
+                           SnapsToDevicePixels="True"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                </Border>
+            </Grid>
+        </DataTemplate>
     </UserControl.Resources>
 
     <Grid>
@@ -54,29 +76,29 @@
 
             <!-- Track Headers -->
             <Grid Grid.Column="0"
-            Width="{Binding Project.TrackHeadersWidth,
-                            RelativeSource={RelativeSource Mode=FindAncestor,
-                                                            AncestorType={x:Type local:TimelineControl}}}">
+                  Width="{Binding Project.TrackHeadersWidth,
+                                  RelativeSource={RelativeSource Mode=FindAncestor,
+                                                          AncestorType={x:Type local:TimelineControl}}}">
                 <StackPanel>
                     <Grid Height="30">
                         <TextBlock Text="Tracks"
-                       Foreground="WhiteSmoke"
-                       VerticalAlignment="Center"
-                       HorizontalAlignment="Center"/>
+                                   Foreground="WhiteSmoke"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Center"/>
                     </Grid>
                     <ItemsControl ItemsSource="{Binding Project.Tracks,
-                                            RelativeSource={RelativeSource Mode=FindAncestor,
-                                                                    AncestorType={x:Type local:TimelineControl}}}">
+                                                        RelativeSource={RelativeSource Mode=FindAncestor,
+                                                                                AncestorType={x:Type local:TimelineControl}}}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Height="{Binding Height}"
-                        Background="#FF2C2C2C"
-                        BorderBrush="Gray"
-                        BorderThickness="0.5">
+                                        Background="#FF2C2C2C"
+                                        BorderBrush="Gray"
+                                        BorderThickness="0.5">
                                     <TextBlock Text="{Binding Name}"
-                             Margin="3,0"
-                             VerticalAlignment="Center"
-                             Foreground="WhiteSmoke"/>
+                                               Margin="3,0"
+                                               VerticalAlignment="Center"
+                                               Foreground="WhiteSmoke"/>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -86,47 +108,48 @@
 
             <!-- Timeline Canvas -->
             <ScrollViewer x:Name="tracksHScrollView"
-                    Grid.Column="1"
-                    HorizontalScrollBarVisibility="Hidden"
-              VerticalScrollBarVisibility="Auto"
-                    PreviewMouseWheel="TracksScrollView_PreviewMouseWheel">
-                <Canvas x:Name="RootCanvas" Width="1700"
-          HorizontalAlignment="Left"
-          PreviewMouseLeftButtonDown="TracksCanvas_PreviewMouseLeftButtonDown">
+                          Grid.Column="1"
+                          HorizontalScrollBarVisibility="Hidden"
+                          VerticalScrollBarVisibility="Auto"
+                          PreviewMouseWheel="TracksScrollView_PreviewMouseWheel">
+                <Canvas x:Name="RootCanvas"
+                        Width="1700"
+                        HorizontalAlignment="Left"
+                        PreviewMouseLeftButtonDown="TracksCanvas_PreviewMouseLeftButtonDown">
 
                     <local:TimelineHeaderControl x:Name="header"
-                      Project="{Binding Project,
-                          RelativeSource={RelativeSource Mode=FindAncestor,
-                                                  AncestorType={x:Type local:TimelineControl}}}"
-                      Width="{Binding ActualWidth, ElementName=RootCanvas}" />
+                                                 Project="{Binding Project,
+                                                             RelativeSource={RelativeSource Mode=FindAncestor,
+                                                                                     AncestorType={x:Type local:TimelineControl}}}"
+                                                 Width="{Binding ActualWidth, ElementName=RootCanvas}" />
 
                     <ItemsControl x:Name="tracksControl"
-                        ItemsSource="{Binding Project.Tracks,
-                                              RelativeSource={RelativeSource Mode=FindAncestor,
-                                                                      AncestorType={x:Type local:TimelineControl}}}"
-                        Width="{Binding ActualWidth, ElementName=tracksHScrollView}"
-
-                        Margin="0,30,0,0">
+                                  ItemsSource="{Binding Project.Tracks,
+                                                        RelativeSource={RelativeSource Mode=FindAncestor,
+                                                                                AncestorType={x:Type local:TimelineControl}}}"
+                                  Width="{Binding ActualWidth, ElementName=tracksHScrollView}"
+                                  Margin="0,30,0,0">
                         <ItemsControl.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="Paste"
-                          Click="PasteItem_Click"
-                          InputGestureText="Ctrl+V"/>
+                                          Click="PasteItem_Click"
+                                          InputGestureText="Ctrl+V"/>
                             </ContextMenu>
                         </ItemsControl.ContextMenu>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Height="{Binding Height}"
-                        Width="{Binding Width,
-                                        RelativeSource={RelativeSource Mode=FindAncestor,
-                                                                AncestorType={x:Type ItemsControl}}}"
-                        Background="#FF2C2C2C"
-                        BorderBrush="Gray"
-                        BorderThickness="0.5"
-                MinHeight="80">
+                                        Width="{Binding Width,
+                                                        RelativeSource={RelativeSource Mode=FindAncestor,
+                                                                                AncestorType={x:Type ItemsControl}}}"
+                                        Background="#FF2C2C2C"
+                                        BorderBrush="Gray"
+                                        BorderThickness="0.5"
+                                        MinHeight="80">
                                     <ItemsControl ItemsSource="{Binding Items}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
+                                                <!-- This will pick up our AudioTrackItem template automatically for audio items -->
                                                 <local:TrackItemControl/>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -141,11 +164,11 @@
                                                     <Setter.Value>
                                                         <MultiBinding Converter="{StaticResource TrackToPosConverter}">
                                                             <Binding Path="Project"
-                                       RelativeSource="{RelativeSource Mode=FindAncestor,
-                                                               AncestorType={x:Type local:TimelineControl}}"/>
+                                                                     RelativeSource="{RelativeSource Mode=FindAncestor,
+                                                                                             AncestorType={x:Type local:TimelineControl}}"/>
                                                             <Binding Path="Project.TimelineZoom"
-                                       RelativeSource="{RelativeSource Mode=FindAncestor,
-                                                               AncestorType={x:Type local:TimelineControl}}"/>
+                                                                     RelativeSource="{RelativeSource Mode=FindAncestor,
+                                                                                             AncestorType={x:Type local:TimelineControl}}"/>
                                                             <Binding Path="."/>
                                                             <Binding Path="Position"/>
                                                             <Binding Path="Start"/>
@@ -168,14 +191,14 @@
                                     <Setter.Value>
                                         <MultiBinding Converter="{StaticResource NeedlePosConverter}">
                                             <Binding Path="Project"
-                               RelativeSource="{RelativeSource Mode=FindAncestor,
-                                                               AncestorType={x:Type local:TimelineControl}}"/>
+                                                     RelativeSource="{RelativeSource Mode=FindAncestor,
+                                                                                     AncestorType={x:Type local:TimelineControl}}"/>
                                             <Binding Path="Project.TimelineZoom"
-                               RelativeSource="{RelativeSource Mode=FindAncestor,
-                                                               AncestorType={x:Type local:TimelineControl}}"/>
+                                                     RelativeSource="{RelativeSource Mode=FindAncestor,
+                                                                                     AncestorType={x:Type local:TimelineControl}}"/>
                                             <Binding Path="Project.NeedlePositionTime"
-                               RelativeSource="{RelativeSource Mode=FindAncestor,
-                                                               AncestorType={x:Type local:TimelineControl}}"/>
+                                                     RelativeSource="{RelativeSource Mode=FindAncestor,
+                                                                                     AncestorType={x:Type local:TimelineControl}}"/>
                                         </MultiBinding>
                                     </Setter.Value>
                                 </Setter>
@@ -188,10 +211,10 @@
 
             <!-- BindableScrollBar from PressPlay.Timeline -->
             <local:BindableScrollBar Grid.Column="1"
-                               Grid.Row="1"
-                               Orientation="Horizontal"
-                               VerticalAlignment="Bottom"
-                               BoundScrollViewer="{Binding ElementName=tracksHScrollView}"/>
+                                    Grid.Row="1"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Bottom"
+                                    BoundScrollViewer="{Binding ElementName=tracksHScrollView}"/>
         </Grid>
     </Grid>
 </UserControl>

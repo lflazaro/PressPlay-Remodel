@@ -93,7 +93,7 @@ namespace PressPlay.Models
                              FileFormats.SupportedAudioFormats.Contains(System.IO.Path.GetExtension(FilePath).ToLowerInvariant())))
                         {
                             // For videos and audio, source length is fixed
-                            maxDuration = End?.TotalFrames ?? 0; // Use original end value as max
+                            maxDuration = OriginalEnd?.TotalFrames ?? 0; // Use original end value as max
                         }
 
                         if (value.TotalFrames > maxDuration)
