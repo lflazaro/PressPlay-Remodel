@@ -124,10 +124,12 @@
         </Canvas>
 
         <!-- Volume control (only for video clips) -->
-        <Grid x:Name="VolumeControl" 
-              Width="20" 
-              HorizontalAlignment="Right"
-              Margin="0,0,2,0">
+        <Grid x:Name="VolumeControl"
+      Background="Transparent"
+      Panel.ZIndex="2"
+      Width="20"
+      HorizontalAlignment="Right"
+      Margin="0,0,2,0">
             <!-- Volume Icon -->
             <Button Width="20" Height="20" 
                     Background="Transparent" 
@@ -139,12 +141,10 @@
             </Button>
             <!-- Volume Slider -->
             <Slider x:Name="volumeSlider"
-                    Value="{Binding Volume}"
-                    Minimum="0" Maximum="1" 
-                    TickFrequency="0.1"
-                    Orientation="Vertical"
-                    Height="70"
-                    Margin="0,22,0,0"/>
+         ValueChanged="VolumeSlider_ValueChanged"
+         Value="{Binding Volume}"
+         Minimum="0" Maximum="1" TickFrequency="0.1"
+         Orientation="Vertical" Height="70" Margin="0,22,0,0"/>
 
             <!-- Visibility trigger for the volume control -->
             <Grid.Style>

@@ -21,34 +21,87 @@ namespace PressPlay.Timeline
         public TrackItemControl()
         {
             InitializeComponent();
-            // Add mouse down handler at the Border level
-            this.PreviewMouseLeftButtonDown += TrackItem_PreviewMouseLeftButtonDown;
-            volumeSlider.ValueChanged += volumeSlider_ValueChanged;
+
+            // Handle clip selection/drag on mouse down (bubbling)
+            this.MouseLeftButtonDown += TrackItem_MouseLeftButtonDown;
+
+            // Initialize volume slider value and visibility once loaded
+            this.Loaded += TrackItemControl_Loaded;
         }
-        private void TrackItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+
+        private void TrackItemControl_Loaded(object sender, RoutedEventArgs e)
         {
-            // Get the parent timeline control
+            if (DataContext is TrackItem ti)
+            {
+                // Ensure default volume is set
+                if (ti.Volume <= 0)
+                    ti.Volume = 1.0f;
+
+                // Reflect current volume in slider
+                volumeSlider.Value = ti.Volume;
+
+                // Show or hide volume control based on track type
+                bool isVideo = ti.Type.ToString().Contains("Video");
+                VolumeControl.Visibility = isVideo ? Visibility.Visible : Visibility.Collapsed;
+                Debug.WriteLine($"Volume control {(isVideo ? "visible" : "hidden")} for {ti.FileName}");
+            }
+        }
+
+        /// <summary>
+        /// Updates the TrackItem's volume when the slider value changes.
+        /// </summary>
+        private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (sender is Slider slider && DataContext is TrackItem item)
+            {
+                float newVolume = (float)slider.Value;
+                item.Volume = newVolume;
+                Debug.WriteLine($"Volume updated: {newVolume} for clip {item.FileName}");
+
+                // If playback is active, force immediate audio update
+                _timelineControl ??= VisualHelper.GetAncestor<TimelineControl>(this);
+                if (_timelineControl?.Project?.IsPlaying == true)
+                {
+                    _timelineControl.Project.RaiseNeedlePositionTimeChanged(
+                        _timelineControl.Project.NeedlePositionTime);
+                }
+            }
+        }
+
+        private void TrackItem_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
             _timelineControl ??= VisualHelper.GetAncestor<TimelineControl>(this);
+
+            // If click occurs within the volume control area, do not start clip drag
+            if (VolumeControl.Visibility == Visibility.Visible)
+            {
+                Point pt = e.GetPosition(VolumeControl);
+                if (pt.X >= 0 && pt.X <= VolumeControl.ActualWidth &&
+                    pt.Y >= 0 && pt.Y <= VolumeControl.ActualHeight)
+                {
+                    Debug.WriteLine("Click on volume control - skipping clip drag");
+                    e.Handled = true;
+                    return;
+                }
+            }
 
             if (DataContext is TrackItem trackItem)
             {
-                // Mark item as selected
+                // Select the clip
                 trackItem.IsSelected = true;
 
-                // Store mouse position for potential dragging
+                // Prepare for potential dragging
                 _startPoint = e.GetPosition(this);
-
-                // Important: Capture the mouse to get mouse move events
                 this.CaptureMouse();
 
-                // Mark the event as handled to prevent it bubbling up
                 e.Handled = true;
             }
         }
+
         protected override void OnMouseEnter(MouseEventArgs e)
         {
             base.OnMouseEnter(e);
-            Cursor = Cursors.Hand; // Show hand cursor by default to indicate draggable
+            Cursor = Cursors.Hand; // Indicate draggable
         }
 
         protected override void OnPreviewMouseMove(MouseEventArgs e)
@@ -57,35 +110,34 @@ namespace PressPlay.Timeline
 
             if (DataContext is TrackItem trackItem && !trackItem.IsSelected)
             {
-                double mouseX = e.GetPosition(this).X;
-                double width = this.ActualWidth;
+                double x = e.GetPosition(this).X;
+                double w = this.ActualWidth;
 
-                // Show appropriate cursor
-                if (mouseX <= 5)
+                // Show resize cursor at edges, hand otherwise
+                if (x <= 5)
                 {
-                    Cursor = Cursors.SizeWE; // Left resize
+                    Cursor = Cursors.SizeWE;
                     resizeBorder.BorderThickness = new Thickness(2, 0, 0, 0);
                 }
-                else if (mouseX >= width - 5)
+                else if (x >= w - 5)
                 {
-                    Cursor = Cursors.SizeWE; // Right resize
+                    Cursor = Cursors.SizeWE;
                     resizeBorder.BorderThickness = new Thickness(0, 0, 2, 0);
                 }
                 else
                 {
-                    Cursor = Cursors.Hand; // Draggable
+                    Cursor = Cursors.Hand;
                     resizeBorder.BorderThickness = new Thickness(0);
                 }
             }
 
             base.OnPreviewMouseMove(e);
         }
+
         protected override void OnPreviewMouseLeftButtonUp(MouseButtonEventArgs e)
         {
             if (this.IsMouseCaptured)
-            {
                 this.ReleaseMouseCapture();
-            }
 
             base.OnPreviewMouseLeftButtonUp(e);
         }
@@ -98,20 +150,18 @@ namespace PressPlay.Timeline
 
         private void CutItem_Click(object sender, RoutedEventArgs e)
         {
-            _timelineControl.Project.Cut();
+            _timelineControl?.Project.Cut();
         }
 
         private void CopyItem_Click(object sender, RoutedEventArgs e)
         {
-            _timelineControl.Project.Copy();
+            _timelineControl?.Project.Copy();
         }
 
         private void DeleteItem_Click(object sender, RoutedEventArgs e)
         {
             if (DataContext is TrackItem)
-            {
-                _timelineControl.Project.DeleteSelectedItems();
-            }
+                _timelineControl?.Project.DeleteSelectedItems();
         }
 
         private void Border_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -119,17 +169,8 @@ namespace PressPlay.Timeline
             if (DataContext is AudioTrackItem trackItem)
             {
                 var project = MainWindowViewModel.Instance.CurrentProject;
-                var startLength = PixelCalculator.GetPixels(trackItem.Start.TotalFrames, project.TimelineZoom);
-                img.Margin = new Thickness(-startLength, 0, 0, 0);
-            }
-        }
-
-        private void volumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (DataContext is TrackItem trackItem)
-            {
-                trackItem.Volume = (float)e.NewValue;
-                Debug.WriteLine($"Volume changed to {trackItem.Volume} for {trackItem.FileName}");
+                var offset = PixelCalculator.GetPixels(trackItem.Start.TotalFrames, project.TimelineZoom);
+                img.Margin = new Thickness(-offset, 0, 0, 0);
             }
         }
     }

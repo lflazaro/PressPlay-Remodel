@@ -11,6 +11,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Shapes;
+using System.Windows.Media;
 
 namespace PressPlay.Timeline
 {
@@ -92,7 +93,19 @@ namespace PressPlay.Timeline
         {
             tracksHScrollView.ScrollToHorizontalOffset(e.NewValue);
         }
-
+        public static class VisualTreeHelpers
+        {
+            public static T FindAncestor<T>(DependencyObject current) where T : DependencyObject
+            {
+                while (current != null)
+                {
+                    if (current is T match)
+                        return match;
+                    current = VisualTreeHelper.GetParent(current);
+                }
+                return null;
+            }
+        }
         private void TracksCanvas_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.OriginalSource is FrameworkElement fe && fe.DataContext is ITrackItem item)
@@ -103,14 +116,14 @@ namespace PressPlay.Timeline
 
         private void TracksCanvas_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            //TODO: Check if the mouse is over a track item or a fade control
-            //TODO: We need to fix the selection tool. Right now the only way you can select and move a clip is with the selection tool (which you can switch with the cutting tool using the two radio buttons above)
-            //by hovering your mouse over the end of the clip (until the cursor changes to that of a text field cursor) and then dragging it in an X-axis, but I'd like to get rid of the radio buttons altogether and
-            //just make it so that you can click anywhere over a clip, select it by visibly changing its background color, and drag it freely across the timeline and maybe even across tracks, while still retaining
-            //the cutting functionality in case you want to shorten it by grabbing it from the sides.
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                var over = e.OriginalSource as DependencyObject;
+                if (VisualTreeHelpers.FindAncestor<Slider>(over) != null)
+                    return;
+            }
             Focus();
             if (e.ClickCount > 1) return;
-
             _trackMouseDownX = e.GetPosition(tracksControl).X;
             Project.Tracks.SelectMany(t => t.Items).ToList().ForEach(x => x.IsSelected = false);
 
