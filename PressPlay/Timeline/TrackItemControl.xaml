@@ -7,16 +7,20 @@
         xmlns:models="clr-namespace:PressPlay.Models"
         xmlns:converters="clr-namespace:PressPlay.Converters"
         mc:Ignorable="d"
+        x:Name="itemControl"
         BorderThickness="1"
         VerticalAlignment="Stretch"
         Height="100"
         SizeChanged="Border_SizeChanged"
         d:DesignHeight="50" d:DesignWidth="100">
 
+    <!-- width = clip duration -->
     <Border.Width>
         <MultiBinding Converter="{converters:TrackItemDataToLengthConverter}">
-            <Binding Path="Project" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=local:TimelineControl}" />
-            <Binding Path="Project.TimelineZoom" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=local:TimelineControl}" />
+            <Binding Path="(local:TimelineControl.Project)"
+                     RelativeSource="{RelativeSource AncestorType=local:TimelineControl}" />
+            <Binding Path="(local:TimelineControl.Project).TimelineZoom"
+                     RelativeSource="{RelativeSource AncestorType=local:TimelineControl}" />
             <Binding Path="." />
             <Binding Path="Start" />
             <Binding Path="End" />
@@ -25,10 +29,10 @@
 
     <Border.ContextMenu>
         <ContextMenu>
-            <MenuItem Header="Cut" Click="CutItem_Click" InputGestureText="Ctrl+X" />
-            <MenuItem Header="Copy" Click="CopyItem_Click" InputGestureText="Ctrl+C" />
-            <Separator />
-            <MenuItem Header="Delete" Click="DeleteItem_Click" InputGestureText="Del" />
+            <MenuItem Header="Cut"    Click="CutItem_Click"    InputGestureText="Ctrl+X" />
+            <MenuItem Header="Copy"   Click="CopyItem_Click"   InputGestureText="Ctrl+C" />
+            <Separator/>
+            <MenuItem Header="Delete" Click="DeleteItem_Click" InputGestureText="Del"   />
         </ContextMenu>
     </Border.ContextMenu>
 
@@ -44,15 +48,14 @@
                 <DataTrigger Binding="{Binding Type}" Value="Audio">
                     <Setter Property="Background" Value="#0d3a20" />
                 </DataTrigger>
-
                 <DataTrigger Binding="{Binding IsSelected}" Value="False">
                     <Setter Property="BorderBrush" Value="Black" />
-                    <Setter Property="Opacity" Value="0.9" />
+                    <Setter Property="Opacity"      Value="0.9"   />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                    <Setter Property="BorderBrush" Value="White" />
-                    <Setter Property="BorderThickness" Value="2" />
-                    <Setter Property="Opacity" Value="1.0" />
+                    <Setter Property="BorderBrush"    Value="White" />
+                    <Setter Property="BorderThickness" Value="2"     />
+                    <Setter Property="Opacity"          Value="1.0" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -61,19 +64,27 @@
     <Grid>
         <Canvas ClipToBounds="True">
 
+            <!-- this grid holds the background or waveform image -->
             <Grid IsHitTestVisible="False">
                 <Border Height="100">
-                    <Image x:Name="img" Stretch="UniformToFill">
+                    <Image x:Name="img" Stretch="None"
+      HorizontalAlignment="Left"
+      ClipToBounds="True">
                         <Image.Style>
                             <Style TargetType="Image">
                                 <Style.Triggers>
+                                    <!-- audio items show the waveform -->
                                     <DataTrigger Binding="{Binding Type}" Value="Audio">
                                         <Setter Property="Source">
                                             <Setter.Value>
                                                 <MultiBinding Converter="{converters:AudioTrackItemThumbnailGeneratorConverter}">
-                                                    <Binding Path="Project" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=local:TimelineControl}" />
+                                                    <!-- 1) the Project DP -->
+                                                    <Binding Path="(local:TimelineControl.Project)"
+                                                             RelativeSource="{RelativeSource AncestorType=local:TimelineControl}" />
+                                                    <!-- 2) the AudioTrackItem itself -->
                                                     <Binding />
-                                                    <Binding Path="ActualWidth" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=local:TrackItemControl}" />
+                                                    <!-- 3) this control (so converter can read ActualHeight if it wants) -->
+                                                    <Binding ElementName="itemControl" />
                                                 </MultiBinding>
                                             </Setter.Value>
                                         </Setter>
@@ -84,32 +95,48 @@
                     </Image>
                 </Border>
 
+                <!-- fallback thumbnail & labels -->
                 <Border Grid.Column="0" Height="50" Width="80" HorizontalAlignment="Left">
-                    <Image Stretch="Uniform" HorizontalAlignment="Left" Source="{Binding Thumbnail}" />
+                    <Image Stretch="Uniform"
+                           HorizontalAlignment="Left"
+                           Source="{Binding Thumbnail}" />
                 </Border>
-
-                <TextBlock Text="{Binding Name}" Padding="3,0" Foreground="WhiteSmoke" VerticalAlignment="Top" HorizontalAlignment="Left">
+                <TextBlock Text="{Binding FileName}"
+                           Padding="3,0"
+                           Foreground="WhiteSmoke"
+                           VerticalAlignment="Top"
+                           HorizontalAlignment="Left">
                     <TextBlock.Background>
                         <SolidColorBrush Color="#1b1e20" Opacity="0.5" />
                     </TextBlock.Background>
                 </TextBlock>
-                <TextBlock Text="{Binding Note}" Padding="3,0" Foreground="WhiteSmoke" VerticalAlignment="Bottom" />
+                <TextBlock Text="{Binding Note}"
+                           Padding="3,0"
+                           Foreground="WhiteSmoke"
+                           VerticalAlignment="Bottom" />
             </Grid>
-            <local:FadeControl ControlType="Left" />
+
+            <!-- fade grips (they’ll pick up the TimelineControl binding for fade positions) -->
+            <local:FadeControl ControlType="Left"  />
             <local:FadeControl ControlType="Right" />
+
         </Canvas>
 
-        <Polygon Opacity="0.5" HorizontalAlignment="Left" Panel.ZIndex="1">
+        <!-- fade‐in handle -->
+        <Polygon Opacity="0.5" HorizontalAlignment="Left"  Panel.ZIndex="1">
             <Polygon.Style>
                 <Style TargetType="Polygon">
-                    <Setter Property="Fill" Value="Green" />
+                    <Setter Property="Fill" Value="Green"/>
                     <Setter Property="Points">
                         <Setter.Value>
-                            <MultiBinding Converter="{converters:TrackItemFadePositionConverter}" ConverterParameter="{x:Static models:FadeControlType.Left}">
-                                <Binding Path="Project" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=local:TimelineControl}" />
-                                <Binding Path="Project.TimelineZoom" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=local:TimelineControl}" />
-                                <Binding />
-                                <Binding Path="FadeInFrame" />
+                            <MultiBinding Converter="{converters:TrackItemFadePositionConverter}"
+                                          ConverterParameter="{x:Static models:FadeControlType.Left}">
+                                <Binding Path="(local:TimelineControl.Project)"
+                                         RelativeSource="{RelativeSource AncestorType=local:TimelineControl}"/>
+                                <Binding Path="(local:TimelineControl.Project).TimelineZoom"
+                                         RelativeSource="{RelativeSource AncestorType=local:TimelineControl}"/>
+                                <Binding/>
+                                <Binding Path="FadeInFrame"/>
                             </MultiBinding>
                         </Setter.Value>
                     </Setter>
@@ -117,17 +144,21 @@
             </Polygon.Style>
         </Polygon>
 
+        <!-- fade‐out handle -->
         <Polygon Opacity="0.5" HorizontalAlignment="Right" Panel.ZIndex="1">
             <Polygon.Style>
                 <Style TargetType="Polygon">
-                    <Setter Property="Fill" Value="Red" />
+                    <Setter Property="Fill" Value="Red"/>
                     <Setter Property="Points">
                         <Setter.Value>
-                            <MultiBinding Converter="{converters:TrackItemFadePositionConverter}" ConverterParameter="{x:Static models:FadeControlType.Right}">
-                                <Binding Path="Project" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=local:TimelineControl}" />
-                                <Binding Path="Project.TimelineZoom" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=local:TimelineControl}" />
-                                <Binding />
-                                <Binding Path="FadeOutFrame" />
+                            <MultiBinding Converter="{converters:TrackItemFadePositionConverter}"
+                                          ConverterParameter="{x:Static models:FadeControlType.Right}">
+                                <Binding Path="(local:TimelineControl.Project)"
+                                         RelativeSource="{RelativeSource AncestorType=local:TimelineControl}"/>
+                                <Binding Path="(local:TimelineControl.Project).TimelineZoom"
+                                         RelativeSource="{RelativeSource AncestorType=local:TimelineControl}"/>
+                                <Binding/>
+                                <Binding Path="FadeOutFrame"/>
                             </MultiBinding>
                         </Setter.Value>
                     </Setter>
@@ -136,7 +167,5 @@
         </Polygon>
 
         <Border x:Name="resizeBorder" BorderBrush="Orange" Margin="-1" />
-
     </Grid>
-
 </Border>

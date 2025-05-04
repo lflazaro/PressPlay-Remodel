@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Windows;
 using System.Windows.Data;
 using System.Windows.Markup;
 using System.Windows.Media.Imaging;
@@ -30,67 +32,62 @@ namespace PressPlay.Converters
         {
             var project = values.OfType<Project>().FirstOrDefault();
             var trackItem = values.OfType<AudioTrackItem>().FirstOrDefault();
-            if (project == null || trackItem == null)
+            var control = values.OfType<FrameworkElement>().FirstOrDefault();  // the TrackItemControl
+
+            if (project == null || trackItem == null || control == null)
                 return null;
 
-            // Find the clip metadata
+            // Find the clip
             var clip = project.Clips
                               .OfType<ProjectClip>()
                               .FirstOrDefault(c => c.Id == trackItem.ClipId);
             if (clip == null)
                 return null;
 
-            // Compute how wide the waveform should be
+            // Compute width from zoom
             var clipWidth = clip.GetWidth(project.TimelineZoom);
             if (clipWidth <= 0)
                 return null;
 
-            // Ensure our cache folder exists
-            Directory.CreateDirectory(CacheRoot);
+            // **Use the control's ActualHeight** (once measured) for the waveform height
+            int height = (int)Math.Round(control.ActualHeight);
+            // Fallback if ActualHeight hasn't been set yet
+            if (height < 20) height = 50;
 
-            const int ThumbHeight = 50;
-            string cacheFileName = $"{clip.GetFileHash()}_{(int)project.TimelineZoom}_{(int)clipWidth}_{ThumbHeight}.png";
-            string thumbPath = Path.Combine(CacheRoot, cacheFileName);
+            // Cache path logic unchanged...
+            var cacheFolder = Path.Combine(Path.GetTempPath(), "PressPlay", "Waveforms");
+            Directory.CreateDirectory(cacheFolder);
+            string fileName = $"{clip.GetFileHash()}_{project.TimelineZoom}_{clipWidth}_{height}.png";
+            var wavePath = Path.Combine(cacheFolder, fileName);
 
-            // Generate the PNG if it isn't already cached
-            if (!File.Exists(thumbPath))
+            if (!File.Exists(wavePath))
             {
                 try
                 {
-                    // <- Correct positional overload:
                     WaveFormGenerator.Generate(
                         (int)clipWidth,
-                        ThumbHeight,
-                        System.Drawing.Color.Transparent,
+                        height,
+                        Color.Transparent,
                         clip.FilePath,
-                        thumbPath
+                        wavePath
                     );
                 }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[WaveFormGenerator] failed for {clip.FilePath}: {ex}");
-                    return null;
-                }
+                catch { return null; }
             }
 
-            // Load it into a freezable BitmapImage so WPF can display it without locking the file
+            // Load BitmapImage
             try
             {
                 var bmp = new BitmapImage();
                 bmp.BeginInit();
-                bmp.UriSource = new Uri(thumbPath, UriKind.Absolute);
                 bmp.CacheOption = BitmapCacheOption.OnLoad;
+                bmp.UriSource = new Uri(wavePath);
                 bmp.EndInit();
                 bmp.Freeze();
                 return bmp;
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[WaveformLoad] failed for {thumbPath}: {ex}");
-                return null;
-            }
+            catch { return null; }
         }
-
         public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
             => throw new NotSupportedException();
     }

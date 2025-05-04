@@ -95,7 +95,7 @@ namespace PressPlay.Timeline
 
         private void TracksCanvas_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.OriginalSource is FrameworkElement fe && fe.DataContext is TrackItem item)
+            if (e.OriginalSource is FrameworkElement fe && fe.DataContext is ITrackItem item)
                 item.IsSelected = true;
 
             UpdateNeedlePosition(e.GetPosition(header).X);
@@ -114,7 +114,7 @@ namespace PressPlay.Timeline
             _trackMouseDownX = e.GetPosition(tracksControl).X;
             Project.Tracks.SelectMany(t => t.Items).ToList().ForEach(x => x.IsSelected = false);
 
-            if (e.OriginalSource is FrameworkElement fe && fe.DataContext is TrackItem item)
+            if (e.OriginalSource is FrameworkElement fe && fe.DataContext is ITrackItem item)
             {
                 var tic = fe as TrackItemControl ?? VisualHelper.GetAncestor<TrackItemControl>(fe);
                 double mouseX = e.GetPosition(tracksControl).X;
@@ -144,7 +144,7 @@ namespace PressPlay.Timeline
                     Project.CutItem(item, frame);
                 }
             }
-            else if (e.OriginalSource is Ellipse fadeControl && fadeControl.DataContext is TrackItem ti)
+            else if (e.OriginalSource is Ellipse fadeControl && fadeControl.DataContext is ITrackItem ti)
             {
                 _mouseDownTrackItem = ti;
                 _mouseDownTrackItemPosition = ti.Position;
@@ -264,32 +264,36 @@ namespace PressPlay.Timeline
                     Project.RemoveAndAddTrackItem((Track)originTrack, destTrack, _mouseDownTrackItem);
                 }
             }
-            else if (_tracksCanvasLeftMouseButtonDown && _mouseDownTrackItem != null && _resizingLeft)
+            else if (_tracksCanvasLeftMouseButtonDown
+         && _mouseDownTrackItem != null
+         && _resizingLeft)
             {
+                // 1) compute frames under the mouse
                 double x = e.GetPosition(tracksControl).X;
                 double itemX = _mouseDownElement.TranslatePoint(new Point(), tracksControl).X;
-                double frame0 = Math.Round(itemX / Constants.TimelinePixelsInSeparator
-                                            * Constants.TimelineZooms[Project.TimelineZoom],
-                                            MidpointRounding.ToZero);
-                double currentFrame = Math.Round(x / Constants.TimelinePixelsInSeparator
-                                                * Constants.TimelineZooms[Project.TimelineZoom],
-                                                MidpointRounding.ToZero);
-                var diff = frame0 - currentFrame;
-                var oldStart = _mouseDownTrackItem.Start;
+                double frame0 = Math.Round(itemX
+                                    / Constants.TimelinePixelsInSeparator
+                                    * Constants.TimelineZooms[Project.TimelineZoom],
+                                    MidpointRounding.ToZero);
+                double currentFr = Math.Round(x
+                                    / Constants.TimelinePixelsInSeparator
+                                    * Constants.TimelineZooms[Project.TimelineZoom],
+                                    MidpointRounding.ToZero);
 
-                if (!_mouseDownTrackItem.UnlimitedSourceLength)
-                    _mouseDownTrackItem.Start = new TimeCode(oldStart.TotalFrames - (int)diff, Project.FPS);
+                // 2) how many frames we've moved
+                int diff = (int)(frame0 - currentFr);
 
-                if (_mouseDownTrackItem.UnlimitedSourceLength)
-                {
-                    _mouseDownTrackItem.Position = new TimeCode(_mouseDownTrackItem.Position.TotalFrames - (int)diff, Project.FPS);
-                    _mouseDownTrackItem.End = new TimeCode(_mouseDownTrackItem.End.TotalFrames + (int)diff, Project.FPS);
-                }
-                else if (oldStart != _mouseDownTrackItem.Start)
-                {
-                    _mouseDownTrackItem.Position = new TimeCode(_mouseDownTrackItem.Position.TotalFrames - (int)diff, Project.FPS);
-                }
+                // 3) propose a new Start frame
+                int desiredStart = _mouseDownTrackItemStart.TotalFrames + diff;
+
+                // 4) clamp between zero and one less than the End
+                desiredStart = Math.Max(0, desiredStart);
+                desiredStart = Math.Min(desiredStart, _mouseDownTrackItemEnd.TotalFrames - 1);
+
+                // 5) apply it
+                _mouseDownTrackItem.Start = new TimeCode(desiredStart, Project.FPS);
             }
+
             else if (_tracksCanvasLeftMouseButtonDown && _mouseDownTrackItem != null && _resizingRight)
             {
                 double x = e.GetPosition(tracksControl).X;
@@ -402,25 +406,7 @@ namespace PressPlay.Timeline
             // For audio clips, we might want to auto-create an audio track
             if (clip.ItemType == TrackItemType.Audio)
             {
-                // If there's no audio track, create one now
-                var audioTrack = Project.Tracks
-                    .OfType<Track>()
-                    .FirstOrDefault(t => t.Type == TimelineTrackType.Audio);
-
-                if (audioTrack == null)
-                {
-                    // Insert at the bottom:
-                    audioTrack = new Track
-                    {
-                        Name = $"Audio {Project.Tracks.Count(t => t.Type == TimelineTrackType.Audio) + 1}",
-                        Type = TimelineTrackType.Audio
-                    };
-                    Project.Tracks.Add(audioTrack);
-                    Debug.WriteLine("[TimelineControl] Auto-added Audio track");
-                }
-
-                // Now fall through to your existing logic that creates an AudioTrackItem
-                // and adds it to `audioTrack.Items`
+                targetTrack = EnsureAudioTrackExists();
             }
             else
             {
@@ -502,11 +488,20 @@ namespace PressPlay.Timeline
 
         private void Timeline_PreviewDragOver(object sender, DragEventArgs e)
         {
-            if (!(e.Data.GetData(typeof(ProjectClip)) is ProjectClip clip) || !(e.OriginalSource is FrameworkElement fe && fe.DataContext is ITimelineTrack tt && clip.IsCompatibleWith(tt.Type)))
+            if (e.Data.GetData(typeof(ProjectClip)) is ProjectClip clip)
             {
-                e.Effects = DragDropEffects.None;
-                e.Handled = true;
+                // Always allow audio clips (we'll auto-create a track)
+                if (clip.ItemType == TrackItemType.Audio)
+                    return;
+
+                // For non-audio, check compatibility with target track
+                if (e.OriginalSource is FrameworkElement fe && fe.DataContext is ITimelineTrack tt && clip.IsCompatibleWith(tt.Type))
+                    return;
             }
+
+            // Disallow the drop if we got here
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
         }
 
         private void Timeline_PreviewKeyUp(object sender, KeyEventArgs e)

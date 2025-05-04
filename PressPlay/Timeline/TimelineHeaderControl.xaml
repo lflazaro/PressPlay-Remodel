@@ -5,7 +5,7 @@
     <ScrollViewer x:Name="HeaderScrollViewer"
                 ClipToBounds="True"
                 HorizontalScrollBarVisibility="Hidden"
-                VerticalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Hidden"
                 Height="30">
         <Canvas x:Name="RootCanvas"
             Height="30"

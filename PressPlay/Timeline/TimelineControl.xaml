@@ -30,54 +30,78 @@
         <converters:NeedlePositionConverter               x:Key="NeedlePosConverter"/>
         <converters:DurationToWidthConverter              x:Key="DurationToWidthConverter"/>
         <converters:ByteArrayToImageConverter             x:Key="WaveformImageConverter"/>
-        <converters:BoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" Invert="True" />
-        <converters:BoolToBrushConverter x:Key="SelectedBorderConverter" 
-                                TrueValue="{StaticResource {x:Static SystemColors.HighlightBrushKey}}" 
-                                FalseValue="#444444" />
-        <converters:BoolToThicknessConverter x:Key="SelectedBorderThicknessConverter"
-                                    TrueValue="2" FalseValue="1" />
-        <!-- AudioTrackItem DataTemplate -->
-        <DataTemplate DataType="{x:Type models:AudioTrackItem}">
-            <local:TrackItemControl Background="#0d3a20" 
-                           BorderBrush="{Binding IsSelected, Converter={StaticResource SelectedBorderConverter}}"
-                           BorderThickness="{Binding IsSelected, Converter={StaticResource SelectedBorderThicknessConverter}}">
-                <Grid>
-                    <!-- Waveform display -->
-                    <Image Source="{Binding WaveformImagePath}"
-                   Stretch="Fill"
-                   Height="48"
-                   Margin="0,1"
-                   RenderOptions.BitmapScalingMode="HighQuality"
-                   Opacity="0.9" />
+        <converters:BoolToVisibilityConverter             x:Key="InverseBoolToVisibilityConverter" Invert="True" />
+        <converters:BoolToBrushConverter                  x:Key="SelectedBorderConverter"
+                                                           TrueValue="{StaticResource {x:Static SystemColors.HighlightBrushKey}}"
+                                                           FalseValue="#444444" />
+        <converters:BoolToThicknessConverter              x:Key="SelectedBorderThicknessConverter"
+                                                           TrueValue="2" FalseValue="1" />
 
-                    <!-- Clip name -->
-                    <TextBlock Text="{Binding FileName}" 
-                       Margin="5,2"
-                       Foreground="White"
-                       VerticalAlignment="Top"
-                       HorizontalAlignment="Left">
+        <!-- waveform‐thumbnail converter -->
+        <converters:AudioTrackItemThumbnailGeneratorConverter x:Key="AudioWaveformConverter"/>
+
+        <!-- make every TrackItemControl at least 50px tall -->
+        <Style TargetType="local:TrackItemControl">
+            <Setter Property="MinHeight" Value="50"/>
+        </Style>
+
+        <!-- 1) Implicit template for AudioTrackItem -->
+        <DataTemplate DataType="{x:Type models:AudioTrackItem}">
+            <!-- Use TrackItemControl as the root so your drag code finds it -->
+            <local:TrackItemControl x:Name="itemControl"
+                         Width="{Binding Clip.GetWidth(Project.TimelineZoom),
+                                         RelativeSource={RelativeSource AncestorType=local:TimelineControl}}"
+                         Background="#0d3a20"
+                         BorderBrush="{Binding IsSelected, Converter={StaticResource SelectedBorderConverter}}"
+                         BorderThickness="{Binding IsSelected, Converter={StaticResource SelectedBorderThicknessConverter}}">
+                <Grid>
+                    <!-- Waveform image -->
+                    <Image Stretch="None"
+                           HorizontalAlignment="Left"
+                           RenderOptions.BitmapScalingMode="HighQuality"
+                           Opacity="0.9">
+                        <Image.Source>
+                            <MultiBinding Converter="{StaticResource AudioWaveformConverter}">
+                                <Binding Path="Project" RelativeSource="{RelativeSource AncestorType=local:TimelineControl}"/>
+                                <Binding Path="."/>
+                                <!-- the AudioTrackItem -->
+                                <Binding ElementName="itemControl"/>
+                                <!-- so it can pick up ActualHeight -->
+                            </MultiBinding>
+                        </Image.Source>
+                    </Image>
+                    <!-- Clip name overlay -->
+                    <TextBlock Text="{Binding Clip.FileName}"
+                               Margin="5,2"
+                               Foreground="White"
+                               VerticalAlignment="Top"
+                               HorizontalAlignment="Left">
                         <TextBlock.Background>
-                            <SolidColorBrush Color="#444444" Opacity="0.5" />
+                            <SolidColorBrush Color="#444444" Opacity="0.5"/>
                         </TextBlock.Background>
                     </TextBlock>
-
-                    <!-- Loading indicator -->
-                    <Border Background="#3F000000" 
-                    BorderBrush="#777"
-                    BorderThickness="1"
-                    CornerRadius="2"
-                    Width="120"
-                    Height="24"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Visibility="{Binding HasWaveform, Converter={StaticResource InverseBoolToVisibilityConverter}}">
-                        <TextBlock Text="Loading waveform..." 
-                          Foreground="White"
-                          HorizontalAlignment="Center"
-                          VerticalAlignment="Center"/>
+                    <!-- Loading placeholder -->
+                    <Border Background="#3F000000"
+                            BorderBrush="#777"
+                            BorderThickness="1"
+                            CornerRadius="2"
+                            Width="120" Height="24"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Visibility="{Binding HasWaveform, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                        <TextBlock Text="Loading waveform..."
+                                   Foreground="White"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
                     </Border>
                 </Grid>
             </local:TrackItemControl>
+        </DataTemplate>
+
+
+        <!-- 2) Implicit template for video (TrackItem) -->
+        <DataTemplate DataType="{x:Type models:TrackItem}">
+            <local:TrackItemControl/>
         </DataTemplate>
     </UserControl.Resources>
 
@@ -123,10 +147,24 @@
                                                                                 AncestorType={x:Type local:TimelineControl}}}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Height="{Binding Height}"
-                                        Background="#FF2C2C2C"
+                                <!-- header Border: default height video, override for audio -->
+                                <Border Background="#FF2C2C2C"
                                         BorderBrush="Gray"
-                                        BorderThickness="0.5">
+                                        BorderThickness="0.5"
+                                        MinHeight="20"
+                                        SnapsToDevicePixels="True">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <!-- default header height for video -->
+                                            <Setter Property="Height" Value="100"/>
+                                            <Style.Triggers>
+                                                <!-- if this track is Audio, bump to 100px -->
+                                                <DataTrigger Binding="{Binding Type}" Value="Audio">
+                                                    <Setter Property="Height" Value="100"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
                                     <TextBlock Text="{Binding Name}"
                                                Margin="3,0"
                                                VerticalAlignment="Center"
@@ -157,8 +195,8 @@
 
                     <ItemsControl x:Name="tracksControl"
                                   ItemsSource="{Binding Project.Tracks,
-                                                        RelativeSource={RelativeSource Mode=FindAncestor,
-                                                                                AncestorType={x:Type local:TimelineControl}}}"
+                                                       RelativeSource={RelativeSource Mode=FindAncestor,
+                                                                               AncestorType={x:Type local:TimelineControl}}}"
                                   Width="{Binding ActualWidth, ElementName=tracksHScrollView}"
                                   Margin="0,30,0,0">
                         <ItemsControl.ContextMenu>
@@ -170,19 +208,31 @@
                         </ItemsControl.ContextMenu>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Height="{Binding Height}"
-                                        Width="{Binding Width,
+                                <!-- Styled Border:  height controlled by above header style -->
+                                <Border Width="{Binding Width,
                                                         RelativeSource={RelativeSource Mode=FindAncestor,
                                                                                 AncestorType={x:Type ItemsControl}}}"
                                         Background="#FF2C2C2C"
                                         BorderBrush="Gray"
                                         BorderThickness="0.5"
-                                        MinHeight="80">
+                                        MinHeight="80"
+                                        SnapsToDevicePixels="True">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Height" Value="100"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Type}" Value="Audio">
+                                                    <Setter Property="Height" Value="100"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+
                                     <ItemsControl ItemsSource="{Binding Items}">
+                                        <!-- use ContentPresenter so the correct DataTemplate is applied -->
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <!-- This will pick up our AudioTrackItem template automatically for audio items -->
-                                                <local:TrackItemControl/>
+                                                <ContentPresenter Content="{Binding}"/>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                         <ItemsControl.ItemsPanel>

@@ -361,35 +361,37 @@ namespace PressPlay.Models
 
             try
             {
+                // Create directory for waveforms
+                var waveformDir = Path.Combine(Path.GetTempPath(), "PressPlay", "Waveforms");
+                Directory.CreateDirectory(waveformDir);
+
+                // Create a unique hash for this audio file
+                string hash = "";
+                using (var md5 = MD5.Create())
+                using (var stream = File.OpenRead(FilePath))
+                {
+                    hash = BitConverter.ToString(md5.ComputeHash(stream))
+                        .Replace("-", "")
+                        .ToLowerInvariant();
+                }
+
+                // Path to store waveform image
+                string waveformPath = Path.Combine(waveformDir, $"{hash}.png");
+
+                // If waveform image already exists, use it immediately
+                if (File.Exists(waveformPath))
+                {
+                    Application.Current.Dispatcher.Invoke(() => {
+                        WaveformImagePath = waveformPath;
+                        Debug.WriteLine($"Using existing waveform: {waveformPath}");
+                    });
+                    return;
+                }
+
                 await Task.Run(() =>
                 {
                     try
                     {
-                        // Create directory for waveforms
-                        var waveformDir = Path.Combine(Path.GetTempPath(), "PressPlay", "Waveforms");
-                        Directory.CreateDirectory(waveformDir);
-
-                        // Create a unique hash for this audio file
-                        string hash;
-                        using (var md5 = MD5.Create())
-                        using (var stream = File.OpenRead(FilePath))
-                        {
-                            hash = BitConverter.ToString(md5.ComputeHash(stream))
-                                .Replace("-", "")
-                                .ToLowerInvariant();
-                        }
-
-                        // Path to store waveform image
-                        string waveformPath = Path.Combine(waveformDir, $"{hash}.png");
-
-                        // If waveform image already exists, use it
-                        if (File.Exists(waveformPath))
-                        {
-                            Debug.WriteLine($"Using existing waveform: {waveformPath}");
-                            WaveformImagePath = waveformPath;
-                            return;
-                        }
-
                         // Calculate width based on duration
                         int width = 600; // Default width
                         if (Duration != null && Duration.TotalFrames > 0)
@@ -409,14 +411,14 @@ namespace PressPlay.Models
                         WaveFormGenerator.Generate(
                             width,
                             height,
-                            Color.Transparent,  // Transparent background
+                            Color.FromArgb(255, 0, 255, 0), // Light green with alpha
                             FilePath,
                             waveformPath
                         );
 
                         Debug.WriteLine($"Waveform generated: {waveformPath}");
 
-                        // Update property on UI thread
+                        // Update property on UI thread - this is critical!
                         Application.Current.Dispatcher.Invoke(() =>
                         {
                             WaveformImagePath = waveformPath;
@@ -425,7 +427,7 @@ namespace PressPlay.Models
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"Error in waveform generation task: {ex.Message}");
+                        Debug.WriteLine($"Error generating waveform: {ex.Message}");
                         Debug.WriteLine(ex.StackTrace);
                     }
                 });

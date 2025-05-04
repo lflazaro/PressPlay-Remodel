@@ -11,34 +11,55 @@ namespace PressPlay.Converters
     {
         public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
+            // guard early
+            if (values == null || values.Length < 3)
+            {
+                if (targetType == typeof(PointCollection)) return new PointCollection();
+                if (targetType == typeof(double)) return 0.0;
+                return null;
+            }
+
             var project = values[0] as Project;
             var item = values[2] as ITrackItem;
 
+            // if we still don't have a project or item, bail out safely
+            if (project == null || item == null)
+            {
+                if (targetType == typeof(PointCollection)) return new PointCollection();
+                if (targetType == typeof(double)) return 0.0;
+                return null;
+            }
+
+            // now we know project & item are non-null
             if (targetType == typeof(double))
             {
-                var pos = (FadeControlType)parameter == FadeControlType.Left ? item.GetFadeInXPosition(project.TimelineZoom) : item.GetFadeOutXPosition(project.TimelineZoom);
-
-                return pos;
+                bool isLeft = (FadeControlType)parameter == FadeControlType.Left;
+                return isLeft
+                    ? item.GetFadeInXPosition(project.TimelineZoom)
+                    : item.GetFadeOutXPosition(project.TimelineZoom);
             }
 
             if (targetType == typeof(PointCollection))
             {
-                var collection = new PointCollection();
+                bool isLeft = (FadeControlType)parameter == FadeControlType.Left;
+                var collection = new PointCollection
+        {
+            new System.Windows.Point(0, 0),
+            new System.Windows.Point(0, 48)
+        };
 
-                if ((FadeControlType)parameter == FadeControlType.Left)
+                if (isLeft)
                 {
-                    collection.Add(new System.Windows.Point(0, 0));
-                    collection.Add(new System.Windows.Point(0, 48));
-                    collection.Add(new System.Windows.Point(item.GetFadeInXPosition(project.TimelineZoom), 0));
+                    collection.Add(new System.Windows.Point(
+                        item.GetFadeInXPosition(project.TimelineZoom),
+                        0));
                 }
                 else
                 {
-                    //<Point X="0" Y="0" />
-                    //<Point X="0" Y="48" />
-                    //<Point X="-10" Y="0" />
-                    collection.Add(new System.Windows.Point(0, 0));
-                    collection.Add(new System.Windows.Point(0, 48));
-                    collection.Add(new System.Windows.Point(item.GetFadeOutXPosition(project.TimelineZoom) * -1, 0));
+                    // negative direction for right handle
+                    collection.Add(new System.Windows.Point(
+                        -item.GetFadeOutXPosition(project.TimelineZoom),
+                        0));
                 }
 
                 return collection;
@@ -46,6 +67,7 @@ namespace PressPlay.Converters
 
             return null;
         }
+
 
         public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
         {

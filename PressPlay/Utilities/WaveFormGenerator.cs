@@ -49,9 +49,10 @@ namespace PressPlay.Utilities
                 BottomHeight = height / 2,
                 BackgroundColor = background,
 
-                // Customize these pens however you like
-                TopPeakPen = new Pen(Color.LightGreen, 1),
-                BottomPeakPen = new Pen(Color.LightGreen, 1),
+                // More vibrant colors for better visibility
+                TopPeakPen = new Pen(Color.FromArgb(230, 0, 255, 0), 1.5f),  // Brighter green
+                BottomPeakPen = new Pen(Color.FromArgb(230, 0, 255, 0), 1.5f),
+
             };
         }
     }

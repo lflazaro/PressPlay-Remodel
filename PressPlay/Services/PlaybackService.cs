@@ -265,6 +265,8 @@ namespace PressPlay.Services
 
                 // compute position within that clip
                 double offsetFrames = frameIndex - audioItem.Position.TotalFrames + audioItem.Start.TotalFrames;
+                if (offsetFrames < 0)
+                    offsetFrames = 0;
                 TimeSpan clipPos = TimeSpan.FromSeconds(offsetFrames / _project.FPS);
 
                 // if same clip, just reposition / resume
