@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -22,6 +23,7 @@ namespace PressPlay.Timeline
             InitializeComponent();
             // Add mouse down handler at the Border level
             this.PreviewMouseLeftButtonDown += TrackItem_PreviewMouseLeftButtonDown;
+            volumeSlider.ValueChanged += volumeSlider_ValueChanged;
         }
         private void TrackItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -119,6 +121,15 @@ namespace PressPlay.Timeline
                 var project = MainWindowViewModel.Instance.CurrentProject;
                 var startLength = PixelCalculator.GetPixels(trackItem.Start.TotalFrames, project.TimelineZoom);
                 img.Margin = new Thickness(-startLength, 0, 0, 0);
+            }
+        }
+
+        private void volumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (DataContext is TrackItem trackItem)
+            {
+                trackItem.Volume = (float)e.NewValue;
+                Debug.WriteLine($"Volume changed to {trackItem.Volume} for {trackItem.FileName}");
             }
         }
     }

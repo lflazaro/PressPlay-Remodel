@@ -36,6 +36,19 @@ namespace PressPlay.Models
                 }
             }
         }
+        private string _type = "Video"; // Default type for TrackItem
+        public string Type
+        {
+            get => _type;
+            set
+            {
+                if (_type != value)
+                {
+                    _type = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
         public double StartTime
         {
             get => _startTime;
@@ -189,7 +202,19 @@ namespace PressPlay.Models
                 }
             }
         }
-
+        private float _volume = 1.0f;
+        public float Volume
+        {
+            get => _volume;
+            set
+            {
+                if (_volume != value)
+                {
+                    _volume = Math.Clamp(value, 0.0f, 1.0f);
+                    OnPropertyChanged();
+                }
+            }
+        }
         public byte[] Thumbnail
         {
             get => _thumbnail;

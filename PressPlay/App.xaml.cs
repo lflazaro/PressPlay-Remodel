@@ -125,9 +125,45 @@ namespace PressPlay
         {
             try
             {
-                // Check if FFMpeg binaries exist
-                // This is a placeholder - you would implement proper FFMpeg initialization
-                // based on the FFMpegCore package requirements
+                string appDataPath = GetAppDataPath();
+                string ffmpegPath = Path.Combine(appDataPath, "FFmpeg");
+
+                // If FFmpeg binaries don't exist in app data, check application directory
+                if (!Directory.Exists(ffmpegPath))
+                {
+                    string executablePath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+                    string alternativePath = Path.Combine(executablePath, "ffmpeg");
+
+                    if (Directory.Exists(alternativePath))
+                    {
+                        ffmpegPath = alternativePath;
+                    }
+                    else
+                    {
+                        // Create directory for FFmpeg binaries
+                        Directory.CreateDirectory(ffmpegPath);
+
+                        // In a real app, you'd download or extract FFmpeg binaries here
+                        // For now, just show a message
+                        MessageBox.Show(
+                            "FFmpeg binaries not found. Please ensure FFmpeg is properly installed.",
+                            "FFmpeg Configuration",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                    }
+                }
+
+                // Configure FFMpegCore to use the correct path
+                FFMpegCore.GlobalFFOptions.Configure(options =>
+                {
+                    options.BinaryFolder = ffmpegPath;
+                    options.TemporaryFilesFolder = Path.Combine(appDataPath, "Temp");
+                });
+
+                // Set environment variable for other components
+                Environment.SetEnvironmentVariable("FFMPEG_CORE_DIR", ffmpegPath);
+
+                System.Diagnostics.Debug.WriteLine($"FFmpeg initialized with path: {ffmpegPath}");
             }
             catch (Exception ex)
             {

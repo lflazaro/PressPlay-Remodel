@@ -37,7 +37,19 @@ namespace PressPlay.Models
         private TimeCode _originalEnd;
         private string _waveformImagePath;
         private bool _waveformGenerationInProgress;
-
+        private float _volume = 1.0f;
+        public float Volume
+        {
+            get => _volume;
+            set
+            {
+                if (_volume != value)
+                {
+                    _volume = Math.Clamp(value, 0.0f, 1.0f);
+                    OnPropertyChanged();
+                }
+            }
+        }
         // Waveform related properties
         public string WaveformImagePath
         {

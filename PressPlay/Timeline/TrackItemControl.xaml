@@ -6,6 +6,7 @@
         xmlns:local="clr-namespace:PressPlay.Timeline"
         xmlns:models="clr-namespace:PressPlay.Models"
         xmlns:converters="clr-namespace:PressPlay.Converters"
+        xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
         mc:Ignorable="d"
         x:Name="itemControl"
         BorderThickness="1"
@@ -116,11 +117,47 @@
                            VerticalAlignment="Bottom" />
             </Grid>
 
-            <!-- fade grips (they’ll pick up the TimelineControl binding for fade positions) -->
+            <!-- fade grips (they'll pick up the TimelineControl binding for fade positions) -->
             <local:FadeControl ControlType="Left"  />
             <local:FadeControl ControlType="Right" />
 
         </Canvas>
+
+        <!-- Volume control (only for video clips) -->
+        <Grid x:Name="VolumeControl" 
+              Width="20" 
+              HorizontalAlignment="Right"
+              Margin="0,0,2,0">
+            <!-- Volume Icon -->
+            <Button Width="20" Height="20" 
+                    Background="Transparent" 
+                    BorderBrush="Transparent"
+                    Padding="2"
+                    VerticalAlignment="Top"
+                    Margin="0,2,0,0">
+                <svgc:SvgIcon UriSource="/Resources/Icons/sound.svg" Fill="White" Width="16" Height="16"/>
+            </Button>
+            <!-- Volume Slider -->
+            <Slider x:Name="volumeSlider"
+                    Value="{Binding Volume}"
+                    Minimum="0" Maximum="1" 
+                    TickFrequency="0.1"
+                    Orientation="Vertical"
+                    Height="70"
+                    Margin="0,22,0,0"/>
+
+            <!-- Visibility trigger for the volume control -->
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Type}" Value="Video">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+        </Grid>
 
         <!-- fade‐in handle -->
         <Polygon Opacity="0.5" HorizontalAlignment="Left"  Panel.ZIndex="1">
