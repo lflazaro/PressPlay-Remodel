@@ -1,0 +1,164 @@
+﻿<Window x:Class="PressPlayTitler.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:PressPlayTitler"
+        xmlns:wfi="clr-namespace:System.Windows.Forms.Integration;assembly=WindowsFormsIntegration"
+        xmlns:wf="clr-namespace:System.Windows.Forms;assembly=System.Windows.Forms"
+        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        Title="PressPlay Title Editor"
+        Height="600" Width="1000">
+
+    <Window.Resources>
+        <!-- Invisible Thumb: hit-test area only, no chrome -->
+        <Style x:Key="InvisibleThumb" TargetType="Thumb">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Rectangle Fill="{TemplateBinding Background}"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel>
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_File">
+                <MenuItem Header="_Open…"   Click="Open_Click"  />
+                <MenuItem Header="_Save…"   Click="Save_Click"  />
+                <Separator/>
+                <MenuItem Header="E_xit"    Click="Exit_Click"  />
+            </MenuItem>
+            <MenuItem Header="_Edit">
+                <MenuItem Header="_Undo"    Click="Undo_Click"  />
+                <MenuItem Header="_Redo"    Click="Redo_Click"  />
+            </MenuItem>
+        </Menu>
+        <Grid Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="250"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ───── Left Pane ───── -->
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Add Element:" FontWeight="Bold" Margin="0,0,0,5"/>
+                <Button Content="Text"      Click="AddText_Click"      Margin="0,0,0,2"/>
+                <Button Content="Rectangle" Click="AddRectangle_Click" Margin="0,0,0,2"/>
+                <Button Content="Ellipse"   Click="AddEllipse_Click"   Margin="0,0,0,2"/>
+                <Button Content="Line"      Click="AddLine_Click"      Margin="0,0,0,2"/>
+                <Button Content="Gradient"  Click="AddGradient_Click"  Margin="0,0,0,2"/>
+                <Button Content="Image"     Click="AddImage_Click"     Margin="0,0,0,2"/>
+                <Button Content="SVG"       Click="AddSvg_Click"       Margin="0,0,0,10"/>
+
+                <TextBlock Text="Elements:" FontWeight="Bold" Margin="0,10,0,5"/>
+                <ListBox x:Name="ElementsControl"
+                         DisplayMemberPath="Name"
+                         Height="300"
+                         SelectionChanged="ElementsControl_SelectionChanged"/>
+                <Button Content="Move Up"   Click="MoveUp_Click"   Margin="0,5,0,0"/>
+                <Button Content="Move Down" Click="MoveDown_Click" Margin="0,2,0,10"/>
+                <Button Content="Remove Selected" Click="Remove_Click" Margin="0,5,0,0"/>
+                <Button Content="Export PNG..."    Click="Export_Click" Margin="0,20,0,0"/>
+            </StackPanel>
+
+            <!-- ───── Middle Pane ───── -->
+            <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Padding="5">
+                <!-- Extended WPF Toolkit PropertyGrid -->
+                <xctk:PropertyGrid
+        x:Name="WpfPropertyGrid"
+        SelectedObject="{Binding SelectedItem, ElementName=ElementsControl}"
+        ShowSearchBox="False"
+        AutoGenerateProperties="True"/>
+            </Border>
+
+
+            <!-- ───── Right Pane (Design Surface) ───── -->
+            <Border Grid.Column="2"
+            BorderBrush="Gray"
+            BorderThickness="1"
+            Background="Black">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                    VerticalScrollBarVisibility="Auto">
+                    <Canvas x:Name="DesignCanvas"
+                Width  ="{Binding _composition.Width,  RelativeSource={RelativeSource AncestorType=Window}}"
+                Height ="{Binding _composition.Height, RelativeSource={RelativeSource AncestorType=Window}}"
+                Background="Transparent">
+
+                        <ItemsControl x:Name="ElementsCanvas">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <Canvas/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+
+                            <ItemsControl.ItemContainerStyle>
+                                <Style TargetType="ContentPresenter">
+                                    <Setter Property="Canvas.Left" Value="{Binding Bounds.X}"/>
+                                    <Setter Property="Canvas.Top"  Value="{Binding Bounds.Y}"/>
+                                    <EventSetter Event="MouseLeftButtonDown" Handler="CanvasElement_MouseLeftButtonDown"/>
+                                </Style>
+                            </ItemsControl.ItemContainerStyle>
+
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid
+      Width="{Binding Bounds.Width}"
+      Height="{Binding Bounds.Height}"
+      Background="Transparent"
+      RenderTransformOrigin="0.5,0.5"
+                                        MouseLeftButtonDown="CanvasElement_MouseLeftButtonDown">
+
+                                        <!-- 1) Rotate around the center -->
+                                        <Grid.RenderTransform>
+                                            <RotateTransform Angle="{Binding Rotation}"/>
+                                        </Grid.RenderTransform>
+
+                                        <!-- 2) Draw the element -->
+                                        <local:VisualElementPresenter
+        Element="{Binding}"
+        Width="{Binding Bounds.Width}"
+        Height="{Binding Bounds.Height}"/>
+
+                                        <!-- 3) Invisible thumbs for drag/resize/rotate -->
+                                        <Thumb Style="{StaticResource InvisibleThumb}"
+             DragDelta="Element_Move_DragDelta"
+                                               DragCompleted="Element_Move_DragCompleted"
+             Cursor="SizeAll"
+             HorizontalAlignment="Stretch"
+             VerticalAlignment="Stretch"/>
+
+                                        <!-- RESIZE (bottom-right) -->
+                                        <Thumb Style="{StaticResource InvisibleThumb}"
+             DragStarted="Resize_DragStarted"
+             DragDelta="Element_Resize_DragDelta"
+                                               DragCompleted="Element_Resize_DragCompleted"
+             Cursor="SizeNWSE"
+             Width="8" Height="8"
+             HorizontalAlignment="Right"
+             VerticalAlignment="Bottom"
+             Margin="0,0,-4,-4"/>
+
+                                        <Thumb Style="{StaticResource InvisibleThumb}"
+             DragStarted="Rotate_DragStarted"
+             DragDelta="Element_Rotate_DragDelta"
+                                               DragCompleted="Element_Rotate_DragCompleted"
+             Cursor="Hand"
+             Width="8" Height="8"
+             HorizontalAlignment="Left"
+             VerticalAlignment="Bottom"
+             Margin="-4,0,0,-4"/>
+
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                    </Canvas>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>

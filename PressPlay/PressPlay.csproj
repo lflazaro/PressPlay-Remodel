@@ -25,6 +25,6 @@
     <PackageReference Include="SkiaSharp" Version="3.119.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\PressPlayTitler\PressPlayTitler\PressPlayTitler.csproj" />
+    <ProjectReference Include="..\PressPlayTitler\PressPlayTitler.csproj" />
   </ItemGroup>
 </Project>
