@@ -60,7 +60,7 @@
         </Grid.RowDefinitions>
 
         <!-- MENU BAR -->
-        <Menu Grid.Row="0" Background="#FF2C2C2C" Foreground="LightGray">
+        <Menu Grid.Row="0" Background="#FFD6D6D6" Foreground="Black">
             <MenuItem Header="File">
                 <MenuItem Header="New" Command="{Binding NewProjectCommand}" InputGestureText="Ctrl+N" />
                 <MenuItem Header="Open" Command="{Binding OpenProjectCommand}" InputGestureText="Ctrl+O" />
@@ -199,6 +199,7 @@
                                     <TextBlock Text="Remove Media" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                 </Button>
                                 <Button Content="Add Track" Command="{Binding AddTrackCommand}" Background="#FF3A3A3A" Foreground="LightGray" Width="79" Height="24"/>
+                                <Button Content="Add title" Height="24" Width="78" Background="#FF3A3A3A" Foreground="LightGray" Click="Button_Click"/>
                             </StackPanel>
                             <!-- You may replace this with your media library control -->
                             <customcontrols:ProjectClipsControl Grid.Row="1" ItemsSource="{Binding CurrentProject.Clips}" Background="#FF2B2B2B" Margin="0,0,0,10"/>

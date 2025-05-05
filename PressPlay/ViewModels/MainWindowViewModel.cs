@@ -245,13 +245,13 @@ namespace PressPlay
 
         // Help commands
         [RelayCommand]
-        private void ReportIssue() => OpenUrl("https://github.com/yourusername/PressPlay/issues");
+        private void ReportIssue() => OpenUrl("https://github.com/lflazaro/PressPlay-Remodel/issues");
 
         [RelayCommand]
-        private void GoToWebsite() => OpenUrl("https://yourwebsite.com/PressPlay");
+        private void GoToWebsite() => OpenUrl("https://intelligencecasino.neocities.org/");
 
         [RelayCommand]
-        private void About() => MessageBox.Show("PressPlay Video Editor\nVersion 0.1\n©2025 Your Company", "About PressPlay");
+        private void About() => MessageBox.Show("PressPlay Video Editor\nVersion 0.1\n©2025", "About PressPlay");
 
         #endregion
 

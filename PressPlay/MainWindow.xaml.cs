@@ -8,6 +8,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using PressPlayTitler;
 
 namespace PressPlay
 {
@@ -158,6 +159,11 @@ namespace PressPlay
         private void TimelineControl_Loaded(object sender, RoutedEventArgs e)
         {
             // (No changes here)
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            PressPlayTitler.MainWindow.TitlerLauncher.ShowTitler(this);
         }
     }
 }
