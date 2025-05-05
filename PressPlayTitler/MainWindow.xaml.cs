@@ -29,6 +29,7 @@ namespace PressPlayTitler
         private readonly Rectangle _selectionRect;
         private readonly Stack<string> _undoStack = new();
         private readonly Stack<string> _redoStack = new();
+        private readonly TitlerLauncher.TitleExportedCallback? _exportCallback;
 
         // Drag state
         private Point _moveStartMouse;
@@ -42,10 +43,11 @@ namespace PressPlayTitler
         private double _rotateStartRotation;
         private double _rotateStartMouseAngle;
 
-        public MainWindow()
+        public MainWindow(TitlerLauncher.TitleExportedCallback? exportCallback = null)
         {
             InitializeComponent();
             DataContext = this;
+            _exportCallback = exportCallback;
 
             _composition = new TitleComposition { Width = 1448, Height = 995 };
             _elements = new ObservableCollection<TitleElement>();
@@ -475,6 +477,10 @@ namespace PressPlayTitler
                 _composition.Elements = _elements.ToList();
                 var bmp = TitleRenderer.RenderComposition(_composition);
                 TitleRenderer.SavePng(bmp, dlg.FileName);
+
+                // Call the callback if provided
+                _exportCallback?.Invoke(dlg.FileName);
+
                 MessageBox.Show($"Exported to {dlg.FileName}", "Done", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
@@ -505,9 +511,12 @@ namespace PressPlayTitler
         }
         public static class TitlerLauncher
         {
-            public static void ShowTitler(Window? owner = null)
+            // Add a delegate type for the callback
+            public delegate void TitleExportedCallback(string filePath);
+
+            public static void ShowTitler(Window? owner = null, TitleExportedCallback? exportCallback = null)
             {
-                var win = new MainWindow();
+                var win = new MainWindow(exportCallback);
                 if (owner != null)
                     win.Owner = owner;
 

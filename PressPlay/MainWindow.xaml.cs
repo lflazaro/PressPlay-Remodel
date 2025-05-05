@@ -163,7 +163,24 @@ namespace PressPlay
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-            PressPlayTitler.MainWindow.TitlerLauncher.ShowTitler(this);
+            // Pass a callback that will import the exported title to the media list
+            PressPlayTitler.MainWindow.TitlerLauncher.ShowTitler(
+                this,
+                (exportedFilePath) => {
+                    // When a title is exported, import it into the media list
+                    if (DataContext is MainWindowViewModel vm && !string.IsNullOrEmpty(exportedFilePath))
+                    {
+                        // Import the PNG file into the project
+                        vm.ImportMediaFiles(new[] { exportedFilePath });
+
+                        // Optional: Display confirmation message
+                        //MessageBox.Show(
+                            //$"Title image from the Title Editor has been imported into your project.",
+                            //"Title Imported",
+                            //MessageBoxButton.OK,
+                            //MessageBoxImage.Information);
+                    }
+                });
         }
     }
 }
