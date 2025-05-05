@@ -9,6 +9,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using FFMpegCore;
 using NAudio.Wave;
+using NAudio.Wave.SampleProviders;
 using OpenCvSharp.WpfExtensions;
 using PressPlay.Helpers;
 using PressPlay.Models;
@@ -38,7 +39,13 @@ namespace PressPlay.Services
         private IWavePlayer _mainWaveOut;
         private WaveStream _mainAudioStream;
         private string _mainAudioPath;
+        // Collection of all active video audio players (based on clip ID)
+        private Dictionary<string, (WaveOutEvent Player, AudioFileReader Reader)> _videoAudioPlayers
+            = new Dictionary<string, (WaveOutEvent, AudioFileReader)>();
 
+        // Collection of all active audio track players (based on clip ID)
+        private Dictionary<string, (WaveOutEvent Player, AudioFileReader Reader)> _audioTrackPlayers
+            = new Dictionary<string, (WaveOutEvent, AudioFileReader)>();
         // --- audio for timeline clips ---
         private IWavePlayer _clipWaveOut;
         private AudioFileReader _clipAudioReader;
@@ -205,13 +212,24 @@ namespace PressPlay.Services
         public void Pause()
         {
             if (!_timer.IsEnabled) return;
+
             _timer.Stop();
             _project.IsPlaying = false;
 
+            // Pause all audio
             _mainWaveOut?.Pause();
-            _clipWaveOut?.Pause();
-            _videoAudioWaveOut?.Pause();
+
+            foreach (var playerState in _audioPlayers)
+            {
+                if (playerState.Player.PlaybackState == PlaybackState.Playing)
+                {
+                    playerState.Player.Pause();
+                    Debug.WriteLine($"[{playerState.ItemIdentifier}] Paused on global pause");
+                }
+            }
         }
+
+
 
         public void Seek(TimeCode time)
         {
@@ -306,253 +324,237 @@ namespace PressPlay.Services
             rtb.Render(dv);
             _previewControl.Source = rtb;
         }
+        // Fields to track audio players
+        private List<AudioPlayerState> _audioPlayers = new List<AudioPlayerState>();
+        private class AudioPlayerState
+        {
+            public WaveOutEvent Player { get; private set; }
+            public AudioFileReader Reader { get; private set; }
+            public VolumeSampleProvider VolumeProvider { get; private set; }
+            public ITrackItem Item { get; set; }
+            public string ItemIdentifier { get; set; }
+
+            public AudioPlayerState(string filePath, TimeSpan position, ITrackItem item, string itemId)
+            {
+                ItemIdentifier = itemId;
+                Item = item;
+
+                // Create reader and set position
+                Reader = new AudioFileReader(filePath);
+                Reader.CurrentTime = position;
+
+                // Create volume provider with initial volume
+                float volume = GetItemVolume(item);
+                VolumeProvider = new VolumeSampleProvider(Reader.ToSampleProvider());
+                VolumeProvider.Volume = volume;
+
+                // Create player with volume provider
+                Player = new WaveOutEvent();
+                Player.Init(VolumeProvider);
+
+                Debug.WriteLine($"[{ItemIdentifier}] Created with volume {volume}");
+            }
+
+            // Update volume by applying to VolumeSampleProvider (not WaveOutEvent)
+            public void UpdateVolume()
+            {
+                float newVolume = GetItemVolume(Item);
+                if (Math.Abs(VolumeProvider.Volume - newVolume) > 0.01f)
+                {
+                    VolumeProvider.Volume = newVolume;
+                    Debug.WriteLine($"[{ItemIdentifier}] Updated sample provider volume to {newVolume}");
+                }
+            }
+
+            private float GetItemVolume(ITrackItem item)
+            {
+                if (item is TrackItem ti)
+                    return ti.Volume;
+                else if (item is AudioTrackItem ati)
+                    return ati.Volume;
+                return 1.0f;
+            }
+
+            public void Seek(TimeSpan position)
+            {
+                if (Reader != null && Math.Abs((Reader.CurrentTime - position).TotalMilliseconds) > 100)
+                {
+                    Reader.CurrentTime = position;
+                    Debug.WriteLine($"[{ItemIdentifier}] Seeking to {position}");
+                }
+            }
+
+            public void Play()
+            {
+                if (Player != null && Player.PlaybackState != PlaybackState.Playing)
+                {
+                    Player.Play();
+                    Debug.WriteLine($"[{ItemIdentifier}] Started playback");
+                }
+            }
+
+            public void Pause()
+            {
+                if (Player != null && Player.PlaybackState == PlaybackState.Playing)
+                {
+                    Player.Pause();
+                    Debug.WriteLine($"[{ItemIdentifier}] Paused playback");
+                }
+            }
+
+            public void Dispose()
+            {
+                if (Player != null)
+                {
+                    if (Player.PlaybackState == PlaybackState.Playing)
+                        Player.Stop();
+
+                    Player.Dispose();
+                    Player = null;
+                }
+
+                if (Reader != null)
+                {
+                    Reader.Dispose();
+                    Reader = null;
+                }
+
+                VolumeProvider = null;
+                Item = null;
+            }
+        }
 
         private void UpdateAudio()
         {
             try
             {
                 int frameIndex = (int)Math.Round((double)_project.NeedlePositionTime.TotalFrames);
-                Debug.WriteLine($"UpdateAudio at frame {frameIndex}");
 
-                // First, check for video items with audio
-                ITrackItem videoItem = null;
-                ProjectClip videoClip = null;
+                // Collect all active items at current frame
+                List<(ITrackItem Item, ProjectClip Clip, TimeSpan Position, string ItemId)> activeItems =
+                    new List<(ITrackItem, ProjectClip, TimeSpan, string)>();
 
+                // Find all active video items with audio
                 foreach (var track in _project.Tracks.Where(t => t.Type == TimelineTrackType.Video))
                 {
-                    videoItem = track.Items.FirstOrDefault(i =>
+                    foreach (var item in track.Items.Where(i =>
                         i.Position.TotalFrames <= frameIndex &&
-                        frameIndex < i.Position.TotalFrames + i.Duration.TotalFrames);
-
-                    if (videoItem != null)
+                        frameIndex < i.Position.TotalFrames + i.Duration.TotalFrames))
                     {
-                        // Find the matching video clip
-                        videoClip = _project.Clips
-                            .FirstOrDefault(c => string.Equals(c.FilePath, videoItem.FilePath, StringComparison.OrdinalIgnoreCase)) as ProjectClip;
+                        var clip = _project.Clips
+                            .OfType<ProjectClip>()
+                            .FirstOrDefault(c => string.Equals(c.FilePath, item.FilePath, StringComparison.OrdinalIgnoreCase));
 
-                        if (videoClip != null)
+                        if (clip != null && clip.HasAudio && File.Exists(clip.FilePath))
                         {
-                            // Always treat videos as having audio for now
-                            Debug.WriteLine($"Found video clip: {videoClip.FileName}, HasAudio=True (forced)");
-                            break;  // Found a video clip with audio
+                            // Calculate position in clip
+                            double offsetFrames = frameIndex - item.Position.TotalFrames + item.Start.TotalFrames;
+                            offsetFrames = Math.Max(0, offsetFrames);
+                            TimeSpan clipPos = TimeSpan.FromSeconds(offsetFrames / clip.FPS);
+
+                            // Create a truly unique identifier for this item instance
+                            string itemId = $"V_{item.GetHashCode()}_{clip.Id}";
+
+                            activeItems.Add((item, clip, clipPos, itemId));
                         }
                     }
                 }
 
-                // Next, check for audio track items
-                var audioTrack = _project.Tracks.FirstOrDefault(t => t.Type == TimelineTrackType.Audio);
-                var audioItem = audioTrack?.Items
-                    .FirstOrDefault(i =>
+                // Find all active audio track items
+                foreach (var track in _project.Tracks.Where(t => t.Type == TimelineTrackType.Audio))
+                {
+                    foreach (var item in track.Items.Where(i =>
                         i.Position.TotalFrames <= frameIndex &&
-                        frameIndex < i.Position.TotalFrames + i.Duration.TotalFrames);
-
-                // Handle VIDEO AUDIO (don't stop other audio)
-                if (videoItem != null && videoClip != null)
-                {
-                    Debug.WriteLine($"Processing video audio: {videoClip.FileName}");
-
-                    if (!File.Exists(videoClip.FilePath))
+                        frameIndex < i.Position.TotalFrames + i.Duration.TotalFrames))
                     {
-                        Debug.WriteLine("Video file not found, stopping video audio");
-                        StopVideoAudio();
-                    }
-                    else
-                    {
-                        // Calculate position within the clip
-                        double offsetFrames = frameIndex - videoItem.Position.TotalFrames + videoItem.Start.TotalFrames;
-                        offsetFrames = Math.Max(0, offsetFrames);
-                        TimeSpan clipPos = TimeSpan.FromSeconds(offsetFrames / videoClip.FPS);
+                        var clip = _project.Clips
+                            .OfType<ProjectClip>()
+                            .FirstOrDefault(c =>
+                                item is AudioTrackItem ati ? c.Id == ati.ClipId :
+                                string.Equals(c.FilePath, item.FilePath, StringComparison.OrdinalIgnoreCase));
 
-                        Debug.WriteLine($"Video position: {clipPos}");
-
-                        // If same clip is already playing, just update position and volume
-                        if (_videoAudioPath == videoClip.FilePath && _videoAudioReader != null && _videoAudioWaveOut != null)
+                        if (clip != null && File.Exists(clip.FilePath))
                         {
-                            Debug.WriteLine("Same video still playing, updating position");
+                            // Calculate position in clip
+                            double offsetFrames = frameIndex - item.Position.TotalFrames + item.Start.TotalFrames;
+                            offsetFrames = Math.Max(0, offsetFrames);
+                            TimeSpan clipPos = TimeSpan.FromSeconds(offsetFrames / _project.FPS);
 
-                            if (Math.Abs((_videoAudioReader.CurrentTime - clipPos).TotalMilliseconds) > 100)
-                            {
-                                Debug.WriteLine($"Seeking video audio to {clipPos}");
-                                _videoAudioReader.CurrentTime = clipPos;
-                            }
+                            // Create a truly unique identifier for this item instance
+                            string itemId = $"A_{item.GetHashCode()}_{clip.Id}";
 
-                            // Update volume if changed
-                            if (videoItem is TrackItem trackItem)
-                            {
-                                _videoAudioWaveOut.Volume = trackItem.Volume;
-                                Debug.WriteLine($"Updated video volume: {trackItem.Volume}");
-                            }
-
-                            // Play if needed
-                            if (_project.IsPlaying && _videoAudioWaveOut.PlaybackState != PlaybackState.Playing)
-                            {
-                                Debug.WriteLine("Starting video audio playback");
-                                _videoAudioWaveOut.Play();
-                            }
+                            activeItems.Add((item, clip, clipPos, itemId));
                         }
+                    }
+                }
+
+                // Get the IDs of all active items
+                var activeItemIds = activeItems.Select(x => x.ItemId).ToHashSet();
+
+                // Remove players that are no longer active
+                var inactivePlayers = _audioPlayers.Where(p => !activeItemIds.Contains(p.ItemIdentifier)).ToList();
+                foreach (var player in inactivePlayers)
+                {
+                    Debug.WriteLine($"[{player.ItemIdentifier}] Removing inactive player");
+                    player.Dispose();
+                    _audioPlayers.Remove(player);
+                }
+
+                // Update existing players or create new ones
+                foreach (var (item, clip, position, itemId) in activeItems)
+                {
+                    // Find existing player for this item
+                    var playerState = _audioPlayers.FirstOrDefault(p => p.ItemIdentifier == itemId);
+
+                    if (playerState != null)
+                    {
+                        // Update existing player
+                        playerState.Item = item; // Update item reference 
+                        playerState.UpdateVolume(); // Update volume settings
+                        playerState.Seek(position); // Update position if needed
+
+                        // Start/stop based on project state
+                        if (_project.IsPlaying)
+                            playerState.Play();
                         else
-                        {
-                            // New video clip - initialize audio
-                            Debug.WriteLine("Initializing new video audio stream");
-                            StopVideoAudio();
-
-                            try
-                            {
-                                _videoAudioReader = new AudioFileReader(videoClip.FilePath);
-                                _videoAudioReader.CurrentTime = clipPos;
-
-                                _videoAudioWaveOut = new WaveOutEvent();
-                                _videoAudioWaveOut.Init(_videoAudioReader);
-
-                                // Set volume
-                                if (videoItem is TrackItem trackItem)
-                                {
-                                    _videoAudioWaveOut.Volume = trackItem.Volume;
-                                    Debug.WriteLine($"Set video volume: {trackItem.Volume}");
-                                }
-
-                                // Start playback if project is playing
-                                if (_project.IsPlaying)
-                                {
-                                    Debug.WriteLine("Starting video audio playback");
-                                    _videoAudioWaveOut.Play();
-                                }
-
-                                _videoAudioPath = videoClip.FilePath;
-                            }
-                            catch (Exception ex)
-                            {
-                                Debug.WriteLine($"Error initializing video audio: {ex.Message}");
-                                StopVideoAudio();
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    // No video with audio, stop video audio
-                    Debug.WriteLine("No video at current position, stopping video audio");
-                    StopVideoAudio();
-                }
-
-                // Handle AUDIO TRACK ITEMS (independent of video audio)
-                if (audioItem != null)
-                {
-                    Debug.WriteLine("Processing audio track item");
-
-                    // Find the clip for this audio item
-                    var clip = _project.Clips
-                        .OfType<ProjectClip>()
-                        .FirstOrDefault(c =>
-                            audioItem is AudioTrackItem ati ? c.Id == ati.ClipId :
-                            string.Equals(c.FilePath, audioItem.FilePath, StringComparison.OrdinalIgnoreCase));
-
-                    if (clip == null || !File.Exists(clip.FilePath))
-                    {
-                        Debug.WriteLine("Audio file not found, stopping clip audio");
-                        StopClipAudio();
+                            playerState.Pause();
                     }
                     else
                     {
-                        // Compute position within that clip
-                        double offsetFrames = frameIndex - audioItem.Position.TotalFrames + audioItem.Start.TotalFrames;
-                        offsetFrames = Math.Max(0, offsetFrames);
-                        TimeSpan clipPos = TimeSpan.FromSeconds(offsetFrames / _project.FPS);
-
-                        Debug.WriteLine($"Audio position: {clipPos}");
-
-                        // If same clip, just reposition / resume
-                        if (_currentClipPath == clip.FilePath && _clipAudioReader != null)
+                        // Create new player with the VolumeSampleProvider approach
+                        try
                         {
-                            if (Math.Abs((_clipAudioReader.CurrentTime - clipPos).TotalMilliseconds) > 100)
-                            {
-                                Debug.WriteLine($"Seeking audio to {clipPos}");
-                                _clipAudioReader.CurrentTime = clipPos;
-                            }
+                            var newState = new AudioPlayerState(clip.FilePath, position, item, itemId);
 
-                            // Update volume
-                            if (audioItem is AudioTrackItem audioTrackItem && _clipWaveOut != null)
-                            {
-                                _clipWaveOut.Volume = audioTrackItem.Volume;
-                                Debug.WriteLine($"Updated audio track volume: {audioTrackItem.Volume}");
-                            }
+                            // Start if needed
+                            if (_project.IsPlaying)
+                                newState.Play();
 
-                            if (_project.IsPlaying && _clipWaveOut.PlaybackState != PlaybackState.Playing)
-                            {
-                                Debug.WriteLine("Starting audio playback");
-                                _clipWaveOut.Play();
-                            }
+                            _audioPlayers.Add(newState);
                         }
-                        else
+                        catch (Exception ex)
                         {
-                            // New clip → restart
-                            StopClipAudio();
-                            try
-                            {
-                                _clipAudioReader = new AudioFileReader(clip.FilePath);
-                                _clipAudioReader.CurrentTime = clipPos;
-                                _clipWaveOut = new WaveOutEvent();
-                                _clipWaveOut.Init(_clipAudioReader);
-
-                                // Set volume
-                                if (audioItem is AudioTrackItem audioTrackItem)
-                                {
-                                    _clipWaveOut.Volume = audioTrackItem.Volume;
-                                    Debug.WriteLine($"Set audio track volume: {audioTrackItem.Volume}");
-                                }
-
-                                if (_project.IsPlaying)
-                                {
-                                    Debug.WriteLine("Starting audio track playback");
-                                    _clipWaveOut.Play();
-                                }
-                                _currentClipPath = clip.FilePath;
-                            }
-                            catch (Exception ex)
-                            {
-                                Debug.WriteLine($"Error initializing audio: {ex.Message}");
-                                StopClipAudio();
-                            }
+                            Debug.WriteLine($"[{itemId}] Error creating player: {ex.Message}");
                         }
                     }
                 }
-                else
+
+                // Handle main audio only if no other audio is playing
+                if (_audioPlayers.Count == 0 &&
+                    _mainWaveOut != null && _mainAudioStream != null)
                 {
-                    // No audio track item, stop clip audio
-                    Debug.WriteLine("No audio track item at current position, stopping clip audio");
-                    StopClipAudio();
-                }
+                    var desired = _project.NeedlePositionTime.ToTimeSpan();
 
-                // Handle main audio as lowest priority
-                if (audioItem == null && videoItem == null)
-                {
-                    Debug.WriteLine("No active clip audio, checking for main audio");
+                    if (Math.Abs((_mainAudioStream.CurrentTime - desired).TotalMilliseconds) > 100)
+                        _mainAudioStream.CurrentTime = desired;
 
-                    if (_mainWaveOut != null && _mainAudioStream != null)
-                    {
-                        var desired = _project.NeedlePositionTime.ToTimeSpan();
-
-                        if (Math.Abs((_mainAudioStream.CurrentTime - desired).TotalMilliseconds) > 100)
-                        {
-                            Debug.WriteLine($"Seeking main audio to {desired}");
-                            _mainAudioStream.CurrentTime = desired;
-                        }
-
-                        if (_project.IsPlaying && _mainWaveOut.PlaybackState != PlaybackState.Playing)
-                        {
-                            Debug.WriteLine("Playing main audio");
-                            _mainWaveOut.Play();
-                        }
-                    }
-                    else
-                    {
-                        Debug.WriteLine("No main audio available");
-                    }
+                    if (_project.IsPlaying && _mainWaveOut.PlaybackState != PlaybackState.Playing)
+                        _mainWaveOut.Play();
+                    else if (!_project.IsPlaying && _mainWaveOut.PlaybackState == PlaybackState.Playing)
+                        _mainWaveOut.Pause();
                 }
                 else if (_mainWaveOut != null && _mainWaveOut.PlaybackState == PlaybackState.Playing)
                 {
-                    // Pause main audio when clips are playing
-                    Debug.WriteLine("Pausing main audio while clips are playing");
                     _mainWaveOut.Pause();
                 }
             }
@@ -576,27 +578,22 @@ namespace PressPlay.Services
             _mainAudioPath = null;
         }
 
-        private void StopClipAudio()
-        {
-            if (_clipWaveOut != null)
-            {
-                if (_clipWaveOut.PlaybackState == PlaybackState.Playing)
-                    _clipWaveOut.Stop();
-                _clipWaveOut.Dispose();
-                _clipAudioReader.Dispose();
-                _clipWaveOut = null;
-                _clipAudioReader = null;
-            }
-            _currentClipPath = null;
-        }
 
+        // Update the Dispose method
         public void Dispose()
         {
             Pause();
             _timer.Tick -= OnTick;
-            StopClipAudio();
-            StopVideoAudio();
+
+            // Dispose all audio players
+            foreach (var playerState in _audioPlayers)
+            {
+                playerState.Dispose();
+            }
+            _audioPlayers.Clear();
+
             StopMainAudio();
         }
+
     }
 }
