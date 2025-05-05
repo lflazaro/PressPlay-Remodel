@@ -107,8 +107,13 @@ namespace PressPlay.Timeline
         protected override void OnPreviewMouseMove(MouseEventArgs e)
         {
             _timelineControl ??= VisualHelper.GetAncestor<TimelineControl>(this);
+            TimelineSelectedTool currentTool = TimelineSelectedTool.SelectionTool;
+            if (_timelineControl?.Project != null)
+            {
+                currentTool = _timelineControl.Project.SelectedTool;
+            }
 
-            if (DataContext is TrackItem trackItem && !trackItem.IsSelected)
+            if (DataContext is TrackItem trackItem && !trackItem.IsSelected || DataContext is AudioTrackItem audioTrackItem && !audioTrackItem.IsSelected)
             {
                 double x = e.GetPosition(this).X;
                 double w = this.ActualWidth;
@@ -123,6 +128,11 @@ namespace PressPlay.Timeline
                 {
                     Cursor = Cursors.SizeWE;
                     resizeBorder.BorderThickness = new Thickness(0, 0, 2, 0);
+                }
+                else if (currentTool == TimelineSelectedTool.RazorCutTool)
+                {
+                    Cursor = Cursors.IBeam;
+                    resizeBorder.BorderThickness = new Thickness(0);
                 }
                 else
                 {
