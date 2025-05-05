@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -103,7 +104,6 @@ namespace PressPlay.Timeline
             base.OnMouseEnter(e);
             Cursor = Cursors.Hand; // Indicate draggable
         }
-
         protected override void OnPreviewMouseMove(MouseEventArgs e)
         {
             _timelineControl ??= VisualHelper.GetAncestor<TimelineControl>(this);

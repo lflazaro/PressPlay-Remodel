@@ -11,6 +11,8 @@ using System.Text.Json.Serialization;
 using System.Timers;
 using System.Linq;
 using PressPlay.Helpers;
+using PressPlay.Undo.UndoUnits;
+using PressPlay.Undo;
 
 namespace PressPlay.Models
 {
@@ -129,54 +131,139 @@ namespace PressPlay.Models
 
         public void CutItem(ITrackItem item, double timelineFrame)
         {
-            // Implement cut logic.
+            // Check if item exists and is valid
             if (item == null) return;
 
             var track = Tracks.FirstOrDefault(t => t.Items.Contains(item));
             if (track == null) return;
 
-            // Calculate local frame (relative to the item start)
+            // Calculate local frame (relative to the item's position on timeline)
             double localFrame = timelineFrame - item.Position.TotalFrames;
 
             // Ensure we're cutting within the item's duration
-            if (localFrame <= 0 || localFrame >= item.Duration.TotalFrames) return;
+            if (localFrame <= 0 || localFrame >= item.Duration.TotalFrames)
+            {
+                Debug.WriteLine("Cannot cut - position is outside clip boundaries");
+                return;
+            }
 
-            // Store original end time
+            Debug.WriteLine($"Cutting clip: Start={item.Start.TotalFrames}, Position={item.Position.TotalFrames}, " +
+                           $"End={item.End.TotalFrames}, Duration={item.Duration.TotalFrames}, Cut at local frame={localFrame}");
+
+            // Store original values for undo and for creating the second clip
             var originalEnd = item.End;
+            var originalDuration = item.Duration;
+
+            // Set up undo tracking before making changes
+            var multiUndo = new MultipleUndoUnits("Cut Item");
+
+            // Track the resize undo for the first part
+            var resizeData = new TrackItemResizeData(item,
+                                                  item.Position,
+                                                  item.Start,
+                                                  item.End);
 
             // Update the end time of the original item
             item.End = new TimeCode((int)(item.Start.TotalFrames + localFrame), item.Start.FPS);
 
-            // Create a new item for the second part
+            // Update resize data with new values
+            resizeData.NewPosition = item.Position;
+            resizeData.NewStart = item.Start;
+            resizeData.NewEnd = item.End;
+
+            multiUndo.UndoUnits.Add(new TrackItemResizeUndoUnit(resizeData));
+
+            // Calculate correct frame position and time values for the second part
+            int newStartFrame = item.Start.TotalFrames + (int)localFrame;
+            int newPositionFrame = (int)timelineFrame; // Position on timeline where the cut occurred
+
+            // Create appropriate ITrackItem based on type
             ITrackItem newItem;
+
             if (item is TrackItem trackItem)
             {
                 newItem = new TrackItem
                 {
                     StartTime = trackItem.StartTime + localFrame,
-                    Position = new TimeCode((int)timelineFrame, item.Position.FPS),
-                    Start = item.End,
+                    Position = new TimeCode(newPositionFrame, item.Position.FPS),
+                    Start = new TimeCode(newStartFrame, item.Start.FPS),
                     End = originalEnd,
-                    FadeInFrame = item.FadeInFrame,
-                    FadeOutFrame = item.FadeOutFrame,
+                    FadeInFrame = 0, // Reset fade-in for new clip
+                    FadeOutFrame = item.FadeOutFrame, // Keep fade-out from original
                     FileName = trackItem.FileName,
                     FullPath = trackItem.FullPath,
-                    Thumbnail = trackItem.Thumbnail
+                    FilePath = trackItem.FilePath,
+                    Thumbnail = trackItem.Thumbnail,
+                    Volume = trackItem.Volume, // Copy volume setting
+                    SourceLength = trackItem.SourceLength, // Maintain source length 
+                    OriginalEnd = trackItem.OriginalEnd   // Copy original end
                 };
+            }
+            else if (item is AudioTrackItem audioItem)
+            {
+                // Handle audio items specifically
+                var audioClip = Clips.FirstOrDefault(c => c.Id == audioItem.ClipId) as ProjectClip;
+
+                if (audioClip != null)
+                {
+                    newItem = new AudioTrackItem(
+                        audioClip,
+                        new TimeCode(newPositionFrame, item.Position.FPS),
+                        new TimeCode(newStartFrame, item.Start.FPS),
+                        new TimeCode(originalEnd.TotalFrames - newStartFrame, originalEnd.FPS)
+                    )
+                    {
+                        Volume = audioItem.Volume
+                    };
+
+                    // Add debugging info
+                    Debug.WriteLine($"Created AudioTrackItem: Start={newStartFrame}, Position={newPositionFrame}, " +
+                                   $"End={originalEnd.TotalFrames}, Duration={(originalEnd.TotalFrames - newStartFrame)}");
+                }
+                else
+                {
+                    Debug.WriteLine("Could not find audio clip - aborting cut");
+                    return;
+                }
             }
             else
             {
-                // Generic handling if not a TrackItem
+                // Generic handling for other item types
+                Debug.WriteLine("Unknown track item type - using generic approach");
                 newItem = (ITrackItem)Activator.CreateInstance(item.GetType());
-                newItem.Position = new TimeCode((int)timelineFrame, item.Position.FPS);
-                newItem.Start = item.End;
+                newItem.Position = new TimeCode(newPositionFrame, item.Position.FPS);
+                newItem.Start = new TimeCode(newStartFrame, item.Start.FPS);
                 newItem.End = originalEnd;
-                newItem.FadeInFrame = item.FadeInFrame;
+                newItem.FadeInFrame = 0;
                 newItem.FadeOutFrame = item.FadeOutFrame;
+
+                // Copy additional properties if available
+                if (item.GetType().GetProperty("SourceLength") != null && newItem.GetType().GetProperty("SourceLength") != null)
+                    newItem.SourceLength = item.SourceLength;
+
+                if (item.GetType().GetProperty("OriginalEnd") != null && newItem.GetType().GetProperty("OriginalEnd") != null)
+                    newItem.OriginalEnd = item.OriginalEnd;
+            }
+
+            // Verify the new item has valid duration
+            if (newItem.Duration.TotalFrames <= 0)
+            {
+                Debug.WriteLine("Error: New item has invalid duration. Aborting cut.");
+                return;
             }
 
             // Add the new item to the track
             track.Items.Add(newItem);
+
+            // Add track item add undo
+            multiUndo.UndoUnits.Add(new TrackItemAddUndoUnit(track, newItem));
+
+            // Register the undo unit
+            UndoEngine.Instance.AddUndoUnit(multiUndo);
+
+            Debug.WriteLine($"Cut complete: Original item new end={item.End.TotalFrames}, " +
+                           $"New item: Start={newItem.Start.TotalFrames}, Position={newItem.Position.TotalFrames}, " +
+                           $"End={newItem.End.TotalFrames}, Duration={newItem.Duration.TotalFrames}");
         }
 
         public void ResizeItem(ITrackItem item, double timelineFrame)

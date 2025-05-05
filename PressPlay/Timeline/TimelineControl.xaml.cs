@@ -12,6 +12,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Shapes;
 using System.Windows.Media;
+using System.IO;
 
 namespace PressPlay.Timeline
 {
@@ -51,6 +52,9 @@ namespace PressPlay.Timeline
             InitializeComponent();
             tracksHScrollView.ScrollChanged += (s, e) =>
     header.HeaderScrollViewer.ScrollToHorizontalOffset(e.HorizontalOffset);
+
+            if (Project != null)
+                UpdateCursor();
         }
 
         [RelayCommand]
@@ -86,6 +90,7 @@ namespace PressPlay.Timeline
             else if (e.PropertyName == nameof(Project.SelectedTool))
             {
                 OnToolSelected(Project.SelectedTool);
+                UpdateCursor();
             }
         }
 
@@ -156,6 +161,13 @@ namespace PressPlay.Timeline
                 {
                     Project.CutItem(item, frame);
                 }
+                else if (Project.SelectedTool == TimelineSelectedTool.RazorCutTool)
+                {
+                    // Call the Project's CutItem method with the current item and timeline frame
+                    Project.CutItem(item, frame);
+                    Debug.WriteLine($"Cutting clip at frame {frame}");
+                    e.Handled = true;
+                }
             }
             else if (e.OriginalSource is Ellipse fadeControl && fadeControl.DataContext is ITrackItem ti)
             {
@@ -173,7 +185,21 @@ namespace PressPlay.Timeline
 
             _tracksCanvasLeftMouseButtonDown = true;
         }
-
+        private void UpdateCursor()
+        {
+            switch (Project.SelectedTool)
+            {
+                case TimelineSelectedTool.SelectionTool:
+                    Cursor = Cursors.Arrow;
+                    break;
+                case TimelineSelectedTool.RazorCutTool:
+                    Cursor = Cursors.IBeam;
+                    break;
+                default:
+                    Cursor = Cursors.Arrow;
+                    break;
+            }
+        }
         private void TimelineControl_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             _mouseUpTrack = Project.Tracks.FirstOrDefault(t => t.Items.Contains(_mouseDownTrackItem));

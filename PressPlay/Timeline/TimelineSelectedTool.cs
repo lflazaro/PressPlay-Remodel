@@ -13,6 +13,11 @@
         /// <summary>
         /// Cutting tool
         /// </summary>
-        CuttingTool
+        CuttingTool,
+
+        /// <summary>
+        /// Razor cut tool
+        /// </summary>
+        RazorCutTool
     }
 }
