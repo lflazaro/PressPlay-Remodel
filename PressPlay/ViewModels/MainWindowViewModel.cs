@@ -615,11 +615,12 @@ namespace PressPlay
             Title = $"{projectName}{(HasUnsavedChanges ? "*" : "")} - PressPlay";
         }
 
-private void AddNewTrack(TimelineTrackType trackType)
+        private void AddNewTrack(TimelineTrackType trackType)
         {
             // Create new track with default name  
             string trackName;
 
+            // Count tracks of this type
             if (trackType == TimelineTrackType.Video)
             {
                 int videoTrackCount = CurrentProject.Tracks.Count(t => t.Type == TimelineTrackType.Video) + 1;
@@ -637,15 +638,17 @@ private void AddNewTrack(TimelineTrackType trackType)
                 Type = trackType
             };
 
-            // Add to project  
-            CurrentProject.Tracks.Add(newTrack);
+            // Insert track at proper position instead of just adding to end
+            int insertIndex = GetProperTrackInsertionIndex(trackType);
+
+            // Add to project at calculated position
+            CurrentProject.Tracks.Insert(insertIndex, newTrack);
 
             // Register for undo  
-            var undoUnit = new TrackAddUndoUnit(CurrentProject, newTrack, CurrentProject.Tracks.Count - 1);
+            var undoUnit = new TrackAddUndoUnit(CurrentProject, newTrack, insertIndex);
             UndoEngine.Instance.AddUndoUnit(undoUnit);
 
             HasUnsavedChanges = true;
-
         }
 
         private void RemoveLastTrack()
@@ -1081,6 +1084,20 @@ private void AddNewTrack(TimelineTrackType trackType)
             catch (Exception ex)
             {
                 MessageBox.Show($"Error opening URL: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        private int GetProperTrackInsertionIndex(TimelineTrackType trackType)
+        {
+            // For video tracks: insert at the end of existing video tracks
+            if (trackType == TimelineTrackType.Video)
+            {
+                int videoTrackCount = CurrentProject.Tracks.Count(t => t.Type == TimelineTrackType.Video);
+                return videoTrackCount; // Insert after the last video track
+            }
+            // For audio tracks: insert at the end of all tracks
+            else
+            {
+                return CurrentProject.Tracks.Count; // Insert at the very end
             }
         }
 

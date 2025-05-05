@@ -416,10 +416,11 @@ namespace PressPlay.Timeline
             // 3) Find target track based on position and type
             Track targetTrack = null;
 
-            // For audio clips, we might want to auto-create an audio track
+            // For audio clips, we need to create a new or find an empty track
             if (clip.ItemType == TrackItemType.Audio)
             {
-                targetTrack = EnsureAudioTrackExists();
+                // CHANGE: Find an empty audio track or create a new one
+                targetTrack = FindEmptyAudioTrackOrCreateNew();
             }
             else
             {
@@ -490,12 +491,19 @@ namespace PressPlay.Timeline
 
         private Track AddAudioTrackAtBottom()
         {
+            int audioTrackCount = Project.Tracks.Count(t => t.Type == TimelineTrackType.Audio) + 1;
             var newTrack = new Track
             {
-                Name = "Audio",
+                Name = $"Audio {audioTrackCount}",
                 Type = TimelineTrackType.Audio
             };
             Project.Tracks.Add(newTrack);
+
+            // Create undo unit for track addition
+            var undoUnit = new TrackAddUndoUnit(Project, newTrack, Project.Tracks.Count - 1);
+            UndoEngine.Instance.AddUndoUnit(undoUnit);
+
+            Debug.WriteLine($"Created new audio track: {newTrack.Name}");
             return newTrack;
         }
 
@@ -526,6 +534,24 @@ namespace PressPlay.Timeline
         private void PasteItem_Click(object sender, RoutedEventArgs e)
         {
             Project.Paste();
+        }
+        // New helper method to find an empty audio track or create one
+        private Track FindEmptyAudioTrackOrCreateNew()
+        {
+            // Look for existing audio tracks that have no items
+            var emptyAudioTrack = Project.Tracks
+                .OfType<Track>()
+                .Where(t => t.Type == TimelineTrackType.Audio && t.Items.Count == 0)
+                .FirstOrDefault();
+
+            if (emptyAudioTrack != null)
+            {
+                Debug.WriteLine($"Found empty audio track: {emptyAudioTrack.Name}");
+                return emptyAudioTrack;
+            }
+
+            // No empty track found, create a new one
+            return AddAudioTrackAtBottom();
         }
 
         private Track EnsureAudioTrackExists()
