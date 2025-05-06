@@ -120,37 +120,40 @@ namespace PressPlay.Timeline
         }
         private void AutoCrossfadeOnOverlap(ITrackItem movedItem, Track track)
         {
-            // 1) Gather & sort all items on this track by start time
+            // 1) Gather & sort all items on this track by start frame
             var items = track.Items
                 .OrderBy(i => i.Position.TotalFrames)
                 .ToList();
 
-            // 2) Walk through consecutive pairs looking for overlaps
+            // 2) For each consecutive pair, compute overlap
             for (int k = 0; k < items.Count - 1; k++)
             {
                 var a = items[k];
                 var b = items[k + 1];
 
-                // compute the frame at which A ends and B starts
                 long aEnd = a.Position.TotalFrames + a.Duration.TotalFrames;
                 long bStart = b.Position.TotalFrames;
-
-                // if B starts before A ends, we have an overlap
                 long overlap = aEnd - bStart;
+
                 if (overlap > 0)
                 {
-                    // apply a crossfade of exactly 'overlap' frames
-                    a.FadeColor = Track.FadeColor.Black;  // or inherit from your default
-                    b.FadeColor = Track.FadeColor.Black;
+                    // overlapping → crossfade
+
+                    // only switch to black if not already white
+                    if (a.FadeColor != Track.FadeColor.White)
+                        a.FadeColor = Track.FadeColor.Black;
                     a.FadeOutFrame = (int)overlap;
+
+                    if (b.FadeColor != Track.FadeColor.White)
+                        b.FadeColor = Track.FadeColor.Black;
                     b.FadeInFrame = (int)overlap;
                 }
                 else
                 {
-                    // no overlap → clear any previous fades you might have set
-                    if (a.FadeOutFrame > 0 && a.FadeOutFrame == overlap)
+                    // no overlap → clear any previous fades (but keep FadeColor)
+                    if (a.FadeOutFrame > 0)
                         a.FadeOutFrame = 0;
-                    if (b.FadeInFrame > 0 && b.FadeInFrame == overlap)
+                    if (b.FadeInFrame > 0)
                         b.FadeInFrame = 0;
                 }
             }
