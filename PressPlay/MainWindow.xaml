@@ -128,8 +128,31 @@
                 </MenuItem>
                 <Separator />
                 <MenuItem Header="Add Transition">
-                    <MenuItem Header="Fade to White" Command="{Binding AddTransitionCommand}" CommandParameter="FadeToWhite" />
-                    <MenuItem Header="Fade to Black" Command="{Binding AddTransitionCommand}" CommandParameter="FadeToBlack" />
+                    <MenuItem Header="Crossfade" 
+            Command="{Binding AddTransitionCommand}" 
+            CommandParameter="Crossfade" />
+                    <MenuItem Header="Fade to White">
+                        <MenuItem Header="Fade In" 
+              Command="{Binding AddTransitionCommand}" 
+              CommandParameter="FadeToWhite_In" />
+                        <MenuItem Header="Fade Out" 
+              Command="{Binding AddTransitionCommand}" 
+              CommandParameter="FadeToWhite_Out" />
+                        <MenuItem Header="Fade In &amp; Out" 
+              Command="{Binding AddTransitionCommand}" 
+              CommandParameter="FadeToWhite_Both" />
+                    </MenuItem>
+                    <MenuItem Header="Fade to Black">
+                        <MenuItem Header="Fade In" 
+              Command="{Binding AddTransitionCommand}" 
+              CommandParameter="FadeToBlack_In" />
+                        <MenuItem Header="Fade Out" 
+              Command="{Binding AddTransitionCommand}" 
+              CommandParameter="FadeToBlack_Out" />
+                        <MenuItem Header="Fade In &amp; Out" 
+              Command="{Binding AddTransitionCommand}" 
+              CommandParameter="FadeToBlack_Both" />
+                    </MenuItem>
                 </MenuItem>
             </MenuItem>
 

@@ -2,7 +2,8 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using PressPlay.Models;  // your enum lives here
+using PressPlay.Models;
+using static PressPlay.Models.Track;  // your enum lives here
 
 namespace PressPlay.Models
 {
@@ -14,7 +15,7 @@ namespace PressPlay.Models
         TimeCode Start { get; set; }
         TimeCode End { get; set; }
         TimeCode Duration { get; }
-        TimeCode OriginalEnd { get; set; }  // Added this property
+        TimeCode OriginalEnd { get; set; } // Added this property
 
         // Visual properties
         int FadeInFrame { get; set; }
@@ -31,6 +32,7 @@ namespace PressPlay.Models
         byte[] Thumbnail { get; set; }
 
         TimeCode SourceLength { get; set; }
+        Track.FadeColor FadeColor { get; set; } // Removed initializer
 
         // Methods
         bool IsCompatibleWith(string trackType);
@@ -75,6 +77,11 @@ namespace PressPlay.Models
                     OnPropertyChanged();
                 }
             }
+        }
+        public enum FadeColor
+        {
+            Black,  // the default: fade the clip’s opacity over your black background
+            White   // new: fade to/from white
         }
 
         public int Height

@@ -38,6 +38,7 @@ namespace PressPlay.Models
         private string _waveformImagePath;
         private bool _waveformGenerationInProgress;
         private float _volume = 1.0f;
+        public Track.FadeColor FadeColor { get; set; } = Track.FadeColor.Black;
         public float Volume
         {
             get => _volume;

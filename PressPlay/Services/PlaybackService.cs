@@ -281,10 +281,9 @@ namespace PressPlay.Services
 
             PositionChanged?.Invoke(newTime.ToTimeSpan());
         }
-
         private void RenderFrame()
         {
-            // *** All your existing video‐only rendering code UNCHANGED ***
+            // 1) Early-out if no canvas
             if (_project.ProjectWidth == 0 || _project.ProjectHeight == 0)
             {
                 _previewControl.Source = null;
@@ -298,32 +297,103 @@ namespace PressPlay.Services
             var dv = new DrawingVisual();
             using (var dc = dv.RenderOpen())
             {
+                // 2) Black background
                 dc.DrawRectangle(Brushes.Black, null, new Rect(0, 0, width, height));
+
+                // 3) For each video track, from bottom to top
                 foreach (var track in _project.Tracks.OfType<Track>().Reverse())
                 {
-                    if (track.Type == TimelineTrackType.Audio) continue;
-                    var item = track.Items.FirstOrDefault(i =>
-                        i.Position.TotalFrames <= idx &&
-                        idx < i.Position.TotalFrames + i.Duration.TotalFrames);
-                    if (item == null) continue;
+                    if (track.Type == TimelineTrackType.Audio)
+                        continue;
 
-                    var clip = _project.Clips.FirstOrDefault(c =>
-                        string.Equals(c.FilePath, item.FilePath, StringComparison.OrdinalIgnoreCase)
-                        || c.Id == (item as AudioTrackItem)?.ClipId);
-                    if (clip == null) continue;
+                    // 4) Grab *all* items active at this frame, sorted by start time
+                    var activeItems = track.Items
+                        .Where(i =>
+                            i.Position.TotalFrames <= idx &&
+                            idx < i.Position.TotalFrames + i.Duration.TotalFrames
+                        )
+                        .OrderBy(i => i.Position.TotalFrames);
 
-                    int clipFrame = idx - item.Position.TotalFrames + item.Start.TotalFrames;
-                    clipFrame = Math.Clamp(clipFrame, 0, (int)clip.Length.TotalFrames - 1);
-                    var ts = TimeSpan.FromSeconds(clipFrame / clip.FPS);
-                    var bmp = clip.GetFrameAt(ts);
-                    dc.DrawImage(bmp, new Rect(0, 0, width, height));
+                    // 5) Draw each with its fade
+                    foreach (var item in activeItems)
+                        DrawItemWithFade(item, idx, width, height, dc);
                 }
             }
 
+            // 6) Push to the preview control
             var rtb = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
             rtb.Render(dv);
             _previewControl.Source = rtb;
         }
+
+
+        private void DrawItemWithFade(ITrackItem item, int idx, int width, int height, DrawingContext dc)
+        {
+            // A) Find the clip behind this track-item
+            var clip = _project.Clips.FirstOrDefault(c =>
+                string.Equals(c.FilePath, item.FilePath, StringComparison.OrdinalIgnoreCase)
+                || c.Id == (item as AudioTrackItem)?.ClipId);
+            if (clip == null) return;
+
+            // B) Figure out which frame of the media to draw
+            int clipFrame = idx - item.Position.TotalFrames + item.Start.TotalFrames;
+            clipFrame = Math.Clamp(clipFrame, 0, (int)clip.Length.TotalFrames - 1);
+            var ts = TimeSpan.FromSeconds(clipFrame / clip.FPS);
+            var bmp = clip.GetFrameAt(ts);
+
+            // C) Compute fade parameters
+            double framePos = idx - item.Position.TotalFrames;
+            double dur = item.Duration.TotalFrames;
+            double fadeInF = item.FadeInFrame;
+            double fadeOutF = item.FadeOutFrame;
+            double fadeOutStart = dur - fadeOutF;
+
+            if (item.FadeColor == Track.FadeColor.White)
+            {
+                // 1) Draw the clip at full opacity…
+                dc.DrawImage(bmp, new Rect(0, 0, width, height));
+
+                // 2) Overlay a white quad whose alpha goes 1→0 then 0→1
+                double overlayOpacity = 0;
+
+                // fade-in region
+                if (fadeInF > 0 && framePos < fadeInF)
+                    overlayOpacity = 1 - (framePos / fadeInF);
+
+                // fade-out region (inclusive start)
+                if (fadeOutF > 0 && framePos >= fadeOutStart)
+                {
+                    double t = (framePos - fadeOutStart) / fadeOutF;
+                    overlayOpacity = Math.Max(overlayOpacity, Math.Min(1, t));
+                }
+
+                if (overlayOpacity > 0)
+                {
+                    dc.PushOpacity(overlayOpacity);
+                    dc.DrawRectangle(Brushes.White, null, new Rect(0, 0, width, height));
+                    dc.Pop();
+                }
+            }
+            else
+            {
+                // BLACK fade: composite the clip with varying opacity over black
+                double opacity = 1.0;
+
+                // fade-in region
+                if (fadeInF > 0 && framePos < fadeInF)
+                    opacity = framePos / fadeInF;
+
+                // fade-out region (inclusive start)
+                if (fadeOutF > 0 && framePos >= fadeOutStart)
+                    opacity = Math.Min(opacity, (dur - framePos) / fadeOutF);
+
+                dc.PushOpacity(opacity);
+                dc.DrawImage(bmp, new Rect(0, 0, width, height));
+                dc.Pop();
+            }
+        }
+
+
         // Fields to track audio players
         private List<AudioPlayerState> _audioPlayers = new List<AudioPlayerState>();
         private class AudioPlayerState

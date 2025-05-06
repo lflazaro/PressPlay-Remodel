@@ -25,7 +25,7 @@ namespace PressPlay.Models
                 }
             }
         }
-
+        public Track.FadeColor FadeColor { get; set; } = Track.FadeColor.Black;
         public double StartTime { get; set; }
         public string FileName { get; set; }
         public string FilePath { get; set; }

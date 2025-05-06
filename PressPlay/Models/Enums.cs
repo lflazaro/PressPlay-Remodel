@@ -14,4 +14,5 @@
         Image
         // Add more types as needed.
     }
+
 }

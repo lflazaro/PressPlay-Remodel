@@ -118,7 +118,43 @@ namespace PressPlay.Timeline
 
             UpdateNeedlePosition(e.GetPosition(header).X);
         }
+        private void AutoCrossfadeOnOverlap(ITrackItem movedItem, Track track)
+        {
+            // 1) Gather & sort all items on this track by start time
+            var items = track.Items
+                .OrderBy(i => i.Position.TotalFrames)
+                .ToList();
 
+            // 2) Walk through consecutive pairs looking for overlaps
+            for (int k = 0; k < items.Count - 1; k++)
+            {
+                var a = items[k];
+                var b = items[k + 1];
+
+                // compute the frame at which A ends and B starts
+                long aEnd = a.Position.TotalFrames + a.Duration.TotalFrames;
+                long bStart = b.Position.TotalFrames;
+
+                // if B starts before A ends, we have an overlap
+                long overlap = aEnd - bStart;
+                if (overlap > 0)
+                {
+                    // apply a crossfade of exactly 'overlap' frames
+                    a.FadeColor = Track.FadeColor.Black;  // or inherit from your default
+                    b.FadeColor = Track.FadeColor.Black;
+                    a.FadeOutFrame = (int)overlap;
+                    b.FadeInFrame = (int)overlap;
+                }
+                else
+                {
+                    // no overlap → clear any previous fades you might have set
+                    if (a.FadeOutFrame > 0 && a.FadeOutFrame == overlap)
+                        a.FadeOutFrame = 0;
+                    if (b.FadeInFrame > 0 && b.FadeInFrame == overlap)
+                        b.FadeInFrame = 0;
+                }
+            }
+        }
         private void TracksCanvas_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.LeftButton == MouseButtonState.Pressed)
@@ -241,6 +277,10 @@ namespace PressPlay.Timeline
                 }
 
                 UndoEngine.Instance.AddUndoUnit(multi);
+                if (_mouseUpTrack is Track track)
+                {
+                    AutoCrossfadeOnOverlap(_mouseDownTrackItem, track);
+                }
             }
 
             _mouseDownElement = null;

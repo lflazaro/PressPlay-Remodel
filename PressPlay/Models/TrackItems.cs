@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using PressPlay.Helpers;
+using static PressPlay.Models.Track;
 
 namespace PressPlay.Models
 {
@@ -24,6 +25,7 @@ namespace PressPlay.Models
         private string _filePath;
         private byte[] _thumbnail;
         private TimeCode _originalEnd;
+        public FadeColor FadeColor { get; set; } = FadeColor.Black;
         public TimeCode OriginalEnd
         {
             get => _originalEnd;

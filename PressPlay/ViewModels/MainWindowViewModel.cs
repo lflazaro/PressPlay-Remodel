@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.VisualBasic;
 using Microsoft.Win32;
 using PressPlay.Helpers;
 using PressPlay.Models;
@@ -224,24 +225,134 @@ namespace PressPlay
 
         // Transition commands
         [RelayCommand]
-        private void AddTransition(string transitionName)
+        private void AddTransition(string transitionSpecifier)
         {
-            // Apply transition to selected clip(s)
+            // 1) Gather all selected items, in track order
             var selectedItems = CurrentProject.Tracks
+                .OfType<Track>()
                 .SelectMany(t => t.Items.Where(i => i.IsSelected))
+                .OrderBy(i => i.Position.TotalFrames)
                 .ToList();
 
-            if (selectedItems.Count > 0)
-            {
-                // TODO: Implement transition application
-                MessageBox.Show($"Transition '{transitionName}' would be applied to {selectedItems.Count} clip(s)", "Not Implemented");
-                HasUnsavedChanges = true;
-            }
-            else
+            if (!selectedItems.Any())
             {
                 MessageBox.Show("Please select at least one clip to apply a transition", "No Selection");
+                return;
             }
+
+            // 2) CROSSFADE: special case
+            if (transitionSpecifier.Equals("Crossfade", StringComparison.OrdinalIgnoreCase))
+            {
+                // Find the single track that has exactly two selected clips
+                var candidate = CurrentProject.Tracks
+                    .OfType<Track>()
+                    .Select(t => new {
+                        Track = t,
+                        Clips = t.Items.Where(i => i.IsSelected).OrderBy(i => i.Position.TotalFrames).ToList()
+                    })
+                    .FirstOrDefault(x => x.Clips.Count == 2);
+
+                if (candidate == null)
+                {
+                    MessageBox.Show(
+                      "Please select exactly two clips on the same track to crossfade.",
+                      "Invalid Selection");
+                    return;
+                }
+
+                var first = candidate.Clips[0];
+                var second = candidate.Clips[1];
+
+                // Ask for duration
+                string cfStr = Interaction.InputBox(
+                    "Enter crossfade duration (in frames):",
+                    "Crossfade Length",
+                    "15");
+                if (!int.TryParse(cfStr, out int cfFrames) || cfFrames < 1)
+                    cfFrames = 15;
+
+                // 3) Reposition the *second* clip so it overlaps by cfFrames
+                long newStartFrame = first.Position.TotalFrames
+                                    + first.Duration.TotalFrames
+                                    - cfFrames;
+
+                // If your TimeCode type exposes a setter on TotalFrames:
+                second.Position.TotalFrames = (int)newStartFrame;
+                // Otherwise, if you have a constructor taking totalFrames:
+                // second.Position = new TimeCode(newStartFrame);
+
+                // 4) Apply fades (we’ll keep them black by default here)
+                first.FadeColor = Track.FadeColor.Black;
+                first.FadeOutFrame = cfFrames;
+                second.FadeColor = Track.FadeColor.Black;
+                second.FadeInFrame = cfFrames;
+
+                HasUnsavedChanges = true;
+                return;
+            }
+
+            // 5) FADE TO BLACK/WHITE: parse color+mode
+            var parts = transitionSpecifier.Split('_');
+            var baseName = parts[0];                          // e.g. "FadeToWhite"
+            var mode = parts.Length > 1 ? parts[1] : "Both";
+
+            Track.FadeColor color = baseName.Equals("FadeToWhite", StringComparison.OrdinalIgnoreCase)
+                ? Track.FadeColor.White
+                : Track.FadeColor.Black;
+
+            // 6) Prompt for fade lengths
+            const string defaultVal = "15";
+            int fadeInFrames = 0;
+            int fadeOutFrames = 0;
+
+            if (mode.Equals("Both", StringComparison.OrdinalIgnoreCase))
+            {
+                // Fade-In
+                string inStr = Interaction.InputBox(
+                    "Enter fade-in duration (frames):",
+                    "Fade-In Duration",
+                    defaultVal);
+                if (!int.TryParse(inStr, out fadeInFrames) || fadeInFrames < 0)
+                    fadeInFrames = int.Parse(defaultVal);
+
+                // Fade-Out
+                string outStr = Interaction.InputBox(
+                    "Enter fade-out duration (frames):",
+                    "Fade-Out Duration",
+                    defaultVal);
+                if (!int.TryParse(outStr, out fadeOutFrames) || fadeOutFrames < 0)
+                    fadeOutFrames = int.Parse(defaultVal);
+            }
+            else if (mode.Equals("In", StringComparison.OrdinalIgnoreCase))
+            {
+                string inStr = Interaction.InputBox(
+                    "Enter fade-in duration (frames):",
+                    "Fade-In Duration",
+                    defaultVal);
+                if (!int.TryParse(inStr, out fadeInFrames) || fadeInFrames < 0)
+                    fadeInFrames = int.Parse(defaultVal);
+            }
+            else // "Out"
+            {
+                string outStr = Interaction.InputBox(
+                    "Enter fade-out duration (frames):",
+                    "Fade-Out Duration",
+                    defaultVal);
+                if (!int.TryParse(outStr, out fadeOutFrames) || fadeOutFrames < 0)
+                    fadeOutFrames = int.Parse(defaultVal);
+            }
+
+            // 7) Apply to every selected clip
+            foreach (var item in selectedItems)
+            {
+                item.FadeColor = color;
+                item.FadeInFrame = fadeInFrames;
+                item.FadeOutFrame = fadeOutFrames;
+            }
+
+            HasUnsavedChanges = true;
         }
+
 
         // Help commands
         [RelayCommand]
