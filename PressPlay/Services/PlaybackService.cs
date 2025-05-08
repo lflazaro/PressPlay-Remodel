@@ -581,6 +581,21 @@ namespace PressPlay.Services
                         // Update existing player
                         playerState.Item = item; // Update item reference 
                         playerState.UpdateVolume(); // Update volume settings
+                                                    // --- apply fade‐in/out envelope ---
+                        {
+                            double framePos = frameIndex - item.Position.TotalFrames;
+                            double dur = item.Duration.TotalFrames;
+                            double fadeInF = item.FadeInFrame;
+                            double fadeOutF = item.FadeOutFrame;
+                            double fadeOutStart = dur - fadeOutF;
+                            double fadeFactor = 1.0;
+                            if (fadeInF > 0 && framePos < fadeInF)
+                                fadeFactor = framePos / fadeInF;
+                            if (fadeOutF > 0 && framePos >= fadeOutStart)
+                                fadeFactor = Math.Min(fadeFactor, (dur - framePos) / fadeOutF);
+                            // adjust the mixer volume
+                            playerState.VolumeProvider.Volume *= (float)fadeFactor;
+                        }
                         playerState.Seek(position); // Update position if needed
 
                         // Start/stop based on project state
@@ -595,7 +610,20 @@ namespace PressPlay.Services
                         try
                         {
                             var newState = new AudioPlayerState(clip.FilePath, position, item, itemId);
-
+                            // --- apply initial fade‐in/out envelope ---
+                            {
+                                double framePos = frameIndex - item.Position.TotalFrames;
+                                double dur = item.Duration.TotalFrames;
+                                double fadeInF = item.FadeInFrame;
+                                double fadeOutF = item.FadeOutFrame;
+                                double fadeOutStart = dur - fadeOutF;
+                                double fadeFactor = 1.0;
+                                if (fadeInF > 0 && framePos < fadeInF)
+                                    fadeFactor = framePos / fadeInF;
+                                if (fadeOutF > 0 && framePos >= fadeOutStart)
+                                    fadeFactor = Math.Min(fadeFactor, (dur - framePos) / fadeOutF);
+                                newState.VolumeProvider.Volume *= (float)fadeFactor;
+                            }
                             // Start if needed
                             if (_project.IsPlaying)
                                 newState.Play();

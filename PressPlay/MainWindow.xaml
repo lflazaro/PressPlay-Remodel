@@ -153,6 +153,19 @@
               Command="{Binding AddTransitionCommand}" 
               CommandParameter="FadeToBlack_Both" />
                     </MenuItem>
+                    <Separator />
+
+                    <MenuItem Header="Audio Fade">
+                        <MenuItem Header="Fade In" 
+              Command="{Binding AddTransitionCommand}" 
+              CommandParameter="AudioFade_In" />
+                        <MenuItem Header="Fade Out" 
+              Command="{Binding AddTransitionCommand}" 
+              CommandParameter="AudioFade_Out" />
+                        <MenuItem Header="Fade In &amp; Out" 
+              Command="{Binding AddTransitionCommand}" 
+              CommandParameter="AudioFade_Both" />
+                    </MenuItem>
                 </MenuItem>
             </MenuItem>
 

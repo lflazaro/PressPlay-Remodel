@@ -290,7 +290,46 @@ namespace PressPlay
                 HasUnsavedChanges = true;
                 return;
             }
+            // 3b) Handle Audio Fade
+            if (transitionSpecifier.StartsWith("AudioFade", StringComparison.OrdinalIgnoreCase))
+            {
+                // parse modeaudio: In / Out / Both
+                var modeaudio = transitionSpecifier.Split('_')[1];
 
+                // prompt user
+                const string defaultVal2 = "15";
+                int fadeIn = 0;
+                int fadeOut = 0;
+
+                if (modeaudio == "Both" || modeaudio == "In")
+                {
+                    string inStr = Interaction.InputBox(
+                        "Enter audio fade-in duration (in frames):",
+                        "Audio Fade-In",
+                        defaultVal2);
+                    if (!int.TryParse(inStr, out fadeIn) || fadeIn < 0)
+                        fadeIn = int.Parse(defaultVal2);
+                }
+                if (modeaudio == "Both" || modeaudio == "Out")
+                {
+                    string outStr = Interaction.InputBox(
+                        "Enter audio fade-out duration (in frames):",
+                        "Audio Fade-Out",
+                        defaultVal2);
+                    if (!int.TryParse(outStr, out fadeOut) || fadeOut < 0)
+                        fadeOut = int.Parse(defaultVal2);
+                }
+
+                // apply only to audio items
+                foreach (var item in selectedItems.OfType<AudioTrackItem>())
+                {
+                    item.FadeInFrame = fadeIn;
+                    item.FadeOutFrame = fadeOut;
+                }
+
+                HasUnsavedChanges = true;
+                return;
+            }
             // 5) FADE TO BLACK/WHITE: parse color+mode
             var parts = transitionSpecifier.Split('_');
             var baseName = parts[0];                          // e.g. "FadeToWhite"
