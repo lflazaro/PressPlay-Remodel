@@ -2,9 +2,11 @@
 using NAudio.Gui;
 using OpenCvSharp;
 using OpenCvSharp.WpfExtensions;  // for .ToBitmapSource()
+using PressPlay.Effects;
 using PressPlay.Helpers;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -78,6 +80,7 @@ namespace PressPlay.Models
         public bool IsSelected { get => _isSelected; set { _isSelected = value; OnPropertyChanged(); } }
         public TimeCode Length { get => _length; set { _length = value; OnPropertyChanged(); } }
         public bool UnlimitedLength { get; private set; }
+        public ObservableCollection<IEffect> Effects { get; } = new ObservableCollection<IEffect>();
         public double FPS { get; private set; }
         public string Thumbnail { get => _thumbnail; set { _thumbnail = value; OnPropertyChanged(); } }
         [JsonIgnore]
@@ -101,7 +104,6 @@ namespace PressPlay.Models
             Debug.WriteLine($"Compatibility result: {isCompatible}");
             return isCompatible;
         }
-
         public double GetWidth(int zoomLevel)
             => Length.TotalFrames * Constants.TimelinePixelsInSeparator / Constants.TimelineZooms[zoomLevel];
 
@@ -109,6 +111,7 @@ namespace PressPlay.Models
         private VideoCapture _capture;
         public BitmapSource GetFrameAt(TimeSpan position)
         {
+            // 1) Handle still images
             var ext = Path.GetExtension(FilePath).ToLower();
             if (FileFormats.SupportedImageFormats.Contains(ext))
             {
@@ -119,35 +122,44 @@ namespace PressPlay.Models
                 bi.EndInit();
                 return bi;
             }
+
+            // 2) Lazy‐init video capture
             if (_capture == null)
                 _capture = new VideoCapture(FilePath);
 
-            // determine FPS and max frame count
+            // 3) Compute frame index
             double fps = _capture.Fps > 0 ? _capture.Fps : FPS;
             int maxFrames = (int)_capture.FrameCount;
-
-            // translate TimeSpan → zero-based frame index
             int target = (int)Math.Round(position.TotalSeconds * fps);
-            target = Math.Max(0, Math.Min(target, maxFrames - 1));
+            target = Math.Clamp(target, 0, maxFrames - 1);
             _capture.PosFrames = target;
 
-            // pull the frame
+            // 4) Retrieve the raw frame
             Mat mat = _capture.RetrieveMat();
             if (mat.Empty())
             {
                 mat.Dispose();
-                // produce a black frame as a fallback
-                mat = new Mat(_capture.FrameHeight,
-                              _capture.FrameWidth,
-                              MatType.CV_8UC3,
-                              new Scalar(0, 0, 0));
+                mat = new Mat(
+                    _capture.FrameHeight,
+                    _capture.FrameWidth,
+                    MatType.CV_8UC3,
+                    new Scalar(0, 0, 0)
+                );
             }
 
-            // convert & clean up
+            // 5) Apply all registered effects, in order
+            foreach (var fx in Effects)
+            {
+                // in‐place: each effect writes into the same Mat
+                fx.ProcessFrame(mat, mat);
+            }
+
+            // 6) Convert to WPF BitmapSource and clean up
             var bmp = mat.ToBitmapSource();
             mat.Dispose();
             return bmp;
         }
+
 
 
         private void GetInfo()

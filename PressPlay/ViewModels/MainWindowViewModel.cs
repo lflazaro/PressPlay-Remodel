@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.VisualBasic;
 using Microsoft.Win32;
+using PressPlay.Effects;
 using PressPlay.Helpers;
 using PressPlay.Models;
 using PressPlay.Services;
@@ -15,6 +16,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Input;
 using TimeCode = PressPlay.Models.TimeCode;
 
 namespace PressPlay
@@ -203,7 +205,6 @@ namespace PressPlay
 
         [RelayCommand]
         private void ExportStepOutlineXlsx() => ExportStepOutlineToFile("XLSX");
-
         // Media commands
         [RelayCommand]
         private void AddMedia() => ImportMediaDialog();
@@ -222,7 +223,6 @@ namespace PressPlay
                 CurrentProject.SelectedTool = tool;
             }
         }
-
         // Transition commands
         [RelayCommand]
         private void AddTransition(string transitionSpecifier)
@@ -392,7 +392,50 @@ namespace PressPlay
             HasUnsavedChanges = true;
         }
 
+        [RelayCommand]
+        private void AddEffect(string effectKey)
+        {
+            // 1) Gather all selected timeline items
+            var selectedItems = CurrentProject.Tracks
+                .OfType<Track>()
+                .SelectMany(t => t.Items.Where(i => i.IsSelected))
+                .ToList();
 
+            if (!selectedItems.Any())
+            {
+                MessageBox.Show(
+                    "Please select at least one clip to apply an effect.",
+                    "No Selection",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            // 2) For each selected item, find its ProjectClip and add the effect
+            foreach (var item in selectedItems)
+            {
+                var clip = CurrentProject.Clips
+                    .OfType<ProjectClip>()
+                    .FirstOrDefault(c =>
+                        string.Equals(c.FilePath, item.FilePath, StringComparison.OrdinalIgnoreCase)
+                        || (item is AudioTrackItem ati && c.Id == ati.ClipId)
+                    );
+                if (clip == null)
+                    continue;
+
+                IEffect fx = effectKey switch
+                {
+                    "ChromaKey" => new ChromaKeyEffect(),
+                    _ => null
+                };
+                if (fx == null)
+                    continue;
+
+                clip.Effects.Add(fx);
+            }
+
+            HasUnsavedChanges = true;
+        }
         // Help commands
         [RelayCommand]
         private void ReportIssue() => OpenUrl("https://github.com/lflazaro/PressPlay-Remodel/issues");

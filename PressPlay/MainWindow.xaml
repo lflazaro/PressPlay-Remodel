@@ -126,6 +126,16 @@
                         <svgc:SvgIcon UriSource="/Resources/Icons/cut.svg" Fill="LightGray" Width="13" Height="13" Margin="-8"/>
                     </MenuItem.Icon>
                 </MenuItem>
+                <Separator/>
+
+                <MenuItem Header="Effects">
+                    <!-- Chroma Key -->
+                    <MenuItem 
+      Header="Chroma Key"
+      Command="{Binding AddEffectCommand}"
+      CommandParameter="ChromaKey" />
+                    <!-- you can add more effects later -->
+                </MenuItem>
                 <Separator />
                 <MenuItem Header="Add Transition">
                     <MenuItem Header="Crossfade" 
