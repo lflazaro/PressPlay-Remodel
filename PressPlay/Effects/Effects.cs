@@ -2,6 +2,7 @@
 using OpenCvSharp;
 using System.Windows.Media;
 using System.Linq;
+using System.Diagnostics;
 
 namespace PressPlay.Effects
 {
@@ -102,6 +103,7 @@ namespace PressPlay.Effects
 
         public void ProcessFrame(Mat inputFrame, Mat outputFrame)
         {
+            Debug.WriteLine("ChromaKeyEffect.ProcessFrame called!");
             // Convert BGR to HSV on the input frame
             Cv2.CvtColor(inputFrame, _hsvMat, ColorConversionCodes.BGR2HSV);
 
@@ -130,11 +132,28 @@ namespace PressPlay.Effects
             // Threshold to create mask of keyed pixels
             Cv2.InRange(_hsvMat, lower, upper, _mask);
 
-            // Invert mask: keep everything except keyed color
-            Cv2.BitwiseNot(_mask, _mask);
+            // Convert the input to BGRA to have an alpha channel
+            using var bgraFrame = new Mat();
+            Cv2.CvtColor(inputFrame, bgraFrame, ColorConversionCodes.BGR2BGRA);
 
-            // Copy pixels through mask
-            inputFrame.CopyTo(outputFrame, _mask);
+            // Set alpha channel based on the mask (255 for opaque, 0 for transparent)
+            for (int y = 0; y < bgraFrame.Rows; y++)
+            {
+                for (int x = 0; x < bgraFrame.Cols; x++)
+                {
+                    var pixel = bgraFrame.Get<Vec4b>(y, x);
+                    // If mask is non-zero (key color), set alpha to 0
+                    if (_mask.Get<byte>(y, x) != 0)
+                        pixel[3] = 0;
+                    else
+                        pixel[3] = 255;
+                    bgraFrame.Set(y, x, pixel);
+                }
+            }
+            Debug.WriteLine($"Processing chroma key: Target HSV={hsvTarget}, Tolerance={_tolerance}");
+            Debug.WriteLine($"Mask contains {Cv2.CountNonZero(_mask)} non-zero pixels out of {_mask.Rows * _mask.Cols}");
+            // Copy the result to output
+            bgraFrame.CopyTo(outputFrame);
         }
 
         // Helper to sync parameter collection on set

@@ -111,16 +111,60 @@ namespace PressPlay.Models
         private VideoCapture _capture;
         public BitmapSource GetFrameAt(TimeSpan position)
         {
-            // 1) Handle still images
             var ext = Path.GetExtension(FilePath).ToLower();
+
+            // Image file handling
             if (FileFormats.SupportedImageFormats.Contains(ext))
             {
+                // First load the image natively to preserve transparency
                 var bi = new BitmapImage();
                 bi.BeginInit();
                 bi.UriSource = new Uri(FilePath);
                 bi.CacheOption = BitmapCacheOption.OnLoad;
                 bi.EndInit();
-                return bi;
+
+                // Check if we have any effects to apply
+                if (Effects.Count == 0)
+                {
+                    // No effects, return the image directly to preserve transparency
+                    return bi;
+                }
+
+                Debug.WriteLine($"Applying {Effects.Count} effects to image {Path.GetFileName(FilePath)}");
+
+                // Convert BitmapSource to OpenCV Mat
+                Mat mat1;
+
+                // For PNG files, ensure we preserve transparency
+                if (ext == ".png")
+                {
+                    // Preserve alpha when loading PNG from file
+                    mat1 = Cv2.ImRead(FilePath, ImreadModes.Unchanged);
+                }
+                else
+                {
+                    // For non-PNG images, just load directly
+                    mat1 = Cv2.ImRead(FilePath, ImreadModes.Color);
+                }
+
+                if (mat1.Empty())
+                {
+                    Debug.WriteLine($"Failed to load image via OpenCV: {FilePath}");
+                    // Just return the original image if OpenCV loading fails
+                    return bi;
+                }
+
+                // Apply effects
+                foreach (var fx in Effects)
+                {
+                    Debug.WriteLine($"Applying effect: {fx.Name}");
+                    fx.ProcessFrame(mat1, mat1);
+                }
+
+                // Convert back to WPF BitmapSource
+                var resultBmp = mat1.ToBitmapSource();
+                mat1.Dispose();
+                return resultBmp;
             }
 
             // 2) Lazy‐init video capture
@@ -150,7 +194,7 @@ namespace PressPlay.Models
             // 5) Apply all registered effects, in order
             foreach (var fx in Effects)
             {
-                // in‐place: each effect writes into the same Mat
+                Debug.WriteLine($"Applying effect: {fx.Name}");
                 fx.ProcessFrame(mat, mat);
             }
 

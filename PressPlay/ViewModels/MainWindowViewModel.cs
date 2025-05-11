@@ -12,6 +12,7 @@ using PressPlay.Undo.UndoUnits;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -428,10 +429,11 @@ namespace PressPlay
                     "ChromaKey" => new ChromaKeyEffect(),
                     _ => null
                 };
-                if (fx == null)
-                    continue;
-
-                clip.Effects.Add(fx);
+                if (fx != null)
+                {
+                    clip.Effects.Add(fx);
+                    Debug.WriteLine($"Added {fx.Name} effect to clip {clip.FileName}");
+                }
             }
 
             HasUnsavedChanges = true;
