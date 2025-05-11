@@ -227,7 +227,7 @@
 
             <!-- LEFT PANEL (TABS FOR CLIPS, STEP OUTLINE, ETC.) -->
             <Grid Grid.Column="0">
-                <TabControl TabStripPlacement="Bottom" BorderThickness="0" Background="#FF2C2C2C" Foreground="LightGray">
+                <TabControl TabStripPlacement="Bottom" BorderThickness="0" Foreground="LightGray" Background="#FF2C2C2C">
                     <!-- Clips Tab -->
                     <TabItem Header="Clips">
                         <Grid>
