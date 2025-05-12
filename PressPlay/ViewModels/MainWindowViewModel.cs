@@ -60,6 +60,17 @@ namespace PressPlay
 
         private string _currentProjectPath;
 
+        [ObservableProperty]
+        private ITrackItem _selectedTrackItem;
+
+        [ObservableProperty]
+        private ProjectClip _selectedProjectClip;
+
+        [ObservableProperty]
+        private ObservableCollection<string> _blendModes = new ObservableCollection<string> {
+    "Normal", "Multiply", "Screen", "Overlay", "Darken", "Lighten"
+};
+
         // Playback service – to be set from the view
         public IPlaybackService PlaybackService { get; set; }
         public static MainWindowViewModel Instance { get; private set; }
@@ -1260,7 +1271,8 @@ namespace PressPlay
             }
         }
 
-            private void ShowProjectSettings()
+
+        private void ShowProjectSettings()
         {
             // Placeholder for project settings dialog
             MessageBox.Show("Project settings dialog not yet implemented", "Not Implemented");
