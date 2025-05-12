@@ -20,6 +20,7 @@
         <converters:NullToBoolConverter   x:Key="NullToBoolConverter"/>
         <converters:HasChromaKeyConverter x:Key="HasChromaKeyConverter"/>
         <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <converters:SelectedItemFinder x:Key="SelectedItemFinder"/>
     </Window.Resources>
 
@@ -285,134 +286,7 @@
                             </StackPanel>
                         </Grid>
                     </TabItem>
-                    <TabItem Header="Clip Properties">
-                        <TabItem.Style>
-                            <Style TargetType="TabItem">
-                                <Setter Property="Visibility" Value="Visible"/>
-                                <Style.Triggers>
-                                    <!-- This binds directly to the Project, not ViewModel -->
-                                    <DataTrigger 
-                    Binding="{Binding CurrentProject, 
-                             Converter={StaticResource SelectedItemFinder}, 
-                             ConverterParameter=TrackItem}"
-                    Value="{x:Null}">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TabItem.Style>
-                        <ScrollViewer>
-                            <StackPanel Margin="8">
 
-                                <GroupBox Header="Transform &amp; Opacity" Margin="0,0,0,12" Foreground="#FFD5DFE5">
-                                    <Grid Margin="6">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
-
-                                        <!-- Position X -->
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Position X:" VerticalAlignment="Center"/>
-                                        <TextBox Grid.Row="0" Grid.Column="1">
-                                            <TextBox.Text>
-                                                <Binding Converter="{StaticResource SelectedItemFinder}" 
-                                     ConverterParameter="TrackItem" 
-                                     Path="CurrentProject"
-                                     UpdateSourceTrigger="PropertyChanged">
-                                                    <Binding.TargetNullValue>0</Binding.TargetNullValue>
-                                                </Binding>
-                                            </TextBox.Text>
-                                        </TextBox>
-
-                                        <!-- Position Y -->
-                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Position Y:" VerticalAlignment="Center"/>
-                                        <TextBox Grid.Row="1" Grid.Column="1">
-                                            <TextBox.Text>
-                                                <Binding Converter="{StaticResource SelectedItemFinder}" 
-                                     ConverterParameter="TrackItem" 
-                                     Path="CurrentProject.TranslateY"
-                                     UpdateSourceTrigger="PropertyChanged">
-                                                    <Binding.TargetNullValue>0</Binding.TargetNullValue>
-                                                </Binding>
-                                            </TextBox.Text>
-                                        </TextBox>
-
-                                        <!-- Rotation -->
-                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Rotation:" VerticalAlignment="Center"/>
-                                        <TextBox Grid.Row="2" Grid.Column="1">
-                                            <TextBox.Text>
-                                                <Binding Converter="{StaticResource SelectedItemFinder}" 
-                                     ConverterParameter="TrackItem" 
-                                     Path="CurrentProject.Rotation"
-                                     UpdateSourceTrigger="PropertyChanged">
-                                                    <Binding.TargetNullValue>0</Binding.TargetNullValue>
-                                                </Binding>
-                                            </TextBox.Text>
-                                        </TextBox>
-
-                                        <!-- Scale X -->
-                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Scale X:" VerticalAlignment="Center"/>
-                                        <TextBox Grid.Row="3" Grid.Column="1">
-                                            <TextBox.Text>
-                                                <Binding Converter="{StaticResource SelectedItemFinder}" 
-                                     ConverterParameter="TrackItem" 
-                                     Path="CurrentProject.ScaleX"
-                                     UpdateSourceTrigger="PropertyChanged">
-                                                    <Binding.TargetNullValue>1</Binding.TargetNullValue>
-                                                </Binding>
-                                            </TextBox.Text>
-                                        </TextBox>
-
-                                        <!-- Opacity -->
-                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Opacity:" VerticalAlignment="Center"/>
-                                        <Slider Grid.Row="4" Grid.Column="1" Minimum="0" Maximum="1">
-                                            <Slider.Value>
-                                                <Binding Converter="{StaticResource SelectedItemFinder}" 
-                                     ConverterParameter="TrackItem" 
-                                     Path="CurrentProject.Opacity"
-                                     UpdateSourceTrigger="PropertyChanged">
-                                                    <Binding.TargetNullValue>1</Binding.TargetNullValue>
-                                                </Binding>
-                                            </Slider.Value>
-                                        </Slider>
-
-                                        <!-- Blend Mode -->
-                                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Blend Mode:" VerticalAlignment="Center"/>
-                                        <ComboBox Grid.Row="5" Grid.Column="1"
-          ItemsSource="{Binding BlendModes}"
-          SelectedItem="{Binding CurrentProject, 
-                        Converter={StaticResource SelectedItemFinder}, 
-                        ConverterParameter='TrackItem,BlendMode'}"/>
-                                    </Grid>
-                                </GroupBox>
-
-                                <!-- B) Effects List (all applied effects) -->
-
-                                <!-- C) Chroma Key Overrides -->
-                                <GroupBox Header="Chroma Key"
-                Visibility="{Binding SelectedProjectClip.Effects, Converter={StaticResource HasChromaKeyConverter}}" Foreground="#FFD5DFE5" Height="123">
-                                    <StackPanel Margin="6">
-                                        <CheckBox Content="Enabled"
-                    IsChecked="{Binding SelectedProjectClip.Effects[0].Enabled}" Foreground="#FFD5DFE5" />
-                                        <TextBlock Text="Key Color:"/>
-                                        <Button Content="Choose Color…" Command="{Binding OpenChromaColorPicker}"
-                  CommandParameter="{Binding SelectedProjectClip}"/>
-                                        <TextBlock Text="Tolerance:"/>
-                                        <Slider Minimum="0" Maximum="1"
-                  Value="{Binding SelectedProjectClip.Effects[0].Parameters[1].Value}" />
-                                    </StackPanel>
-                                </GroupBox>
-                            </StackPanel>
-                        </ScrollViewer>
-                    </TabItem>
                 </TabControl>
             </Grid>
 

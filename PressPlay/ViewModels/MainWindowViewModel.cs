@@ -63,8 +63,12 @@ namespace PressPlay
         [ObservableProperty]
         private ITrackItem _selectedTrackItem;
 
+        [NotifyPropertyChangedFor(nameof(HasClip))]
         [ObservableProperty]
         private ProjectClip _selectedProjectClip;
+
+        public bool HasClip => SelectedProjectClip != null;
+
 
         [ObservableProperty]
         private ObservableCollection<string> _blendModes = new ObservableCollection<string> {
