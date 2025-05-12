@@ -329,6 +329,7 @@ namespace PressPlay.Services
 
         private void DrawItemWithFade(ITrackItem item, int idx, int width, int height, DrawingContext dc)
         {
+
             // A) Find the clip behind this track-item
             var clip = _project.Clips.FirstOrDefault(c =>
                 string.Equals(c.FilePath, item.FilePath, StringComparison.OrdinalIgnoreCase)
@@ -347,6 +348,23 @@ namespace PressPlay.Services
             double fadeInF = item.FadeInFrame;
             double fadeOutF = item.FadeOutFrame;
             double fadeOutStart = dur - fadeOutF;
+
+            if (item is TrackItem ti)
+            {
+                // 1) global clip opacity
+                dc.PushOpacity(ti.Opacity);
+
+                // 2) combine translate → scale → rotate around the canvas center
+                var tx = new TranslateTransform(ti.TranslateX, ti.TranslateY);
+                var sc = new ScaleTransform(ti.ScaleX, ti.ScaleY, width * 0.5, height * 0.5);
+                var rt = new RotateTransform(ti.Rotation, width * 0.5, height * 0.5);
+                var group = new TransformGroup();
+                group.Children.Add(tx);
+                group.Children.Add(sc);
+                group.Children.Add(rt);
+
+                dc.PushTransform(group);
+            }
 
             if (item.FadeColor == Track.FadeColor.White)
             {
@@ -390,6 +408,11 @@ namespace PressPlay.Services
                 dc.PushOpacity(opacity);
                 dc.DrawImage(bmp, new Rect(0, 0, width, height));
                 dc.Pop();
+            }
+            if (item is TrackItem)
+            {
+                dc.Pop();  // pop TransformGroup
+                dc.Pop();  // pop Opacity
             }
         }
 

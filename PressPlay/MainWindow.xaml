@@ -17,6 +17,9 @@
         <converters:TimelineSelectedToolToSelectedConverter x:Key="TimelineSelectedToolToSelectedConverter" />
         <converters:ByteArrayToImageConverter           x:Key="ByteArrayConverter" />
         <local:MainWindowViewModel                      x:Key="MainWindowViewModel" />
+        <converters:NullToBoolConverter   x:Key="NullToBoolConverter"/>
+        <converters:HasChromaKeyConverter x:Key="HasChromaKeyConverter"/>
+        <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
     </Window.Resources>
 
     <!-- DataContext via the window‐scoped resource -->
@@ -280,6 +283,96 @@
                                 <Button Content="Export to XLSX" Command="{Binding ExportStepOutlineXlsxCommand}" Margin="5,0" Background="#FF3A3A3A" Foreground="LightGray"/>
                             </StackPanel>
                         </Grid>
+                    </TabItem>
+                    <TabItem Header="Clip Properties">
+                        <TabItem.Style>
+                            <Style TargetType="TabItem">
+                                <!-- Default: visible -->
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <!-- 
+          Look up the SelectedTrackItem on the TabControl's DataContext.
+          If it's null, collapse this tab.
+        -->
+                                    <DataTrigger
+          Binding="{Binding DataContext.SelectedTrackItem,
+                            RelativeSource={RelativeSource AncestorType=TabControl}}"
+          Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TabItem.Style>
+                        <ScrollViewer>
+                            <StackPanel Margin="8">
+
+                                <!-- A) Transform / Opacity Group -->
+                                <GroupBox Header="Transform &amp; Opacity" Margin="0,0,0,12" Foreground="#FFD5DFE5">
+                                    <Grid Margin="6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <!-- X,Y -->
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <!-- Rotation -->
+                                            <RowDefinition Height="Auto"/>
+                                            <!-- Scale -->
+                                            <RowDefinition Height="Auto"/>
+                                            <!-- Opacity -->
+                                            <RowDefinition Height="Auto"/>
+                                            <!-- Blend Mode -->
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Position X:" VerticalAlignment="Center"/>
+                                        <TextBox  Grid.Row="0" Grid.Column="1"
+                    Text="{Binding SelectedTrackItem.TranslateX, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Position Y:" VerticalAlignment="Center"/>
+                                        <TextBox  Grid.Row="1" Grid.Column="1"
+                    Text="{Binding SelectedTrackItem.TranslateY, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Rotation:" VerticalAlignment="Center"/>
+                                        <TextBox  Grid.Row="2" Grid.Column="1"
+                    Text="{Binding SelectedTrackItem.Rotation, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Scale X:" VerticalAlignment="Center"/>
+                                        <TextBox  Grid.Row="3" Grid.Column="1"
+                    Text="{Binding SelectedTrackItem.ScaleX, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Opacity:" VerticalAlignment="Center"/>
+                                        <Slider   Grid.Row="4" Grid.Column="1"
+                    Minimum="0" Maximum="1" 
+                    Value="{Binding SelectedTrackItem.Opacity, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Blend Mode:" VerticalAlignment="Center"/>
+                                        <ComboBox Grid.Row="5" Grid.Column="1"
+                    ItemsSource="{Binding BlendModes}"
+                    SelectedItem="{Binding SelectedTrackItem.BlendMode, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </Grid>
+                                </GroupBox>
+
+                                <!-- B) Effects List (all applied effects) -->
+
+                                <!-- C) Chroma Key Overrides -->
+                                <GroupBox Header="Chroma Key"
+                Visibility="{Binding SelectedProjectClip.Effects, Converter={StaticResource HasChromaKeyConverter}}" Foreground="#FFD5DFE5" Height="123">
+                                    <StackPanel Margin="6">
+                                        <CheckBox Content="Enabled"
+                    IsChecked="{Binding SelectedProjectClip.Effects[0].Enabled}" Foreground="#FFD5DFE5" />
+                                        <TextBlock Text="Key Color:"/>
+                                        <Button Content="Choose Color…" Command="{Binding OpenChromaColorPicker}"
+                  CommandParameter="{Binding SelectedProjectClip}"/>
+                                        <TextBlock Text="Tolerance:"/>
+                                        <Slider Minimum="0" Maximum="1"
+                  Value="{Binding SelectedProjectClip.Effects[0].Parameters[1].Value}" />
+                                    </StackPanel>
+                                </GroupBox>
+                            </StackPanel>
+                        </ScrollViewer>
                     </TabItem>
                 </TabControl>
             </Grid>

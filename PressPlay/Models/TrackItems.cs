@@ -406,5 +406,58 @@ namespace PressPlay.Models
                 }
             }
         }
+        protected bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+        {
+            if (EqualityComparer<T>.Default.Equals(field, value))
+                return false;
+
+            field = value;
+            OnPropertyChanged(propertyName);
+            return true;
+        }
+        private double _translateX;
+        public double TranslateX
+        {
+            get => _translateX;
+            set => SetField(ref _translateX, value);
+        }
+
+        private double _translateY;
+        public double TranslateY
+        {
+            get => _translateY;
+            set => SetField(ref _translateY, value);
+        }
+
+        // ROTATION (degrees)
+        private double _rotation;
+        public double Rotation
+        {
+            get => _rotation;
+            set => SetField(ref _rotation, value);
+        }
+
+        // SCALE
+        private double _scaleX = 1.0;
+        public double ScaleX
+        {
+            get => _scaleX;
+            set => SetField(ref _scaleX, value);
+        }
+
+        private double _scaleY = 1.0;
+        public double ScaleY
+        {
+            get => _scaleY;
+            set => SetField(ref _scaleY, value);
+        }
+
+        // OPACITY (0…1)
+        private double _opacity = 1.0;
+        public double Opacity
+        {
+            get => _opacity;
+            set => SetField(ref _opacity, value);
+        }
     }
 }
