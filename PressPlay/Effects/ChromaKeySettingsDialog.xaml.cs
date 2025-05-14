@@ -1,32 +1,61 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace PressPlay.Effects
 {
-    /// <summary>
-    /// Lógica de interacción para ChromaKeySettingsDialog.xaml
-    /// </summary>
-    public partial class ChromaKeySettingsDialog : Window
+    public partial class ChromaKeySettingsDialog : Window, INotifyPropertyChanged
     {
         private ChromaKeyEffect _effect;
 
-        // Bindable properties
-        public Color KeyColor { get; set; }
-        public double Tolerance { get; set; }
+        // Implement INotifyPropertyChanged
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        // Bindable properties with proper change notifications
+        private Color _keyColor;
+        public Color KeyColor
+        {
+            get => _keyColor;
+            set
+            {
+                if (_keyColor != value)
+                {
+                    _keyColor = value;
+                    OnPropertyChanged();
+                    // Debug update
+                    System.Diagnostics.Debug.WriteLine($"KeyColor changed to: R:{_keyColor.R} G:{_keyColor.G} B:{_keyColor.B}");
+                }
+            }
+        }
+
+        private double _tolerance;
+        public double Tolerance
+        {
+            get => _tolerance;
+            set
+            {
+                if (_tolerance != value)
+                {
+                    _tolerance = value;
+                    OnPropertyChanged();
+                    // Debug update
+                    System.Diagnostics.Debug.WriteLine($"Tolerance changed to: {_tolerance:P0}");
+                }
+            }
+        }
 
         public ChromaKeySettingsDialog(ChromaKeyEffect effect)
         {
+            // Set DataContext before InitializeComponent
+            DataContext = this;
+
             InitializeComponent();
 
             _effect = effect ?? throw new ArgumentNullException(nameof(effect));
@@ -35,49 +64,59 @@ namespace PressPlay.Effects
             KeyColor = effect.KeyColor;
             Tolerance = effect.Tolerance;
 
-            // Set DataContext to this for binding
-            DataContext = this;
+            System.Diagnostics.Debug.WriteLine($"Dialog initialized with KeyColor: R:{KeyColor.R} G:{KeyColor.G} B:{KeyColor.B}, Tolerance: {Tolerance:P0}");
         }
 
         private void ChooseColor_Click(object sender, RoutedEventArgs e)
         {
-            // Use the system color picker dialog
-            var colorDialog = new System.Windows.Forms.ColorDialog();
-
-            // Initialize with current color
-            colorDialog.Color = System.Drawing.Color.FromArgb(
-                KeyColor.A, KeyColor.R, KeyColor.G, KeyColor.B);
-
-            if (colorDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            try
             {
-                // Update the color
-                KeyColor = Color.FromArgb(
-                    colorDialog.Color.A,
-                    colorDialog.Color.R,
-                    colorDialog.Color.G,
-                    colorDialog.Color.B);
+                // Use Windows Forms ColorDialog for better color selection
+                var colorDialog = new System.Windows.Forms.ColorDialog();
 
-                // Notify property changed for UI update
-                OnPropertyChanged(nameof(KeyColor));
+                // Initialize with current color
+                colorDialog.Color = System.Drawing.Color.FromArgb(
+                    KeyColor.A, KeyColor.R, KeyColor.G, KeyColor.B);
+
+                colorDialog.FullOpen = true; // Show full dialog with custom colors
+
+                if (colorDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    // Update the color
+                    KeyColor = Color.FromArgb(
+                        colorDialog.Color.A,
+                        colorDialog.Color.R,
+                        colorDialog.Color.G,
+                        colorDialog.Color.B);
+
+                    System.Diagnostics.Debug.WriteLine($"Color chosen: R:{KeyColor.R} G:{KeyColor.G} B:{KeyColor.B}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in color picker: {ex.Message}");
+                MessageBox.Show($"Error selecting color: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         private void OK_Click(object sender, RoutedEventArgs e)
         {
-            // Apply settings to the effect
-            _effect.KeyColor = KeyColor;
-            _effect.Tolerance = Tolerance;
+            try
+            {
+                // Apply settings to the effect
+                _effect.KeyColor = KeyColor;
+                _effect.Tolerance = Tolerance;
 
-            DialogResult = true;
-            Close();
-        }
+                System.Diagnostics.Debug.WriteLine($"Applied to effect - KeyColor: R:{KeyColor.R} G:{KeyColor.G} B:{KeyColor.B}, Tolerance: {Tolerance:P0}");
 
-        // Basic INotifyPropertyChanged implementation for binding
-        public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
-
-        protected void OnPropertyChanged(string propertyName)
-        {
-            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(propertyName));
+                DialogResult = true;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error applying settings: {ex.Message}");
+                MessageBox.Show($"Error applying settings: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }

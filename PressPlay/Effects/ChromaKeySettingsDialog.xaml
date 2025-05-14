@@ -25,9 +25,9 @@
             </Grid.ColumnDefinitions>
             <TextBlock Text="Key Color" Foreground="LightGray" VerticalAlignment="Center" Grid.Column="0"/>
             <StackPanel Orientation="Horizontal" Grid.Column="1">
-                <Rectangle Width="30" Height="20" Margin="5,0">
+                <Rectangle Width="30" Height="20" Margin="5,0" Name="ColorPreview">
                     <Rectangle.Fill>
-                        <SolidColorBrush Color="{Binding KeyColor}"/>
+                        <SolidColorBrush x:Name="KeyColorBrush" Color="{Binding KeyColor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                     </Rectangle.Fill>
                 </Rectangle>
                 <Button Content="Choose Color" Width="100" Height="25"
@@ -44,9 +44,11 @@
                 <ColumnDefinition Width="50"/>
             </Grid.ColumnDefinitions>
             <TextBlock Text="Tolerance" Foreground="LightGray" VerticalAlignment="Center" Grid.Column="0"/>
-            <Slider Value="{Binding Tolerance}" Minimum="0" Maximum="1" Grid.Column="1" Margin="2"
+            <Slider Value="{Binding Tolerance, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                    Minimum="0" Maximum="1" Grid.Column="1" Margin="2"
                     Background="#FF3A3A3A" BorderBrush="#FF4A4A4A"/>
-            <TextBox Text="{Binding Tolerance, StringFormat=P0}" Grid.Column="2" Margin="2"
+            <TextBox Text="{Binding Tolerance, StringFormat=P0, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                     Grid.Column="2" Margin="2"
                      Background="#FF3A3A3A" Foreground="LightGray" BorderBrush="#FF4A4A4A"/>
         </Grid>
 
