@@ -524,5 +524,6 @@ namespace PressPlayTitler
                 win.ShowDialog(); // or Show() if you want modeless
             }
         }
+        
     }
 }

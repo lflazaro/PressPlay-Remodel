@@ -22,6 +22,7 @@
         <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <converters:SelectedItemFinder x:Key="SelectedItemFinder"/>
+        <converters:CurrentBlendModeConverter x:Key="CurrentBlendModeConverter"/>
     </Window.Resources>
 
     <!-- DataContext via the window‐scoped resource -->
@@ -272,7 +273,7 @@
                                 <RowDefinition Height="*"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <DataGrid Grid.Row="0" ItemsSource="{Binding CurrentProject.StepOutlineEntries}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="False" Background="#FF2B2B2B" Foreground="LightGray">
+                            <DataGrid Grid.Row="0" ItemsSource="{Binding CurrentProject.StepOutlineEntries}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="False" Background="#FF2B2B2B" Foreground="Black">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Timecode" Binding="{Binding Timecode}" Width="Auto"/>
                                     <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"/>
@@ -427,7 +428,8 @@
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Text="Blend Mode" Foreground="LightGray" VerticalAlignment="Center" Grid.Column="0"/>
-                                                    <ComboBox ItemsSource="{Binding BlendModes}" SelectedIndex="0" Grid.Column="1"
+                                                    <ComboBox ItemsSource="{Binding BlendModes}" SelectedItem="{Binding Path=SelectedProjectClip.Effects, Converter={StaticResource CurrentBlendModeConverter}, Mode=OneWay}" Grid.Column="1"
+                                          SelectionChanged="BlendMode_SelectionChanged"
                                           Background="#FF3A3A3A" Foreground="LightGray" BorderBrush="#FF4A4A4A"/>
                                                 </Grid>
                                             </StackPanel>

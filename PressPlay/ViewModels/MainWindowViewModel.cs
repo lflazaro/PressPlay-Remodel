@@ -509,7 +509,6 @@ namespace PressPlay
             HasUnsavedChanges = true;
         }
 
-        // Add these properties to the MainWindowViewModel class
         private string _selectedTrackTrackName;
         public string SelectedTrackTrackName
         {
@@ -607,7 +606,64 @@ namespace PressPlay
         {
             UpdateSelectedItemProperties();
         }
+        [RelayCommand]
+        private void ChangeBlendMode(string blendModeStr)
+        {
+            // Ensure we have a selected item
+            if (SelectedTrackItem == null || SelectedProjectClip == null)
+                return;
 
+            if (!Enum.TryParse<BlendMode>(blendModeStr, out var blendMode))
+                return;
+
+            // Find existing blend effect or create new one
+            BlendingEffect blendEffect = SelectedProjectClip.Effects.OfType<BlendingEffect>().FirstOrDefault();
+
+            if (blendEffect == null)
+            {
+                // Create new blend effect
+                if (SelectedTrackItem is TrackItem trackItem)
+                {
+                    blendEffect = new BlendingEffect(trackItem);
+                    SelectedProjectClip.Effects.Add(blendEffect);
+                }
+            }
+
+            // Set blend mode
+            if (blendEffect != null)
+            {
+                blendEffect.BlendMode = blendMode;
+                HasUnsavedChanges = true;
+            }
+        }
+
+        // Method to get current blend mode (for binding to UI)
+        public string GetCurrentBlendMode()
+        {
+            if (SelectedProjectClip == null)
+                return "Normal";
+
+            var blendEffect = SelectedProjectClip.Effects.OfType<BlendingEffect>().FirstOrDefault();
+            return blendEffect?.BlendMode.ToString() ?? "Normal";
+        }
+
+        // Helper for applying effects
+        private void EnsureBlendingEffect(ProjectClip clip, TrackItem item)
+        {
+            if (clip == null || item == null) return;
+
+            // Check if the clip already has a BlendingEffect
+            var existingEffect = clip.Effects.OfType<BlendingEffect>().FirstOrDefault();
+
+            if (existingEffect == null)
+            {
+                // Add a new BlendingEffect with default settings
+                var effect = new BlendingEffect(item);
+                clip.Effects.Add(effect);
+
+                HasUnsavedChanges = true;
+            }
+        }
         // Help commands
         [RelayCommand]
         private void ReportIssue() => OpenUrl("https://github.com/lflazaro/PressPlay-Remodel/issues");

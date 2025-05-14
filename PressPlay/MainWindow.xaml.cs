@@ -189,5 +189,19 @@ namespace PressPlay
                     }
                 });
         }
+        private void BlendMode_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (DataContext is MainWindowViewModel viewModel && sender is System.Windows.Controls.ComboBox comboBox)
+            {
+                // Get the selected blend mode name
+                string blendModeName = comboBox.SelectedItem as string;
+
+                if (!string.IsNullOrEmpty(blendModeName))
+                {
+                    // Execute the command to change the blend mode
+                    viewModel.ChangeBlendModeCommand.Execute(blendModeName);
+                }
+            }
+        }
     }
 }
