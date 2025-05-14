@@ -88,8 +88,8 @@ namespace PressPlay.Timeline
 
             if (DataContext is TrackItem trackItem)
             {
-                // Select the clip
-                trackItem.IsSelected = true;
+                // Update selection state
+                UpdateSelection(true);
 
                 // Prepare for potential dragging
                 _startPoint = e.GetPosition(this);
@@ -103,6 +103,64 @@ namespace PressPlay.Timeline
         {
             base.OnMouseEnter(e);
             Cursor = Cursors.Hand; // Indicate draggable
+        }
+        // Add this method to the TrackItemControl class
+        private void UpdateSelection(bool isSelected)
+        {
+            if (DataContext is TrackItem trackItem)
+            {
+                // Update selection state
+                trackItem.IsSelected = isSelected;
+
+                // Get the app-wide view model instance
+                var viewModel = MainWindowViewModel.Instance;
+
+                // Clear other selections if not multi-select
+                if (isSelected && Keyboard.Modifiers != ModifierKeys.Control)
+                {
+                    // Deselect all other items
+                    foreach (var track in viewModel.CurrentProject.Tracks)
+                    {
+                        foreach (var item in track.Items)
+                        {
+                            if (item != trackItem)
+                                item.IsSelected = false;
+                        }
+                    }
+                }
+
+                // Notify the view model about selection change
+                viewModel.SelectionChanged();
+            }
+        }
+        public static void ClearAllSelections()
+        {
+            // Get the app-wide view model instance
+            var viewModel = MainWindowViewModel.Instance;
+
+            if (viewModel != null)
+            {
+                bool hadSelection = false;
+
+                // Deselect all items
+                foreach (var track in viewModel.CurrentProject.Tracks)
+                {
+                    foreach (var item in track.Items)
+                    {
+                        if (item.IsSelected)
+                        {
+                            item.IsSelected = false;
+                            hadSelection = true;
+                        }
+                    }
+                }
+
+                // Only notify if there was an actual selection change
+                if (hadSelection)
+                {
+                    viewModel.SelectionChanged();
+                }
+            }
         }
         protected override void OnPreviewMouseMove(MouseEventArgs e)
         {

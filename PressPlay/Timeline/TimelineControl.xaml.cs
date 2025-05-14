@@ -169,11 +169,26 @@ namespace PressPlay.Timeline
             Focus();
             if (e.ClickCount > 1) return;
             _trackMouseDownX = e.GetPosition(tracksControl).X;
-            Project.Tracks.SelectMany(t => t.Items).ToList().ForEach(x => x.IsSelected = false);
 
-            if (e.OriginalSource is FrameworkElement fe && fe.DataContext is ITrackItem item)
+            // Check if the click is directly on the canvas (not on a clip)
+            bool isCanvasClick = true;
+            if (e.OriginalSource is FrameworkElement fe)
             {
-                var tic = fe as TrackItemControl ?? VisualHelper.GetAncestor<TrackItemControl>(fe);
+                // Check if there's a TrackItemControl in the visual tree
+                var trackItemControl = VisualHelper.GetAncestor<TrackItemControl>(fe);
+                isCanvasClick = trackItemControl == null;
+            }
+
+            // If it's a direct click on the canvas, clear all selections
+            if (isCanvasClick)
+            {
+                TrackItemControl.ClearAllSelections();
+            }
+
+            // Original code continues here
+            if (e.OriginalSource is FrameworkElement originalFe && originalFe.DataContext is ITrackItem item)
+            {
+                var tic = originalFe as TrackItemControl ?? VisualHelper.GetAncestor<TrackItemControl>(originalFe);
                 double mouseX = e.GetPosition(tracksControl).X;
                 double itemX = tic.TranslatePoint(new Point(), tracksControl).X;
                 double itemRight = itemX + tic.Width;

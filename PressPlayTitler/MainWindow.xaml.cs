@@ -87,6 +87,7 @@ namespace PressPlayTitler
             ElementsControl.Items.Refresh();
             HighlightSelection(ElementsControl.SelectedItem as TitleElement);
         }
+        // Add this method to the MainWindow class to respond to TimeLine selection changes
         private void Undo_Click(object sender, RoutedEventArgs e)
         {
             if (_undoStack.Count < 2) return;   // keep at least one state

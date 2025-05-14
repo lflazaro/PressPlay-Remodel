@@ -76,7 +76,14 @@ namespace PressPlay
                 _playbackService.LoadMedia(vm.CurrentProject.CurrentMediaPath);
             }
         }
-
+        // Add this method to the MainWindow class to respond to TimeLine selection changes
+        private void TimelineControl_SelectionChanged(object sender, EventArgs e)
+        {
+            if (DataContext is MainWindowViewModel vm)
+            {
+                vm.SelectionChanged();
+            }
+        }
         private void MainWindow_Closing(object sender, CancelEventArgs e)
         {
             if (DataContext is MainWindowViewModel vm && vm.HasUnsavedChanges)

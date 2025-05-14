@@ -18,6 +18,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using TimeCode = PressPlay.Models.TimeCode;
 
 namespace PressPlay
@@ -239,6 +240,60 @@ namespace PressPlay
                 CurrentProject.SelectedTool = tool;
             }
         }
+        // Add this method to apply transform effects when properties change
+        private void EnsureTransformEffect(ProjectClip clip, TrackItem item)
+        {
+            if (clip == null || item == null) return;
+
+            // Check if the clip already has a TransformEffect
+            var existingEffect = clip.Effects.OfType<TransformEffect>().FirstOrDefault();
+
+            if (existingEffect == null)
+            {
+                // Add a new TransformEffect
+                var effect = new TransformEffect(item);
+                clip.Effects.Add(effect);
+            }
+
+            // The effect will use the current property values from the TrackItem directly
+            // We just need to ensure the effect exists
+
+            HasUnsavedChanges = true;
+        }
+
+        // Add handler for property changes on TrackItem
+        private void RegisterTrackItemPropertyChanges(TrackItem item)
+        {
+            if (item == null) return;
+
+            // Subscribe to property changes
+            item.PropertyChanged += (s, e) =>
+            {
+                // Check if this is a transform-related property
+                if (e.PropertyName == nameof(TrackItem.TranslateX) ||
+                    e.PropertyName == nameof(TrackItem.TranslateY) ||
+                    e.PropertyName == nameof(TrackItem.ScaleX) ||
+                    e.PropertyName == nameof(TrackItem.ScaleY) ||
+                    e.PropertyName == nameof(TrackItem.Rotation) ||
+                    e.PropertyName == nameof(TrackItem.Opacity))
+                {
+                    // Find the associated project clip
+                    var clip = CurrentProject.Clips
+                        .OfType<ProjectClip>()
+                        .FirstOrDefault(c =>
+                            string.Equals(c.FilePath, item.FilePath, StringComparison.OrdinalIgnoreCase));
+
+                    if (clip != null)
+                    {
+                        EnsureTransformEffect(clip, item);
+
+                        // Mark project as having unsaved changes
+                        HasUnsavedChanges = true;
+                    }
+                }
+            };
+        }
+
         // Transition commands
         [RelayCommand]
         private void AddTransition(string transitionSpecifier)
@@ -453,6 +508,106 @@ namespace PressPlay
 
             HasUnsavedChanges = true;
         }
+
+        // Add these properties to the MainWindowViewModel class
+        private string _selectedTrackTrackName;
+        public string SelectedTrackTrackName
+        {
+            get => _selectedTrackTrackName;
+            set => SetProperty(ref _selectedTrackTrackName, value);
+        }
+
+        // Command to toggle chroma key effect
+        [RelayCommand]
+        private void ToggleChromaKey(ProjectClip clip)
+        {
+            if (clip == null) return;
+
+            // Check if clip already has a ChromaKey effect
+            var existingEffect = clip.Effects.OfType<ChromaKeyEffect>().FirstOrDefault();
+
+            if (existingEffect != null)
+            {
+                // Remove existing effect
+                clip.Effects.Remove(existingEffect);
+            }
+            else
+            {
+                // Add new chroma key effect with default settings
+                clip.Effects.Add(new ChromaKeyEffect
+                {
+                    KeyColor = Colors.Green,
+                    Tolerance = 0.3
+                });
+            }
+
+            HasUnsavedChanges = true;
+            OnPropertyChanged(nameof(SelectedProjectClip));
+        }
+
+        // Command to edit chroma key settings
+        [RelayCommand]
+        private void EditChromaKeySettings(ProjectClip clip)
+        {
+            if (clip == null) return;
+
+            var effect = clip.Effects.OfType<ChromaKeyEffect>().FirstOrDefault();
+            if (effect == null) return;
+
+            // Create and show chroma key settings dialog
+            var dialog = new ChromaKeySettingsDialog(effect);
+            if (dialog.ShowDialog() == true)
+            {
+                // Dialog applies changes directly to the effect
+                HasUnsavedChanges = true;
+            }
+        }
+
+        // Method to update the properties panel when selection changes
+        private void UpdateSelectedItemProperties()
+        {
+            // Look for any selected track item
+            ITrackItem selectedItem = CurrentProject.Tracks
+                .SelectMany(t => t.Items)
+                .FirstOrDefault(item => item.IsSelected);
+
+            // Update SelectedTrackItem property - this will trigger UI update
+            SelectedTrackItem = selectedItem;
+
+            if (selectedItem != null)
+            {
+                // Find the associated project clip
+                SelectedProjectClip = CurrentProject.Clips
+                    .OfType<ProjectClip>()
+                    .FirstOrDefault(c =>
+                        string.Equals(c.FilePath, selectedItem.FilePath, StringComparison.OrdinalIgnoreCase) ||
+                        (selectedItem is AudioTrackItem ati && c.Id == ati.ClipId));
+
+                // Find the parent track of the selected item
+                var parentTrack = CurrentProject.Tracks
+                    .FirstOrDefault(t => t.Items.Contains(selectedItem));
+
+                SelectedTrackTrackName = parentTrack?.Name ?? "Unknown Track";
+            }
+            else
+            {
+                // Clear selection-dependent properties
+                SelectedProjectClip = null;
+                SelectedTrackTrackName = null;
+            }
+
+            // Notify UI about possible changes
+            OnPropertyChanged(nameof(SelectedTrackItem));
+            OnPropertyChanged(nameof(SelectedProjectClip));
+            OnPropertyChanged(nameof(SelectedTrackTrackName));
+        }
+
+        // Hook this up to selection changes in the timeline
+        public void SelectionChanged()
+        {
+            UpdateSelectedItemProperties();
+        }
+
         // Help commands
         [RelayCommand]
         private void ReportIssue() => OpenUrl("https://github.com/lflazaro/PressPlay-Remodel/issues");

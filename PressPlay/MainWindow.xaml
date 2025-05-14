@@ -287,6 +287,173 @@
                         </Grid>
                     </TabItem>
 
+                    <!-- Properties Tab (Add this inside the TabControl in MainWindow.xaml) -->
+                    <TabItem Header="Properties">
+                        <Grid>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel Margin="5">
+                                    <!-- No Selection Message -->
+                                    <TextBlock Text="Select a clip to edit its properties" Foreground="LightGray" 
+                           Visibility="{Binding SelectedTrackItem, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=true}"
+                           HorizontalAlignment="Center" Margin="0,20,0,0"/>
+
+                                    <!-- Properties Panel (Only visible when something is selected) -->
+                                    <StackPanel Visibility="{Binding SelectedTrackItem, Converter={StaticResource NullToVisibilityConverter}}">
+
+                                        <!-- Clip Section -->
+                                        <Expander Header="Clip" IsExpanded="True" Foreground="White" 
+                              Visibility="{Binding SelectedTrackItem, Converter={StaticResource NullToVisibilityConverter}}">
+                                            <Grid Margin="10,5,10,5">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="110"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <!-- Display Name -->
+                                                <TextBlock Text="Display Name" Foreground="LightGray" VerticalAlignment="Center" Grid.Row="0" Grid.Column="0"/>
+                                                <TextBox Text="{Binding SelectedTrackItem.FileName}" Grid.Row="0" Grid.Column="1" Margin="2"
+                                     Background="#FF3A3A3A" Foreground="LightGray" BorderBrush="#FF4A4A4A"/>
+
+                                                <!-- Opacity -->
+                                                <TextBlock Text="Opacity" Foreground="LightGray" VerticalAlignment="Center" Grid.Row="1" Grid.Column="0"/>
+                                                <Grid Grid.Row="1" Grid.Column="1">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="50"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Slider Value="{Binding SelectedTrackItem.Opacity, Mode=TwoWay}" 
+                                        Minimum="0" Maximum="1" Grid.Column="0" Margin="2"
+                                        Background="#FF3A3A3A" BorderBrush="#FF4A4A4A"/>
+                                                    <TextBox Text="{Binding SelectedTrackItem.Opacity, StringFormat=P0, Mode=TwoWay}" Grid.Column="1" Margin="2"
+                                         Background="#FF3A3A3A" Foreground="LightGray" BorderBrush="#FF4A4A4A"/>
+                                                </Grid>
+
+                                                <!-- Media Offset - only for video/audio clips -->
+                                                <TextBlock Text="Media Offset" Foreground="LightGray" VerticalAlignment="Center" Grid.Row="2" Grid.Column="0"/>
+                                                <TextBox Text="{Binding SelectedTrackItem.Start}" Grid.Row="2" Grid.Column="1" Margin="2"
+                                     Background="#FF3A3A3A" Foreground="LightGray" BorderBrush="#FF4A4A4A"/>
+                                            </Grid>
+                                        </Expander>
+
+                                        <!-- Transform Section -->
+                                        <Expander Header="Motion/Transformation" IsExpanded="True" Foreground="White"
+                              Visibility="{Binding SelectedTrackItem, Converter={StaticResource NullToVisibilityConverter}}">
+                                            <Grid Margin="10,5,10,5">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="110"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <!-- Position -->
+                                                <TextBlock Text="Position" Foreground="LightGray" VerticalAlignment="Center" Grid.Row="0" Grid.Column="0"/>
+                                                <TextBox Text="{Binding SelectedTrackItem.TranslateX, Mode=TwoWay}" Grid.Row="0" Grid.Column="1" Margin="2"
+                                     Background="#FF3A3A3A" Foreground="LightGray" BorderBrush="#FF4A4A4A"/>
+                                                <TextBox Text="{Binding SelectedTrackItem.TranslateY, Mode=TwoWay}" Grid.Row="0" Grid.Column="2" Margin="2"
+                                     Background="#FF3A3A3A" Foreground="LightGray" BorderBrush="#FF4A4A4A"/>
+
+                                                <!-- Scale -->
+                                                <TextBlock Text="Scale" Foreground="LightGray" VerticalAlignment="Center" Grid.Row="1" Grid.Column="0"/>
+                                                <TextBox Text="{Binding SelectedTrackItem.ScaleX, Mode=TwoWay}" Grid.Row="1" Grid.Column="1" Margin="2"
+                                     Background="#FF3A3A3A" Foreground="LightGray" BorderBrush="#FF4A4A4A"/>
+                                                <TextBox Text="{Binding SelectedTrackItem.ScaleY, Mode=TwoWay}" Grid.Row="1" Grid.Column="2" Margin="2"
+                                     Background="#FF3A3A3A" Foreground="LightGray" BorderBrush="#FF4A4A4A"/>
+
+                                                <!-- Scale Origin -->
+                                                <TextBlock Text="Scale Origin" Foreground="LightGray" VerticalAlignment="Center" Grid.Row="2" Grid.Column="0"/>
+                                                <TextBox Text="0.00px" Grid.Row="2" Grid.Column="1" Margin="2" IsEnabled="False"
+                                     Background="#FF3A3A3A" Foreground="Gray" BorderBrush="#FF4A4A4A"/>
+                                                <TextBox Text="0.00px" Grid.Row="2" Grid.Column="2" Margin="2" IsEnabled="False"
+                                     Background="#FF3A3A3A" Foreground="Gray" BorderBrush="#FF4A4A4A"/>
+
+                                                <!-- Rotation -->
+                                                <TextBlock Text="Rotation" Foreground="LightGray" VerticalAlignment="Center" Grid.Row="3" Grid.Column="0"/>
+                                                <Grid Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="50"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Slider Value="{Binding SelectedTrackItem.Rotation, Mode=TwoWay}" 
+                                        Minimum="0" Maximum="360" Grid.Column="0" Margin="2"
+                                        Background="#FF3A3A3A" BorderBrush="#FF4A4A4A"/>
+                                                    <TextBox Text="{Binding SelectedTrackItem.Rotation, StringFormat=0.0°, Mode=TwoWay}" Grid.Column="1" Margin="2"
+                                         Background="#FF3A3A3A" Foreground="LightGray" BorderBrush="#FF4A4A4A"/>
+                                                </Grid>
+
+                                                <!-- Rotation Origin -->
+                                                <TextBlock Text="Rotation Origin" Foreground="LightGray" VerticalAlignment="Center" Grid.Row="4" Grid.Column="0"/>
+                                                <TextBox Text="Center" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Margin="2" IsEnabled="False"
+                                     Background="#FF3A3A3A" Foreground="Gray" BorderBrush="#FF4A4A4A"/>
+                                            </Grid>
+                                        </Expander>
+
+                                        <!-- Effects Section -->
+                                        <Expander Header="Effects" IsExpanded="True" Foreground="White"
+                              Visibility="{Binding SelectedProjectClip, Converter={StaticResource NullToVisibilityConverter}}">
+                                            <StackPanel Margin="10,5,10,5">
+                                                <!-- Chroma Key Control -->
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <CheckBox Content="Chroma Key" Foreground="LightGray" Grid.Column="0" Margin="0,5,0,5"
+                                          IsChecked="{Binding SelectedProjectClip.Effects, Converter={StaticResource HasChromaKeyConverter}, Mode=OneWay}"
+                                          Command="{Binding ToggleChromaKeyCommand}" 
+                                          CommandParameter="{Binding SelectedProjectClip}"/>
+                                                    <Button Content="Settings" Grid.Column="1" HorizontalAlignment="Right" Width="70" Height="22" Margin="5,0"
+                                        Command="{Binding EditChromaKeySettingsCommand}" 
+                                        CommandParameter="{Binding SelectedProjectClip}"
+                                        Visibility="{Binding SelectedProjectClip.Effects, Converter={StaticResource HasChromaKeyConverter}, Mode=OneWay}"
+                                        Background="#FF3A3A3A" Foreground="LightGray" BorderBrush="#FF4A4A4A"/>
+                                                </Grid>
+
+                                                <!-- Blend Mode Control -->
+                                                <Grid Margin="0,5,0,5">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="110"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Blend Mode" Foreground="LightGray" VerticalAlignment="Center" Grid.Column="0"/>
+                                                    <ComboBox ItemsSource="{Binding BlendModes}" SelectedIndex="0" Grid.Column="1"
+                                          Background="#FF3A3A3A" Foreground="LightGray" BorderBrush="#FF4A4A4A"/>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Expander>
+
+                                        <!-- Track Section -->
+                                        <Expander Header="Track" IsExpanded="True" Foreground="White"
+                              Visibility="{Binding SelectedTrackItem, Converter={StaticResource NullToVisibilityConverter}}">
+                                            <Grid Margin="10,5,10,5">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="110"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Track Name -->
+                                                <TextBlock Text="Track Name" Foreground="LightGray" VerticalAlignment="Center" Grid.Column="0"/>
+                                                <TextBox Text="{Binding SelectedTrackTrackName}" Grid.Column="1" Margin="2" IsReadOnly="True"
+                                     Background="#FF3A3A3A" Foreground="LightGray" BorderBrush="#FF4A4A4A"/>
+                                            </Grid>
+                                        </Expander>
+                                    </StackPanel>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Grid>
+                    </TabItem>
+
                 </TabControl>
             </Grid>
 
