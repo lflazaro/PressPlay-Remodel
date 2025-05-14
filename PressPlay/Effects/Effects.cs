@@ -78,7 +78,7 @@ namespace PressPlay.Effects
 
         /// <summary>
         /// Tolerance around the key color (0–1).
-        /// </summary>
+        /// </summary> 
         public double Tolerance
         {
             get => _tolerance;
