@@ -2,6 +2,7 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using PressPlay.Effects;
 using PressPlay.Models;
 using static PressPlay.Models.Track;  // your enum lives here
 

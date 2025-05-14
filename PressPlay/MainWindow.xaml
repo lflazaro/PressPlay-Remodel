@@ -421,17 +421,7 @@
                                         Background="#FF3A3A3A" Foreground="LightGray" BorderBrush="#FF4A4A4A"/>
                                                 </Grid>
 
-                                                <!-- Blend Mode Control -->
-                                                <Grid Margin="0,5,0,5">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="110"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Text="Blend Mode" Foreground="LightGray" VerticalAlignment="Center" Grid.Column="0"/>
-                                                    <ComboBox ItemsSource="{Binding BlendModes}" SelectedItem="{Binding Path=SelectedProjectClip.Effects, Converter={StaticResource CurrentBlendModeConverter}, Mode=OneWay}" Grid.Column="1"
-                                          SelectionChanged="BlendMode_SelectionChanged"
-                                          Background="#FF3A3A3A" Foreground="LightGray" BorderBrush="#FF4A4A4A"/>
-                                                </Grid>
+                                                
                                             </StackPanel>
                                         </Expander>
 

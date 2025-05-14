@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using PressPlay.Effects;
 using PressPlay.Helpers;
 using static PressPlay.Models.Track;
 
@@ -173,7 +175,8 @@ namespace PressPlay.Models
                 }
             }
         }
-
+        public ObservableCollection<IEffect> Effects { get; }
+    = new ObservableCollection<IEffect>();
         public bool IsChangingFadeIn => _isChangingFadeIn;
         public bool IsChangingFadeOut => _isChangingFadeOut;
         public bool UnlimitedSourceLength => _unlimitedSourceLength;
@@ -459,5 +462,6 @@ namespace PressPlay.Models
             get => _opacity;
             set => SetField(ref _opacity, value);
         }
+
     }
 }

@@ -152,7 +152,8 @@ namespace PressPlay.Models
 
             // Store original values for undo and for creating the second clip
             var originalEnd = item.End;
-            var originalDuration = item.Duration;
+            var originalSourceLength = item.SourceLength;
+            var originalUnlimitedSourceLength = item.UnlimitedSourceLength;
 
             // Set up undo tracking before making changes
             var multiUndo = new MultipleUndoUnits("Cut Item");
@@ -195,9 +196,24 @@ namespace PressPlay.Models
                     FilePath = trackItem.FilePath,
                     Thumbnail = trackItem.Thumbnail,
                     Volume = trackItem.Volume, // Copy volume setting
-                    SourceLength = trackItem.SourceLength, // Maintain source length 
-                    OriginalEnd = trackItem.OriginalEnd   // Copy original end
+
+                    // FIX: Make sure the second half has correct source length
+                    SourceLength = originalSourceLength,
+
+                    // FIX: Properly set OriginalEnd to allow resizing
+                    OriginalEnd = originalEnd
                 };
+
+                // FIX: Copy other transform properties
+                if (trackItem is TrackItem ti)
+                {
+                    ((TrackItem)newItem).TranslateX = ti.TranslateX;
+                    ((TrackItem)newItem).TranslateY = ti.TranslateY;
+                    ((TrackItem)newItem).ScaleX = ti.ScaleX;
+                    ((TrackItem)newItem).ScaleY = ti.ScaleY;
+                    ((TrackItem)newItem).Rotation = ti.Rotation;
+                    ((TrackItem)newItem).Opacity = ti.Opacity;
+                }
             }
             else if (item is AudioTrackItem audioItem)
             {
@@ -215,6 +231,10 @@ namespace PressPlay.Models
                     {
                         Volume = audioItem.Volume
                     };
+
+                    // FIX: Make sure the second half has correct source length
+                    newItem.SourceLength = originalSourceLength;
+                    newItem.OriginalEnd = originalEnd;
 
                     // Add debugging info
                     Debug.WriteLine($"Created AudioTrackItem: Start={newStartFrame}, Position={newPositionFrame}, " +
@@ -237,12 +257,9 @@ namespace PressPlay.Models
                 newItem.FadeInFrame = 0;
                 newItem.FadeOutFrame = item.FadeOutFrame;
 
-                // Copy additional properties if available
-                if (item.GetType().GetProperty("SourceLength") != null && newItem.GetType().GetProperty("SourceLength") != null)
-                    newItem.SourceLength = item.SourceLength;
-
-                if (item.GetType().GetProperty("OriginalEnd") != null && newItem.GetType().GetProperty("OriginalEnd") != null)
-                    newItem.OriginalEnd = item.OriginalEnd;
+                // FIX: Always copy these critical properties
+                newItem.SourceLength = originalSourceLength;
+                newItem.OriginalEnd = originalEnd;
             }
 
             // Verify the new item has valid duration
@@ -263,7 +280,8 @@ namespace PressPlay.Models
 
             Debug.WriteLine($"Cut complete: Original item new end={item.End.TotalFrames}, " +
                            $"New item: Start={newItem.Start.TotalFrames}, Position={newItem.Position.TotalFrames}, " +
-                           $"End={newItem.End.TotalFrames}, Duration={newItem.Duration.TotalFrames}");
+                           $"End={newItem.End.TotalFrames}, Duration={newItem.Duration.TotalFrames}, " +
+                           $"OriginalEnd={newItem.OriginalEnd?.TotalFrames}");
         }
 
         public void ResizeItem(ITrackItem item, double timelineFrame)
