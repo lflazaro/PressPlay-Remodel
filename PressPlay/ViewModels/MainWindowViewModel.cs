@@ -531,6 +531,7 @@ namespace PressPlay
             {
                 // Remove existing effect
                 clip.Effects.Remove(existingEffect);
+                existingEffect.Enabled = !existingEffect.Enabled;
             }
             else
             {
@@ -538,7 +539,8 @@ namespace PressPlay
                 clip.Effects.Add(new ChromaKeyEffect
                 {
                     KeyColor = Colors.Green,
-                    Tolerance = 0.3
+                    Tolerance = 0.3,
+                    Enabled = true
                 });
             }
 

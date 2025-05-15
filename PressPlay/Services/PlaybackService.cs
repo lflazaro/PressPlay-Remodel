@@ -200,15 +200,16 @@ namespace PressPlay.Services
             }
 
             // Start the frame timer for video rendering
+            // Prime first frame & audio so they start truly together
             _playStartTimeUtc = DateTime.UtcNow;
             _startPosition = _project.NeedlePositionTime;
+            RenderFrame();
+            UpdateAudio();
+
+            // Now kick off the timer
             _timer.Interval = TimeSpan.FromMilliseconds(1000.0 / _project.FPS);
             _timer.Start();
             _project.IsPlaying = true;
-            Debug.WriteLine("[PlaybackService] Frame timer started");
-
-            // Call UpdateAudio to handle all audio sources
-            UpdateAudio();
 
             // Start all already-initialized audio sources
             if (_videoAudioWaveOut != null && _videoAudioWaveOut.PlaybackState != PlaybackState.Playing)
@@ -364,8 +365,9 @@ namespace PressPlay.Services
             // B) Figure out which frame of the media to draw
             int clipFrame = idx - item.Position.TotalFrames + item.Start.TotalFrames;
             clipFrame = Math.Clamp(clipFrame, 0, (int)clip.Length.TotalFrames - 1);
-            var ts = TimeSpan.FromSeconds(clipFrame / clip.FPS);
-            var bmp = clip.GetFrameAt(ts);
+            // Use project.FPS so timeline and source stay in sync
+            double clipSeconds = clipFrame / (double)_project.FPS;
+            var bmp = clip.GetFrameAt(TimeSpan.FromSeconds(clipSeconds));
 
             // C) Compute fade parameters
             double framePos = idx - item.Position.TotalFrames;
@@ -495,7 +497,9 @@ namespace PressPlay.Services
 
             public void Seek(TimeSpan position)
             {
-                if (Reader != null && Math.Abs((Reader.CurrentTime - position).TotalMilliseconds) > 100)
+                // Only seek if drift exceeds half a frame (~20ms at 25 fps)
+                const double thresholdMs = 1000.0 / 25.0 / 2.0;
+                if (Reader != null && Math.Abs((Reader.CurrentTime - position).TotalMilliseconds) > thresholdMs)
                 {
                     Reader.CurrentTime = position;
                     Debug.WriteLine($"[{ItemIdentifier}] Seeking to {position}");
@@ -644,7 +648,8 @@ namespace PressPlay.Services
                             // adjust the mixer volume
                             playerState.VolumeProvider.Volume *= (float)fadeFactor;
                         }
-                        playerState.Seek(position); // Update position if needed
+                        if (!_project.IsPlaying)
+                            playerState.Seek(position);
 
                     }
                     else

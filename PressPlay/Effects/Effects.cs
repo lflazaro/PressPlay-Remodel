@@ -3,6 +3,8 @@ using OpenCvSharp;
 using System.Windows.Media;
 using System.Linq;
 using System.Diagnostics;
+using PressPlay.Serialization;
+using System.Text.Json.Serialization;
 
 namespace PressPlay.Effects
 {
@@ -51,6 +53,7 @@ namespace PressPlay.Effects
     /// <summary>
     /// Chroma-key effect: removes a target color and makes it transparent against a background.
     /// </summary>
+    [JsonConverter(typeof(EffectConverter))]
     public class ChromaKeyEffect : IEffect
     {
         public string Name => "Chroma Key";
@@ -75,7 +78,7 @@ namespace PressPlay.Effects
                 UpdateParameter("KeyColor", _keyColor);
             }
         }
-
+        public bool Enabled { get; set; } = true;
         /// <summary>
         /// Tolerance around the key color (0–1).
         /// </summary> 
