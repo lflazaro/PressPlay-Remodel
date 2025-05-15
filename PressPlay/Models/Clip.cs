@@ -31,6 +31,8 @@ namespace PressPlay.Models
         public string FilePath { get; set; }
         public string FullPath { get; set; }
 
+        public Guid InstanceId { get; set; } = Guid.NewGuid();
+
         // This property is now private since we need to expose a byte[] for the interface
         private BitmapImage ThumbnailImage
         {

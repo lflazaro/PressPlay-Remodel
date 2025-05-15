@@ -17,7 +17,7 @@ namespace PressPlay.Models
         TimeCode End { get; set; }
         TimeCode Duration { get; }
         TimeCode OriginalEnd { get; set; } // Added this property
-
+        public Guid InstanceId { get; set; }
         // Visual properties
         int FadeInFrame { get; set; }
         int FadeOutFrame { get; set; }

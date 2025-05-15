@@ -12,6 +12,7 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Text.Json.Serialization;
 
 namespace PressPlay.Models
 {
@@ -38,6 +39,8 @@ namespace PressPlay.Models
         private string _waveformImagePath;
         private bool _waveformGenerationInProgress;
         private float _volume = 1.0f;
+        [JsonInclude]
+        public Guid InstanceId { get; set; } = Guid.NewGuid();
         public Track.FadeColor FadeColor { get; set; } = Track.FadeColor.Black;
         public float Volume
         {

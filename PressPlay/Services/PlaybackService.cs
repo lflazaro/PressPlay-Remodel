@@ -25,11 +25,12 @@ namespace PressPlay.Services
         void Seek(TimeCode time);
         void Rewind();
         void FastForward();
+        void LoadProject(Project project);
     }
 
     public class PlaybackService : IPlaybackService, IDisposable
     {
-        private readonly Project _project;
+        private Project _project;
         private readonly DispatcherTimer _timer;
         private readonly Image _previewControl;
         private IWavePlayer _videoAudioWaveOut;
@@ -67,20 +68,44 @@ namespace PressPlay.Services
             };
             _timer.Tick += OnTick;
         }
-
-        // Update the LoadMedia method in PlaybackService.cs to better handle audio:
-        private void StopVideoAudio()
+        public void LoadProject(Project project)
         {
-            if (_videoAudioWaveOut != null)
+            if (project == null) throw new ArgumentNullException(nameof(project));
+
+            // 1) Pause and tear down any existing playback
+            Pause();
+            _timer.Stop();
+
+            // 2) Dispose all per-clip audio players
+            foreach (var player in _audioPlayers) player.Dispose();
+            _audioPlayers.Clear();
+            StopMainAudio();
+
+            // 3) (Optional) dispose any video-audio players you’re tracking
+            foreach (var kv in _videoAudioPlayers.Values)
             {
-                if (_videoAudioWaveOut.PlaybackState == PlaybackState.Playing)
-                    _videoAudioWaveOut.Stop();
-                _videoAudioWaveOut.Dispose();
-                _videoAudioReader.Dispose();
-                _videoAudioWaveOut = null;
-                _videoAudioReader = null;
+                kv.Player.Stop();
+                kv.Player.Dispose();
+                kv.Reader.Dispose();
             }
-            _videoAudioPath = null;
+            _videoAudioPlayers.Clear();
+
+            foreach (var kv in _audioTrackPlayers.Values)
+            {
+                kv.Player.Stop();
+                kv.Player.Dispose();
+                kv.Reader.Dispose();
+            }
+            _audioTrackPlayers.Clear();
+
+            // 4) Adopt the new project
+            _project = project;
+
+            // 5) Reset timer interval to match its FPS
+            _timer.Interval = TimeSpan.FromMilliseconds(1000.0 / _project.FPS);
+
+            // 6) Jump back to zero and render the first frame
+            Seek(new TimeCode(0, _project.FPS));
         }
         public void LoadMedia(string path)
         {
@@ -546,7 +571,7 @@ namespace PressPlay.Services
                             TimeSpan clipPos = TimeSpan.FromSeconds(offsetFrames / clip.FPS);
 
                             // Create a truly unique identifier for this item instance
-                            string itemId = $"V_{item.GetHashCode()}_{clip.Id}";
+                            string itemId = $"V_{item.InstanceId}";
 
                             activeItems.Add((item, clip, clipPos, itemId));
                         }
@@ -574,7 +599,7 @@ namespace PressPlay.Services
                             TimeSpan clipPos = TimeSpan.FromSeconds(offsetFrames / _project.FPS);
 
                             // Create a truly unique identifier for this item instance
-                            string itemId = $"A_{item.GetHashCode()}_{clip.Id}";
+                            string itemId = $"V_{item.InstanceId}";
 
                             activeItems.Add((item, clip, clipPos, itemId));
                         }
@@ -621,11 +646,6 @@ namespace PressPlay.Services
                         }
                         playerState.Seek(position); // Update position if needed
 
-                        // Start/stop based on project state
-                        if (_project.IsPlaying)
-                            playerState.Play();
-                        else
-                            playerState.Pause();
                     }
                     else
                     {
@@ -658,6 +678,18 @@ namespace PressPlay.Services
                             Debug.WriteLine($"[{itemId}] Error creating player: {ex.Message}");
                         }
                     }
+                }
+
+                // After we’ve updated all players, enforce global play/pause
+                if (_project.IsPlaying)
+                {
+                    foreach (var p in _audioPlayers)
+                        p.Play();
+                }
+                else
+                {
+                    foreach (var p in _audioPlayers)
+                        p.Pause();
                 }
 
                 // Handle main audio only if no other audio is playing

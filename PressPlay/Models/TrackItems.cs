@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 using PressPlay.Effects;
 using PressPlay.Helpers;
 using static PressPlay.Models.Track;
@@ -27,6 +28,9 @@ namespace PressPlay.Models
         private string _filePath;
         private byte[] _thumbnail;
         private TimeCode _originalEnd;
+        [JsonInclude]
+        public Guid InstanceId { get; set; } = Guid.NewGuid();
+        [JsonInclude]
         public FadeColor FadeColor { get; set; } = FadeColor.Black;
         public TimeCode OriginalEnd
         {

@@ -17,6 +17,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Windows;
+using PressPlay.Serialization;
 using System.Windows.Input;
 using System.Windows.Media;
 using PressPlay.Export;
@@ -805,15 +806,16 @@ namespace PressPlay
             {
                 // Read project file
                 var json = File.ReadAllText(filePath);
-                var project = JsonSerializer.Deserialize<Project>(json);
+                var project = ProjectSerializer.DeserializeProject(json);
 
+                // 2) If it succeeded, immediately give it to the playback service
                 if (project != null)
                 {
-                    // Set as current project
-                    CurrentProject = project;
+                    PlaybackService?.Pause();
+                    PlaybackService?.LoadProject(project);
 
-                    // Initialize project
-                    CurrentProject.Initialize();
+                    // 3) Now swap over your VM's CurrentProject
+                    CurrentProject = project;
 
                     // Update current project path
                     _currentProjectPath = filePath;
@@ -870,21 +872,12 @@ namespace PressPlay
             try
             {
                 // Serialize project to JSON
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                var json = JsonSerializer.Serialize(CurrentProject, options);
-
+                var json = ProjectSerializer.SerializeProject(CurrentProject);
                 // Save to file
                 File.WriteAllText(_currentProjectPath, json);
-
-                // Update window title
                 UpdateWindowTitle();
-
-                // Reset unsaved changes flag
                 HasUnsavedChanges = false;
-
-                // Add to recent projects
                 AddToRecentProjects(_currentProjectPath);
-
                 return true;
             }
             catch (Exception ex)

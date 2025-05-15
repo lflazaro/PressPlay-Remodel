@@ -68,7 +68,9 @@ namespace PressPlay.Models
                 }
             }
         }
+        [JsonInclude]
         public int ProjectWidth { get; private set; }
+        [JsonInclude]
         public int ProjectHeight { get; private set; }
 
         // Call this when you first add a clip to the timeline:
