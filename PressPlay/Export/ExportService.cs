@@ -25,7 +25,6 @@ using Color = System.Windows.Media.Color;
 using Rect = System.Windows.Rect;
 using Brushes = System.Windows.Media.Brushes;
 using DocumentFormat.OpenXml.Drawing.Charts;
-using FFMpegCore.Pipes;
 using NAudio.Mixer;
 
 
@@ -119,7 +118,14 @@ namespace PressPlay.Export
         {
             // Calculate project parameters
             double fps = _project.FPS;
-            int totalFrames = (int)_project.GetTotalFrames();
+
+            // Compute project length based on every item's end frame (images included)
+            int totalFrames = _project.Tracks
+                .SelectMany(t => t.Items)
+                .Select(i => (int)(i.Position.TotalFrames + i.Duration.TotalFrames))
+                .DefaultIfEmpty(0)
+                .Max();
+
             int frameWidth = _settings.Width > 0 ? _settings.Width : _project.ProjectWidth;
             int frameHeight = _settings.Height > 0 ? _settings.Height : _project.ProjectHeight;
 
@@ -481,7 +487,13 @@ namespace PressPlay.Export
             // Create a mixer for all audio tracks
             var mixFormat = WaveFormat.CreateIeeeFloatWaveFormat(44100, 2);
             var mixer = new MixingSampleProvider(mixFormat);
-
+            var silentSampleProvider = new SilenceProvider(mixFormat).ToSampleProvider();
+            var silentEnvelope = new OffsetSampleProvider(silentSampleProvider)
+            {
+                DelayBy = TimeSpan.Zero,
+                Take = totalDuration
+            };
+            mixer.AddMixerInput(silentEnvelope);
             // Keep track of all readers so we can dispose them later
             var readers = new List<AudioFileReader>();
 

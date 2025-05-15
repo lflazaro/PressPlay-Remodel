@@ -137,9 +137,7 @@ namespace PressPlay.Timeline
 
                 if (overlap > 0)
                 {
-                    // overlapping → crossfade
-
-                    // only switch to black if not already white
+                    // Overlapping → apply crossfade on both items
                     if (a.FadeColor != Track.FadeColor.White)
                         a.FadeColor = Track.FadeColor.Black;
                     a.FadeOutFrame = (int)overlap;
@@ -150,10 +148,11 @@ namespace PressPlay.Timeline
                 }
                 else
                 {
-                    // no overlap → clear any previous fades (but keep FadeColor)
-                    if (a.FadeOutFrame > 0)
+                    // No overlap → clear fades only on the moved item, keep FadeColor
+                    if (movedItem == a && a.FadeOutFrame > 0)
                         a.FadeOutFrame = 0;
-                    if (b.FadeInFrame > 0)
+
+                    if (movedItem == b && b.FadeInFrame > 0)
                         b.FadeInFrame = 0;
                 }
             }

@@ -255,7 +255,34 @@ namespace PressPlay.Services
             }
         }
 
+        private TimeSpan CalculateClipTime(ITrackItem item, TimeCode needle)
+        {
+            // 1) Project‐level frame index
+            int frameIndex = (int)Math.Round((double)needle.TotalFrames);
 
+            // 2) Find the matching clip metadata
+            var clip = _project.Clips
+                .OfType<ProjectClip>()
+                .FirstOrDefault(c =>
+                    item is AudioTrackItem ati
+                        ? c.Id == ati.ClipId
+                        : string.Equals(c.FilePath, item.FilePath, StringComparison.OrdinalIgnoreCase));
+            if (clip == null)
+            {
+                Debug.WriteLine($"[CalculateClipTime] No clip found for item {item.FilePath}");
+                return TimeSpan.Zero;
+            }
+
+            // 3) How many frames into the clip?
+            //    (needle frame – item timeline start + clip’s own start offset)
+            double offsetFrames = frameIndex
+                                  - item.Position.TotalFrames
+                                  + item.Start.TotalFrames;
+            offsetFrames = Math.Max(0, offsetFrames);  // never negative
+
+            // 4) Convert frames→seconds using the clip’s FPS
+            return TimeSpan.FromSeconds(offsetFrames / clip.FPS);
+        }
 
         public void Seek(TimeCode time)
         {
@@ -265,6 +292,9 @@ namespace PressPlay.Services
             _project.NeedlePositionTime = new TimeCode(target, _project.FPS);
 
             RenderFrame();
+            // Ensure all clip audio players are exactly at the new time:
+            foreach (var player in _audioPlayers)
+                player.Reader.CurrentTime = CalculateClipTime(player.Item, _project.NeedlePositionTime);
             UpdateAudio();
 
             PositionChanged?.Invoke(_project.NeedlePositionTime.ToTimeSpan());
