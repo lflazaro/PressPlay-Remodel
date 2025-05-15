@@ -26,6 +26,7 @@ using Rect = System.Windows.Rect;
 using Brushes = System.Windows.Media.Brushes;
 using DocumentFormat.OpenXml.Drawing.Charts;
 using FFMpegCore.Pipes;
+using NAudio.Mixer;
 
 
 namespace PressPlay.Export
@@ -179,7 +180,7 @@ namespace PressPlay.Export
             // 3) Fire off FFmpeg with your video frames + audio
             bool success = await FFMpegArguments
                 .FromPipeInput(videoSource)
-                .AddFileInput(audioFile)              // your rendered WAV
+                .AddFileInput(audioFile)
                 .OutputToFile(
                     _settings.OutputPath,
                     false,
@@ -417,13 +418,69 @@ namespace PressPlay.Export
         /// <summary>
         /// Renders the audio track for the timeline
         /// </summary>
+
+        private class EnvelopeSampleProvider : ISampleProvider, IDisposable
+        {
+            private readonly ISampleProvider _source;
+            private readonly long _fadeInSamples;
+            private readonly long _fadeOutSamples;
+            private readonly long _totalSamples;
+            private long _position;
+
+            public EnvelopeSampleProvider(
+                ISampleProvider source,
+                double fadeInSeconds,
+                double fadeOutSeconds,
+                double durationSeconds)
+            {
+                _source = source;
+                WaveFormat = source.WaveFormat;
+                _fadeInSamples = (long)(fadeInSeconds * WaveFormat.SampleRate) * WaveFormat.Channels;
+                _fadeOutSamples = (long)(fadeOutSeconds * WaveFormat.SampleRate) * WaveFormat.Channels;
+                _totalSamples = (long)(durationSeconds * WaveFormat.SampleRate) * WaveFormat.Channels;
+                _position = 0;
+            }
+
+            public WaveFormat WaveFormat { get; }
+
+            public int Read(float[] buffer, int offset, int count)
+            {
+                int samplesRead = _source.Read(buffer, offset, count);
+
+                for (int n = 0; n < samplesRead; n++)
+                {
+                    long pos = _position + n;
+                    float env = 1f;
+
+                    if (_fadeInSamples > 0 && pos < _fadeInSamples)
+                        env = (float)(pos / (double)_fadeInSamples);
+
+                    var fadeOutStart = _totalSamples - _fadeOutSamples;
+                    if (_fadeOutSamples > 0 && pos >= fadeOutStart)
+                        env = (float)((_totalSamples - pos) / (double)_fadeOutSamples);
+
+                    buffer[offset + n] *= env;
+                }
+
+                _position += samplesRead;
+                return samplesRead;
+            }
+
+            public void Dispose()
+            {
+                if (_source is IDisposable d) d.Dispose();
+            }
+        }
+
+
         private async Task RenderAudioAsync(string outputAudioFile, double fps, int totalFrames, CancellationToken cancellationToken)
         {
             // Calculate total duration
             TimeSpan totalDuration = TimeSpan.FromSeconds(totalFrames / fps);
 
             // Create a mixer for all audio tracks
-            var mixer = new MixingSampleProvider(WaveFormat.CreateIeeeFloatWaveFormat(44100, 2));
+            var mixFormat = WaveFormat.CreateIeeeFloatWaveFormat(44100, 2);
+            var mixer = new MixingSampleProvider(mixFormat);
 
             // Keep track of all readers so we can dispose them later
             var readers = new List<AudioFileReader>();
@@ -445,43 +502,40 @@ namespace PressPlay.Export
 
                     try
                     {
-                        // Create audio reader
+                        // 1) Read & resample to mixer’s format
                         var reader = new AudioFileReader(clip.FilePath);
                         readers.Add(reader);
+                        ISampleProvider src = reader;
+                        if (reader.WaveFormat.SampleRate != mixFormat.SampleRate)
+                            src = new WdlResamplingSampleProvider(src, mixFormat.SampleRate);
+                        if (reader.WaveFormat.Channels != mixFormat.Channels)
+                            src = new MonoToStereoSampleProvider(src);
 
-                        // Position in timeline
+                        // 2) Offset & length
                         var startTime = TimeSpan.FromSeconds(item.Position.TotalFrames / fps);
+                        var clipDuration = item.Duration.TotalSeconds;
                         var clipOffset = TimeSpan.FromSeconds(item.Start.TotalFrames / fps);
 
-                        // Calculate fade values in seconds
-                        double fadeInSeconds = item.FadeInFrame / fps;
-                        double fadeOutSeconds = item.FadeOutFrame / fps;
-
-                        // Set reader position
+                        // 3) Advance reader to clipOffset
                         reader.CurrentTime = clipOffset;
 
-                        // Apply volume
-                        var volumeProvider = new VolumeSampleProvider(reader.ToSampleProvider());
-                        volumeProvider.Volume = item.Volume;
+                        // 4) Per-clip volume  envelope (fade in/out)
+                        var volumeProvider = new VolumeSampleProvider(src) { Volume = item.Volume };
+                        var envelope = new EnvelopeSampleProvider(
+                            volumeProvider,
+                            fadeInSeconds: item.FadeInFrame / fps,
+                            fadeOutSeconds: item.FadeOutFrame / fps,
+                            durationSeconds: clipDuration
+                        );
 
-                        // Apply fade in/out
-                        var fader = new FadeInOutSampleProvider(volumeProvider);
-
-                        if (fadeInSeconds > 0)
-                            fader.BeginFadeIn(fadeInSeconds);
-
-                        if (fadeOutSeconds > 0)
+                        // 5) Delay & take exactly the clip’s length
+                        var delayed = new OffsetSampleProvider(envelope)
                         {
-                            double clipDurationSeconds = item.Duration.TotalSeconds;
-                            fader.BeginFadeOut(clipDurationSeconds - fadeOutSeconds);
-                        }
+                            DelayBy = startTime,
+                            Take = TimeSpan.FromSeconds(clipDuration)
+                        };
 
-                        // Add to mixer with delay
-                        var delayProvider = new OffsetSampleProvider(fader);
-                        delayProvider.DelayBy = startTime;
-                        delayProvider.Take = TimeSpan.FromSeconds(item.Duration.TotalSeconds);
-
-                        mixer.AddMixerInput(delayProvider);
+                        mixer.AddMixerInput(delayed);
                     }
                     catch (Exception ex)
                     {
@@ -490,58 +544,56 @@ namespace PressPlay.Export
                 }
             }
 
-            // Process video tracks with audio
+            // Process video clips' embedded audio exactly like audio‐track items
             foreach (var track in _project.Tracks.Where(t => t.Type == TimelineTrackType.Video))
             {
                 foreach (var item in track.Items.OfType<TrackItem>())
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    // Get the source clip
                     var clip = _project.Clips
                         .FirstOrDefault(c => string.Equals(c.FilePath, item.FilePath, StringComparison.OrdinalIgnoreCase));
-
-                    if (clip == null || !File.Exists(clip.FilePath) || !clip.HasAudio) continue;
+                    if (clip == null || !File.Exists(clip.FilePath) || !clip.HasAudio)
+                        continue;
 
                     try
                     {
-                        // Create audio reader
+                        // 1) Open & resample to mixer’s 44.1kHz stereo format
                         var reader = new AudioFileReader(clip.FilePath);
                         readers.Add(reader);
+                        ISampleProvider src = reader;
+                        if (reader.WaveFormat.SampleRate != mixFormat.SampleRate)
+                            src = new WdlResamplingSampleProvider(src, mixFormat.SampleRate);
+                        if (src.WaveFormat.Channels == 1)
+                            src = new MonoToStereoSampleProvider(src);
 
-                        // Position in timeline
+                        // 2) Compute timing & fades
                         var startTime = TimeSpan.FromSeconds(item.Position.TotalFrames / fps);
                         var clipOffset = TimeSpan.FromSeconds(item.Start.TotalFrames / fps);
+                        double fadeInSec = item.FadeInFrame / fps;
+                        double fadeOutSec = item.FadeOutFrame / fps;
+                        double clipDuration = item.Duration.TotalSeconds;
 
-                        // Calculate fade values in seconds
-                        double fadeInSeconds = item.FadeInFrame / fps;
-                        double fadeOutSeconds = item.FadeOutFrame / fps;
-
-                        // Set reader position
+                        // 3) Seek to clipOffset
                         reader.CurrentTime = clipOffset;
 
-                        // Apply volume
-                        var volumeProvider = new VolumeSampleProvider(reader.ToSampleProvider());
-                        volumeProvider.Volume = item.Volume;
+                        // 4) Volume  linear fade-in/out envelope
+                        var volumeProvider = new VolumeSampleProvider(src) { Volume = item.Volume };
+                        var envelope = new EnvelopeSampleProvider(
+                            volumeProvider,
+                            fadeInSec,
+                            fadeOutSec,
+                            clipDuration
+                        );
 
-                        // Apply fade in/out
-                        var fader = new FadeInOutSampleProvider(volumeProvider);
-
-                        if (fadeInSeconds > 0)
-                            fader.BeginFadeIn(fadeInSeconds);
-
-                        if (fadeOutSeconds > 0)
+                        // 5) Delay & trim to exact clip duration
+                        var delayed = new OffsetSampleProvider(envelope)
                         {
-                            double clipDurationSeconds = item.Duration.TotalSeconds;
-                            fader.BeginFadeOut(clipDurationSeconds - fadeOutSeconds);
-                        }
+                            DelayBy = startTime,
+                            Take = TimeSpan.FromSeconds(clipDuration)
+                        };
 
-                        // Add to mixer with delay
-                        var delayProvider = new OffsetSampleProvider(fader);
-                        delayProvider.DelayBy = startTime;
-                        delayProvider.Take = TimeSpan.FromSeconds(item.Duration.TotalSeconds);
-
-                        mixer.AddMixerInput(delayProvider);
+                        mixer.AddMixerInput(delayed);
                     }
                     catch (Exception ex)
                     {
@@ -679,10 +731,9 @@ namespace PressPlay.Export
                         options.WithCustomArgument($"-vf scale={settings.Width}:{settings.Height}");
                     }
                 });
-                // Set audio codec
                 options.WithAudioCodec(AudioCodec.Aac)
-                       .WithCustomArgument("-ar 44100")
-                       .WithCustomArgument("-ac 2");
+                        .WithAudioSamplingRate(44100)
+                        .WithAudioBitrate(settings.AudioBitrate);
 
                 // (you can still set bitrate normally)
                 options.WithAudioBitrate(settings.AudioBitrate);
