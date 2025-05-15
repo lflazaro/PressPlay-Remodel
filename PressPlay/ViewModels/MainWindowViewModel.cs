@@ -19,6 +19,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using PressPlay.Export;
 using TimeCode = PressPlay.Models.TimeCode;
 
 namespace PressPlay
@@ -1442,48 +1443,44 @@ namespace PressPlay
 
         private void ExportCurrentProject()
         {
-            // Show export dialog
-            var saveFileDialog = new SaveFileDialog
+            // Make sure project is saved first
+            if (HasUnsavedChanges)
             {
-                Filter = "MP4 Video (*.mp4)|*.mp4|AVI Video (*.avi)|*.avi|All Files (*.*)|*.*",
-                DefaultExt = ".mp4",
-                Title = "Export Project"
+                var saveResult = MessageBox.Show(
+                    "Your project has unsaved changes. Do you want to save the project before exporting?",
+                    "Save Project",
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Question);
+
+                if (saveResult == MessageBoxResult.Cancel)
+                    return;
+
+                if (saveResult == MessageBoxResult.Yes)
+                {
+                    //var saved = SaveProjectAsync(false).GetAwaiter().GetResult();
+                    //if (!saved) return; // User cancelled save
+                }
+            }
+
+            // Create export settings with project dimensions
+            var settings = ExportSettings.CreateDefault(CurrentProject.ProjectWidth, CurrentProject.ProjectHeight);
+
+            // If project has a file path, use same directory for export
+            if (!string.IsNullOrEmpty(_currentProjectPath))
+            {
+                var projectDir = Path.GetDirectoryName(_currentProjectPath);
+                var projectName = Path.GetFileNameWithoutExtension(_currentProjectPath);
+
+                settings.OutputPath = Path.Combine(projectDir, $"{projectName}_export{settings.GetFileExtension()}");
+            }
+
+            // Create and show export dialog
+            var exportDialog = new ExportDialog(CurrentProject)
+            {
+                Owner = Application.Current.MainWindow
             };
 
-            if (saveFileDialog.ShowDialog() != true)
-                return;
-
-            // Show export settings dialog (resolution, quality, etc.)
-            // This is a placeholder - you'd implement a proper export settings dialog
-            var result = MessageBox.Show(
-                "Start exporting the project? This may take some time.",
-                "Export Project",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            if (result != MessageBoxResult.Yes)
-                return;
-
-            try
-            {
-                // TODO: Implement actual export process with FFMpegCore
-                // This would involve rendering each track to a temp file and compositing
-
-                // Show progress dialog (would be a separate window in full implementation)
-                MessageBox.Show(
-                    "Export functionality not yet fully implemented. In the full version, this would render your timeline to a video file.",
-                    "Export Status",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    $"Error during export: {ex.Message}",
-                    "Export Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
+            exportDialog.ShowDialog();
         }
 
 
