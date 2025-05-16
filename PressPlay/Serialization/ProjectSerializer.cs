@@ -552,40 +552,46 @@ namespace PressPlay.Serialization
 
             IEffect effect;
 
-            // Match effect by name - case-insensitive comparison for robustness
             if (string.Equals(typeName, "Chroma Key", StringComparison.OrdinalIgnoreCase))
             {
-                effect = new ChromaKeyEffect();
+                // Create and populate a real ChromaKeyEffect
+                var ck = new ChromaKeyEffect();
 
-                // Read ChromaKey properties
+                // Read KeyColor
                 if (root.TryGetProperty("KeyColor", out var keyColorProp))
                 {
-                    ((ChromaKeyEffect)effect).KeyColor = DeserializeColor(keyColorProp);
-                    Debug.WriteLine($"  Deserialized KeyColor: R={((ChromaKeyEffect)effect).KeyColor.R}, G={((ChromaKeyEffect)effect).KeyColor.G}, B={((ChromaKeyEffect)effect).KeyColor.B}");
+                    ck.KeyColor = DeserializeColor(keyColorProp);
+                    Debug.WriteLine($"  Deserialized KeyColor: R={ck.KeyColor.R}, G={ck.KeyColor.G}, B={ck.KeyColor.B}");
                 }
 
+                // Read Tolerance
                 if (root.TryGetProperty("Tolerance", out var toleranceProp))
                 {
-                    ((ChromaKeyEffect)effect).Tolerance = toleranceProp.GetDouble();
-                    Debug.WriteLine($"  Deserialized Tolerance: {((ChromaKeyEffect)effect).Tolerance}");
+                    ck.Tolerance = toleranceProp.GetDouble();
+                    Debug.WriteLine($"  Deserialized Tolerance: {ck.Tolerance}");
                 }
+
+                // **Read Enabled** (was missing)
+                if (root.TryGetProperty("Enabled", out var enabledProp))
+                {
+                    ck.Enabled = enabledProp.GetBoolean();
+                    Debug.WriteLine($"  Deserialized Enabled: {ck.Enabled}");
+                }
+
+                effect = ck;
             }
             else if (string.Equals(typeName, "Transform", StringComparison.OrdinalIgnoreCase))
             {
-                // Create a null transform effect - we'll connect it to the TrackItem later
-                effect = new TransformEffect(null);
-
-                // Keep it enabled
-                ((TransformEffect)effect).Enabled = true;
+                var te = new TransformEffect(null);
+                te.Enabled = true;
+                effect = te;
             }
             else if (string.Equals(typeName, "Blending", StringComparison.OrdinalIgnoreCase))
             {
-                effect = new BlendingEffect(null);
-
+                var be = new BlendingEffect(null);
                 if (root.TryGetProperty("BlendMode", out var blendModeProp))
-                {
-                    ((BlendingEffect)effect).BlendMode = Enum.Parse<BlendMode>(blendModeProp.GetString());
-                }
+                    be.BlendMode = Enum.Parse<BlendMode>(blendModeProp.GetString());
+                effect = be;
             }
             else
             {
@@ -600,24 +606,26 @@ namespace PressPlay.Serialization
         {
             writer.WriteStartObject();
 
-            // Use the effect's actual Name property
+            // Always write the effect Type
             writer.WriteString("Type", value.Name);
 
             if (value is ChromaKeyEffect ck)
             {
-                // Write ChromaKey-specific properties
+                // ChromaKey-specific props
                 writer.WritePropertyName("KeyColor");
                 WriteColor(writer, ck.KeyColor);
-                writer.WriteNumber("Tolerance", ck.Tolerance);
-                writer.WriteBoolean("Enabled", true);
 
-                Debug.WriteLine($"Serializing ChromaKeyEffect: KeyColor={ck.KeyColor}, Tolerance={ck.Tolerance}");
+                writer.WriteNumber("Tolerance", ck.Tolerance);
+
+                // **Write the actual Enabled flag**
+                writer.WriteBoolean("Enabled", ck.Enabled);
+
+                Debug.WriteLine($"Serializing ChromaKeyEffect: KeyColor={ck.KeyColor}, Tolerance={ck.Tolerance}, Enabled={ck.Enabled}");
             }
-            else if (value is TransformEffect)
+            else if (value is TransformEffect te)
             {
-                // TransformEffect doesn't need properties stored here because
-                // the transform values (TranslateX, etc.) are stored directly on the TrackItem
-                writer.WriteBoolean("Enabled", true);
+                // No transform parameters here, but preserve Enabled
+                writer.WriteBoolean("Enabled", te.Enabled);
             }
             else if (value is BlendingEffect be)
             {
@@ -626,6 +634,7 @@ namespace PressPlay.Serialization
 
             writer.WriteEndObject();
         }
+
 
         private static void WriteColor(Utf8JsonWriter writer, System.Windows.Media.Color color)
         {
