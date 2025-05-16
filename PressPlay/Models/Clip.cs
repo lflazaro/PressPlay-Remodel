@@ -44,6 +44,10 @@ namespace PressPlay.Models
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ThumbnailImage)));
             }
         }
+        public void SetUnlimitedSourceLength(bool value)
+        {
+            OnPropertyChanged(nameof(UnlimitedSourceLength));
+        }
 
         // ITrackItem interface requires this to be byte[]
         public byte[] Thumbnail

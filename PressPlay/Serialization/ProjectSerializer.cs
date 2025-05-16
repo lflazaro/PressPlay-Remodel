@@ -16,6 +16,7 @@ using JsonException = System.Text.Json.JsonException;
 using JsonConverter = Newtonsoft.Json.JsonConverter;
 using System.ComponentModel;
 using DocumentFormat.OpenXml.Bibliography;
+using PressPlay.Helpers;
 
 namespace PressPlay.Serialization
 {
@@ -194,8 +195,10 @@ namespace PressPlay.Serialization
 
             // Validate project after processing
             Debug.WriteLine($"Project post-processing complete: {project.Tracks.Count} tracks, {project.Clips.Count} clips");
+            double savedFps = project.FPS;
             // Initialize the project
             project.Initialize();
+            project.FPS = savedFps;
         }
 
         private static void RestoreEffectsForTrackItem(Project project, TrackItem trackItem)
@@ -356,6 +359,19 @@ namespace PressPlay.Serialization
             if (root.TryGetProperty("Thumbnail", out var thumbnailElement))
                 item.Thumbnail = thumbnailElement.GetBytesFromBase64();
 
+            if (root.TryGetProperty("UnlimitedSourceLength", out var unlimitedElement))
+                item.SetUnlimitedSourceLength(unlimitedElement.GetBoolean());
+            else
+            {
+                // If not saved, re-determine based on file extension for images
+                string extension = Path.GetExtension(item.FilePath)?.ToLowerInvariant();
+                if (!string.IsNullOrEmpty(extension) && FileFormats.SupportedImageFormats.Contains(extension))
+                {
+                    item.SetUnlimitedSourceLength(true);
+                    Debug.WriteLine($"Set unlimited length for image: {item.FileName}");
+                }
+            }
+
             // Transform properties for TrackItem
             if (item is TrackItem ti)
             {
@@ -401,6 +417,8 @@ namespace PressPlay.Serialization
                     // Default to center if missing
                     ti.RotationOrigin = new System.Windows.Point(0.5, 0.5);
                 }
+                if (root.TryGetProperty("Volume", out var volumeElement))
+                    ti.Volume = volumeElement.GetSingle();
             }
 
             // Special handling for AudioTrackItem
@@ -456,6 +474,7 @@ namespace PressPlay.Serialization
             writer.WriteString("FileName", value.FileName);
             writer.WriteString("FilePath", value.FilePath);
             writer.WriteString("FullPath", value.FullPath);
+            writer.WriteBoolean("UnlimitedSourceLength", value.UnlimitedSourceLength);
 
             if (value.Thumbnail != null)
                 writer.WriteBase64String("Thumbnail", value.Thumbnail);
@@ -480,6 +499,7 @@ namespace PressPlay.Serialization
                 writer.WriteNumber("X", ti.RotationOrigin.X);
                 writer.WriteNumber("Y", ti.RotationOrigin.Y);
                 writer.WriteEndObject();
+                writer.WriteNumber("Volume", ti.Volume);
             }
 
             // Audio-specific properties
@@ -552,33 +572,35 @@ namespace PressPlay.Serialization
 
             IEffect effect;
 
+            // Match effect by name - case-insensitive comparison for robustness
             if (string.Equals(typeName, "Chroma Key", StringComparison.OrdinalIgnoreCase))
             {
-                // Create and populate a real ChromaKeyEffect
-                var ck = new ChromaKeyEffect();
+                effect = new ChromaKeyEffect();
 
-                // Read KeyColor
+                // Read ChromaKey properties
                 if (root.TryGetProperty("KeyColor", out var keyColorProp))
                 {
-                    ck.KeyColor = DeserializeColor(keyColorProp);
-                    Debug.WriteLine($"  Deserialized KeyColor: R={ck.KeyColor.R}, G={ck.KeyColor.G}, B={ck.KeyColor.B}");
+                    ((ChromaKeyEffect)effect).KeyColor = DeserializeColor(keyColorProp);
+                    Debug.WriteLine($"  Deserialized KeyColor: R={((ChromaKeyEffect)effect).KeyColor.R}, G={((ChromaKeyEffect)effect).KeyColor.G}, B={((ChromaKeyEffect)effect).KeyColor.B}");
                 }
 
-                // Read Tolerance
                 if (root.TryGetProperty("Tolerance", out var toleranceProp))
                 {
-                    ck.Tolerance = toleranceProp.GetDouble();
-                    Debug.WriteLine($"  Deserialized Tolerance: {ck.Tolerance}");
+                    ((ChromaKeyEffect)effect).Tolerance = toleranceProp.GetDouble();
+                    Debug.WriteLine($"  Deserialized Tolerance: {((ChromaKeyEffect)effect).Tolerance}");
                 }
 
-                // **Read Enabled** (was missing)
+                // FIX: Explicitly set the Enabled property based on the saved value or default to true
                 if (root.TryGetProperty("Enabled", out var enabledProp))
                 {
-                    ck.Enabled = enabledProp.GetBoolean();
-                    Debug.WriteLine($"  Deserialized Enabled: {ck.Enabled}");
+                    ((ChromaKeyEffect)effect).Enabled = enabledProp.GetBoolean();
+                    Debug.WriteLine($"  Deserialized Enabled: {((ChromaKeyEffect)effect).Enabled}");
                 }
-
-                effect = ck;
+                else
+                {
+                    ((ChromaKeyEffect)effect).Enabled = true; // Default to enabled if not specified
+                    Debug.WriteLine("  Enabled property not found, defaulting to true");
+                }
             }
             else if (string.Equals(typeName, "Transform", StringComparison.OrdinalIgnoreCase))
             {

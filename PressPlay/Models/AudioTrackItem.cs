@@ -55,6 +55,11 @@ namespace PressPlay.Models
                 }
             }
         }
+        public void SetUnlimitedSourceLength(bool value)
+        {
+            _unlimitedSourceLength = value;
+            OnPropertyChanged(nameof(UnlimitedSourceLength));
+        }
         public System.Windows.Point ScaleOrigin
         {
             get => _scaleOrigin;

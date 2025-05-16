@@ -20,7 +20,7 @@ namespace PressPlay.Models
         TimeCode OriginalEnd { get; set; } // Added this property
         public Guid InstanceId { get; set; }
         Point ScaleOrigin { get; set; }
-
+        void SetUnlimitedSourceLength(bool value);
         Point RotationOrigin { get; set; }
         // Visual properties
         int FadeInFrame { get; set; }

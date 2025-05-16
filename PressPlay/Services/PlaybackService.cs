@@ -396,7 +396,7 @@ namespace PressPlay.Services
             int clipFrame = idx - item.Position.TotalFrames + item.Start.TotalFrames;
             clipFrame = Math.Clamp(clipFrame, 0, (int)clip.Length.TotalFrames - 1);
             // Use project.FPS so timeline and source stay in sync
-            double clipSeconds = clipFrame / (double)_project.FPS;
+            double clipSeconds = clipFrame / clip.FPS;
             var bmp = clip.GetFrameAt(TimeSpan.FromSeconds(clipSeconds));
 
             // C) Compute fade parameters
@@ -527,8 +527,8 @@ namespace PressPlay.Services
 
             public void Seek(TimeSpan position)
             {
-                // Only seek if drift exceeds half a frame (~20ms at 25 fps)
-                const double thresholdMs = 1000.0 / 25.0 / 2.0;
+                // FIX: Reduce threshold to improve sync precision
+                const double thresholdMs = 20.0;
                 if (Reader != null && Math.Abs((Reader.CurrentTime - position).TotalMilliseconds) > thresholdMs)
                 {
                     Reader.CurrentTime = position;
@@ -679,8 +679,9 @@ namespace PressPlay.Services
                             playerState.VolumeProvider.Volume *= (float)fadeFactor;
                         }
                         if (!_project.IsPlaying)
+                        {
                             playerState.Seek(position);
-
+                        }
                     }
                     else
                     {
@@ -733,7 +734,7 @@ namespace PressPlay.Services
                 {
                     var desired = _project.NeedlePositionTime.ToTimeSpan();
 
-                    if (Math.Abs((_mainAudioStream.CurrentTime - desired).TotalMilliseconds) > 100)
+                    if (Math.Abs((_mainAudioStream.CurrentTime - desired).TotalMilliseconds) > 20)
                         _mainAudioStream.CurrentTime = desired;
 
                     if (_project.IsPlaying && _mainWaveOut.PlaybackState != PlaybackState.Playing)
