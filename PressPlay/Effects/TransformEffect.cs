@@ -1,6 +1,7 @@
 ﻿using OpenCvSharp;
 using PressPlay.Models;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 
 namespace PressPlay.Effects
 {
@@ -8,6 +9,8 @@ namespace PressPlay.Effects
     {
         public string Name => "Transform";
         public bool Enabled { get; set; } = true;
+
+        private TimeCode _lastAppliedTime = null;
 
         public ObservableCollection<EffectParameter> Parameters { get; }
             = new ObservableCollection<EffectParameter>();
@@ -23,81 +26,77 @@ namespace PressPlay.Effects
 
         public void ProcessFrame(Mat input, Mat output)
         {
-            // 0) Fast-path: no transform & full opacity → passthrough
-            if (!_item.HasAnyTransform() && _item.Opacity.Approximately(1.0))
+            var current = _item.Position;   // or whatever tracks “which frame” you’re on
+            if (_lastAppliedTime != null && current.Equals(_lastAppliedTime))
+            {
+                // second invocation for the same frame—just pass through
+                input.CopyTo(output);
+                return;
+            }
+
+            _lastAppliedTime = current;
+            Debug.WriteLine($"[TF] ProcessFrame: Enabled={Enabled}," + $"_item={(_item == null ? "NULL" : "OK")},"+ $"HasAnyTransform={(_item?.HasAnyTransform() ?? false)}");
+            if (!Enabled || _item == null)
             {
                 input.CopyTo(output);
                 return;
             }
 
-            // 1) Base dimensions & compute pivot in px
             int w = input.Width, h = input.Height;
-            double originX = _item.RotationOrigin.X * w;
-            double originY = _item.RotationOrigin.Y * h;
 
-            // 2) Pad out the canvas (10% + any translation) to avoid black edges
-            int padX = (int)(w * 0.1 + Math.Abs(_item.TranslateX));
-            int padY = (int)(h * 0.1 + Math.Abs(_item.TranslateY));
-            Size expandedSize = new Size(w + padX * 2, h + padY * 2);
+            // build a single 2×3 matrix:
+            //  1) rotate around image center,
+            //  2) then shift by your TranslateX/Y
+            var M = Cv2.GetRotationMatrix2D(
+                new Point2f(w / 2f, h / 2f),
+                _item.Rotation,
+                _item.ScaleX   // this is uniform scale; if you need separate X/Y, build your own 2×3
+            );
+            M.Set(0, 2, M.At<double>(0, 2) + _item.TranslateX);
+            M.Set(1, 2, M.At<double>(1, 2) + _item.TranslateY);
 
-            using var expandedMat = new Mat(expandedSize, input.Type(), Scalar.All(0));
-            // Place original image at (padX, padY) in the expandedMat
-            var roi = new Rect(padX, padY, w, h);
-            using (var slot = expandedMat.SubMat(roi))
-                input.CopyTo(slot);
-
-            // 3) Build a single affine: [scale → rotate] about (px,py), then translate
-            double θ = _item.Rotation * Math.PI / 180.0;
-            double cos = Math.Cos(θ), sin = Math.Sin(θ);
-
-            // Combined scale+rotate
-            double a = cos * _item.ScaleX;   // M[0,0]
-            double b = -sin * _item.ScaleY;   // M[0,1]
-            double c = sin * _item.ScaleX;   // M[1,0]
-            double d = cos * _item.ScaleY;   // M[1,1]
-
-            // Pivot in expanded‐canvas coords
-            double px = padX + originX;
-            double py = padY + originY;
-
-            // Translation to keep pivot fixed + user translate
-            double tx = (1 - a) * px - b * py + _item.TranslateX;
-            double ty = c * px + (1 - d) * py + _item.TranslateY;
-
-            var M = new Mat(2, 3, MatType.CV_64F);
-            M.Set(0, 0, a); M.Set(0, 1, b); M.Set(0, 2, tx);
-            M.Set(1, 0, c); M.Set(1, 1, d); M.Set(1, 2, ty);
-
-            // 4) Warp the entire expandedMat
-            using var transformedMat = new Mat();
+            // warp directly into the output
             Cv2.WarpAffine(
-                expandedMat,
-                transformedMat,
+                input,
+                output,
                 M,
-                expandedSize,
+                new Size(w, h),
                 InterpolationFlags.Linear,
                 BorderTypes.Constant,
                 Scalar.All(0)
             );
 
-            // 5) **Crop at the exact ROI** where we placed the original image
-            var cropRoi = new Rect(padX, padY, w, h);
-            // Guard against out-of-bounds just in case
-            cropRoi.X = Math.Max(0, Math.Min(cropRoi.X, transformedMat.Width - w));
-            cropRoi.Y = Math.Max(0, Math.Min(cropRoi.Y, transformedMat.Height - h));
-
-            using var finalMat = transformedMat.SubMat(cropRoi);
-            finalMat.CopyTo(output);
-
-            // 6) Apply opacity if needed
+            // optionally apply opacity
             if (_item.Opacity < 0.999)
             {
                 using var black = new Mat(output.Size(), output.Type(), Scalar.All(0));
                 Cv2.AddWeighted(output, _item.Opacity, black, 1 - _item.Opacity, 0, output);
             }
         }
-    }
+        public void Reset()
+        {
+            // Force a recalculation of all transform parameters
+            if (_item != null)
+            {
+                // Capture original values
+                double rotation = _item.Rotation;
+                double scaleX = _item.ScaleX;
+                double scaleY = _item.ScaleY;
 
+                // Reset then restore to force update
+                _item.Rotation = 0;
+                _item.ScaleX = 1;
+                _item.ScaleY = 1;
+
+                // Restore with notification
+                _item.Rotation = rotation;
+                _item.ScaleX = scaleX;
+                _item.ScaleY = scaleY;
+
+                Debug.WriteLine($"Reset transform: Rotation={rotation}, Scale=({scaleX},{scaleY})");
+            }
+        }
+    }
     static class Extensions
     {
         public static bool HasAnyTransform(this TrackItem ti) =>

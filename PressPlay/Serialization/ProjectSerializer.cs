@@ -14,6 +14,8 @@ using PressPlay.Effects;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 using JsonException = System.Text.Json.JsonException;
 using JsonConverter = Newtonsoft.Json.JsonConverter;
+using System.ComponentModel;
+using DocumentFormat.OpenXml.Bibliography;
 
 namespace PressPlay.Serialization
 {
@@ -43,6 +45,7 @@ namespace PressPlay.Serialization
                 var options = CreateSerializerOptions();
                 var project = JsonSerializer.Deserialize<Project>(json, options);
                 PostProcessProject(project);
+                project.RefreshAllTransformEffects();
                 return project;
             }
             catch (Exception ex)
@@ -88,15 +91,14 @@ namespace PressPlay.Serialization
         {
             if (project == null) return;
 
-            // Initialize the project
-            project.Initialize();
-
             // Add debug output to track project loading
             Debug.WriteLine($"Processing project with {project.Clips.Count} clips");
 
             // Log all clips and their effects before processing
             foreach (var clip in project.Clips)
             {
+                var tCount = clip.Effects.OfType<TransformEffect>().Count();
+                Debug.WriteLine($"Clip “{clip.FileName}” has {tCount} TransformEffect(s)");
                 Debug.WriteLine($"Clip: {clip.FileName} (ID: {clip.Id}) has {clip.Effects.Count} effects");
                 foreach (var effect in clip.Effects)
                 {
@@ -177,9 +179,6 @@ namespace PressPlay.Serialization
                     // Restore effects for TrackItem
                     if (item is TrackItem ti)
                         RestoreEffectsForTrackItem(project, ti);
-
-                    // Initialize the item
-                    item.Initialize();
                 }
             }
 
@@ -195,50 +194,41 @@ namespace PressPlay.Serialization
 
             // Validate project after processing
             Debug.WriteLine($"Project post-processing complete: {project.Tracks.Count} tracks, {project.Clips.Count} clips");
+            // Initialize the project
+            project.Initialize();
         }
 
         private static void RestoreEffectsForTrackItem(Project project, TrackItem trackItem)
         {
-            ProjectClip clip = null;
+            // find the clip that this TrackItem belongs to…
+            var clip = project.Clips.FirstOrDefault(c =>
+                string.Equals(c.FilePath, trackItem.FilePath, StringComparison.OrdinalIgnoreCase));
+            if (clip == null) return;
 
-            // Try to find clip by FilePath
-            if (!string.IsNullOrEmpty(trackItem.FilePath))
-            {
-                clip = project.Clips.FirstOrDefault(c =>
-                    string.Equals(c.FilePath, trackItem.FilePath, StringComparison.OrdinalIgnoreCase));
-            }
-
-            // If no clip found, there's nothing to restore effects for
-            if (clip == null)
-            {
-                Debug.WriteLine($"Warning: Could not find clip for track item {trackItem.FileName}");
-                return;
-            }
-
-            // Process transforms - connect them to the TrackItem if needed
-            bool needsTransform =
-                Math.Abs(trackItem.TranslateX) > 0.001 ||
-                Math.Abs(trackItem.TranslateY) > 0.001 ||
-                Math.Abs(trackItem.ScaleX - 1) > 0.001 ||
-                Math.Abs(trackItem.ScaleY - 1) > 0.001 ||
-                Math.Abs(trackItem.Rotation) > 0.001 ||
+            bool hasTransform =
+                Math.Abs(trackItem.TranslateX) > 1e-3 ||
+                Math.Abs(trackItem.TranslateY) > 1e-3 ||
+                Math.Abs(trackItem.ScaleX - 1) > 1e-3 ||
+                Math.Abs(trackItem.ScaleY - 1) > 1e-3 ||
+                Math.Abs(trackItem.Rotation) > 1e-3 ||
                 trackItem.Opacity < 0.999;
 
-            var existingTransform = clip.Effects.OfType<TransformEffect>().FirstOrDefault();
+            // **New**: look for an existing TransformEffect
+            var existing = clip.Effects.OfType<TransformEffect>().FirstOrDefault();
 
-            if (needsTransform)
+            if (existing != null)
             {
-                if (existingTransform != null)
-                {
-                    existingTransform.SetTrackItem(trackItem);
-                    Debug.WriteLine($"Updating existing TransformEffect for clip {clip.FileName}");
-                }
-                else
-                {
-                    // Create a new TransformEffect connected to this TrackItem
-                    clip.Effects.Add(new TransformEffect(trackItem));
-                    Debug.WriteLine($"Restored TransformEffect for clip {clip.FileName} with rotation {trackItem.Rotation}");
-                }
+                // just re-bind it and enable/disable
+                existing.SetTrackItem(trackItem);
+                existing.Enabled = hasTransform;
+                Debug.WriteLine($"Re-bound TransformEffect to '{trackItem.FileName}'");
+            }
+            else if (hasTransform)
+            {
+                // only create a brand-new one if none existed
+                var fx = new TransformEffect(trackItem);
+                clip.Effects.Add(fx);
+                Debug.WriteLine($"Added TransformEffect to '{trackItem.FileName}'");
             }
 
             // Process ChromaKey effects - ensure they're properly initialized
@@ -394,11 +384,22 @@ namespace PressPlay.Serialization
                     var y = so.GetProperty("Y").GetDouble();
                     ti.ScaleOrigin = new System.Windows.Point(x, y);
                 }
+                else
+                {
+                    // Default to center if missing
+                    ti.ScaleOrigin = new System.Windows.Point(0.5, 0.5);
+                }
+
                 if (root.TryGetProperty("RotationOrigin", out var ro))
                 {
                     var x = ro.GetProperty("X").GetDouble();
                     var y = ro.GetProperty("Y").GetDouble();
                     ti.RotationOrigin = new System.Windows.Point(x, y);
+                }
+                else
+                {
+                    // Default to center if missing
+                    ti.RotationOrigin = new System.Windows.Point(0.5, 0.5);
                 }
             }
 

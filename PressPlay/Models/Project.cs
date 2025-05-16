@@ -13,6 +13,7 @@ using System.Linq;
 using PressPlay.Helpers;
 using PressPlay.Undo.UndoUnits;
 using PressPlay.Undo;
+using PressPlay.Effects;
 
 namespace PressPlay.Models
 {
@@ -318,7 +319,31 @@ namespace PressPlay.Models
                 destination.Items.Add(item);
             }
         }
+        public void RefreshAllTransformEffects()
+        {
+            foreach (var track in Tracks)
+            {
+                foreach (var item in track.Items)
+                {
+                    if (item is TrackItem ti)
+                    {
+                        var clip = Clips.FirstOrDefault(c =>
+                            string.Equals(c.FilePath, ti.FilePath, StringComparison.OrdinalIgnoreCase));
 
+                        if (clip != null)
+                        {
+                            var effect = clip.Effects.OfType<TransformEffect>().FirstOrDefault();
+                            if (effect != null)
+                            {
+                                // Force reset of the transform
+                                effect.Reset();
+                                Debug.WriteLine($"Reset transform for {ti.FileName}: Rotation={ti.Rotation}");
+                            }
+                        }
+                    }
+                }
+            }
+        }
         public void DeleteSelectedItems()
         {
             // Find all selected items

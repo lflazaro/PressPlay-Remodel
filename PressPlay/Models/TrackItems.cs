@@ -360,7 +360,10 @@ namespace PressPlay.Models
             if (Position == null) Position = new TimeCode(0, 25);
             if (Start == null) Start = new TimeCode(0, 25);
             if (End == null) End = new TimeCode(10, 25);
-
+            if (ScaleOrigin == null || (ScaleOrigin.X == 0 && ScaleOrigin.Y == 0))
+                ScaleOrigin = new System.Windows.Point(0.5, 0.5);
+            if (RotationOrigin == null || (RotationOrigin.X == 0 && RotationOrigin.Y == 0))
+                RotationOrigin = new System.Windows.Point(0.5, 0.5); // Default to center
             System.Diagnostics.Debug.WriteLine($"Track item initialized: {FileName}, Position: {Position?.TotalFrames}, " +
                 $"Start: {Start?.TotalFrames}, End: {End?.TotalFrames}");
         }
