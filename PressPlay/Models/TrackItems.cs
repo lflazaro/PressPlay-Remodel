@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
+using System.Windows;
 using PressPlay.Effects;
 using PressPlay.Helpers;
 using static PressPlay.Models.Track;
@@ -44,6 +45,29 @@ namespace PressPlay.Models
                 }
             }
         }
+        /// <inheritdoc />
+        public Point ScaleOrigin
+        {
+            get => _scaleOrigin;
+            set
+            {
+                _scaleOrigin = value;
+                OnPropertyChanged();    // if you fire change notifications
+            }
+        }
+        private Point _scaleOrigin = new Point(0.5, 0.5);  // default to center
+
+        /// <inheritdoc />
+        public Point RotationOrigin
+        {
+            get => _rotationOrigin;
+            set
+            {
+                _rotationOrigin = value;
+                OnPropertyChanged();
+            }
+        }
+        private Point _rotationOrigin = new Point(0.5, 0.5);
         private string _type = "Video"; // Default type for TrackItem
         public string Type
         {
@@ -265,6 +289,8 @@ namespace PressPlay.Models
             FadeOutFrame = 0;
             IsSelected = false;
             _unlimitedSourceLength = false;
+            ScaleOrigin = _scaleOrigin;
+            RotationOrigin = _rotationOrigin;
         }
 
         public TrackItem(ProjectClip clip, TimeCode position, TimeCode start, TimeCode length)

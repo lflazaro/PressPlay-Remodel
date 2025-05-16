@@ -91,6 +91,34 @@ namespace PressPlay.Serialization
             // Initialize the project
             project.Initialize();
 
+            // Add debug output to track project loading
+            Debug.WriteLine($"Processing project with {project.Clips.Count} clips");
+
+            // Log all clips and their effects before processing
+            foreach (var clip in project.Clips)
+            {
+                Debug.WriteLine($"Clip: {clip.FileName} (ID: {clip.Id}) has {clip.Effects.Count} effects");
+                foreach (var effect in clip.Effects)
+                {
+                    if (effect is ChromaKeyEffect ck)
+                    {
+                        Debug.WriteLine($"  - ChromaKeyEffect: KeyColor=R:{ck.KeyColor.R},G:{ck.KeyColor.G},B:{ck.KeyColor.B}, Tolerance={ck.Tolerance}");
+                    }
+                    else if (effect is TransformEffect)
+                    {
+                        Debug.WriteLine($"  - TransformEffect: Enabled={((TransformEffect)effect).Enabled}");
+                    }
+                    else if (effect is BlendingEffect be)
+                    {
+                        Debug.WriteLine($"  - BlendingEffect: Mode={be.BlendMode}");
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"  - Unknown effect type: {effect.GetType().Name}");
+                    }
+                }
+            }
+
             // Ensure collections exist
             if (project.StepOutlineEntries == null)
                 project.StepOutlineEntries = new ObservableCollection<MainWindowViewModel.StepOutlineEntry>();
@@ -122,6 +150,13 @@ namespace PressPlay.Serialization
                             audioItem.ClipId = clip.Id;
                             Debug.WriteLine($"Setting ClipId {clip.Id} for AudioTrackItem with FilePath {clip.FilePath}");
                         }
+
+                        // Log transform properties for TrackItems
+                        if (item is TrackItem ti2)
+                        {
+                            Debug.WriteLine($"TrackItem: {ti2.FileName} - Rotation={ti2.Rotation}, TranslateX={ti2.TranslateX}, " +
+                                           $"TranslateY={ti2.TranslateY}, ScaleX={ti2.ScaleX}, ScaleY={ti2.ScaleY}, Opacity={ti2.Opacity}");
+                        }
                     }
                     else if (item is AudioTrackItem audioItem && !string.IsNullOrEmpty(audioItem.ClipId))
                     {
@@ -139,12 +174,22 @@ namespace PressPlay.Serialization
                         }
                     }
 
-                    // Restore transform effect
+                    // Restore effects for TrackItem
                     if (item is TrackItem ti)
                         RestoreEffectsForTrackItem(project, ti);
 
                     // Initialize the item
                     item.Initialize();
+                }
+            }
+
+            // Verify all effects were properly restored
+            foreach (var clip in project.Clips)
+            {
+                Debug.WriteLine($"After processing - Clip: {clip.FileName} has {clip.Effects.Count} effects");
+                foreach (var effect in clip.Effects)
+                {
+                    Debug.WriteLine($"  - {effect.Name} ({effect.GetType().Name})");
                 }
             }
 
@@ -170,33 +215,68 @@ namespace PressPlay.Serialization
                 return;
             }
 
-            // Check if we need to restore a transform effect
+            // Process transforms - connect them to the TrackItem if needed
             bool needsTransform =
-                trackItem.TranslateX != 0 ||
-                trackItem.TranslateY != 0 ||
-                trackItem.ScaleX != 1 ||
-                trackItem.ScaleY != 1 ||
-                trackItem.Rotation != 0 ||
+                Math.Abs(trackItem.TranslateX) > 0.001 ||
+                Math.Abs(trackItem.TranslateY) > 0.001 ||
+                Math.Abs(trackItem.ScaleX - 1) > 0.001 ||
+                Math.Abs(trackItem.ScaleY - 1) > 0.001 ||
+                Math.Abs(trackItem.Rotation) > 0.001 ||
                 trackItem.Opacity < 0.999;
 
-            if (needsTransform && !clip.Effects.OfType<TransformEffect>().Any())
+            var existingTransform = clip.Effects.OfType<TransformEffect>().FirstOrDefault();
+
+            if (needsTransform)
             {
-                clip.Effects.Add(new TransformEffect(trackItem));
-                Debug.WriteLine($"Restored TransformEffect for clip {clip.FileName}");
+                if (existingTransform != null)
+                {
+                    existingTransform.SetTrackItem(trackItem);
+                    Debug.WriteLine($"Updating existing TransformEffect for clip {clip.FileName}");
+                }
+                else
+                {
+                    // Create a new TransformEffect connected to this TrackItem
+                    clip.Effects.Add(new TransformEffect(trackItem));
+                    Debug.WriteLine($"Restored TransformEffect for clip {clip.FileName} with rotation {trackItem.Rotation}");
+                }
             }
 
-            // Check for ChromaKey effects in clip effects collection
-            var chromaKey = clip.Effects.OfType<ChromaKeyEffect>().FirstOrDefault();
-            if (chromaKey != null)
+            // Process ChromaKey effects - ensure they're properly initialized
+            var chromaKeyEffects = clip.Effects.OfType<ChromaKeyEffect>().ToList();
+            if (chromaKeyEffects.Any())
             {
-                Debug.WriteLine($"Found ChromaKeyEffect for clip {clip.FileName} with tolerance {chromaKey.Tolerance}");
+                foreach (var ck in chromaKeyEffects)
+                {
+                    // Log ChromaKey properties for debugging
+                    Debug.WriteLine($"Restored ChromaKeyEffect for clip {clip.FileName} - " +
+                                   $"KeyColor=R:{ck.KeyColor.R},G:{ck.KeyColor.G},B:{ck.KeyColor.B}, " +
+                                   $"Tolerance={ck.Tolerance}");
+
+                    // Extra validation that ChromaKey has proper default values if needed
+                    if (ck.KeyColor.R == 0 && ck.KeyColor.G == 0 && ck.KeyColor.B == 0 && ck.KeyColor.A == 0)
+                    {
+                        // Default to green if color is invalid
+                        ck.KeyColor = System.Windows.Media.Colors.Green;
+                        Debug.WriteLine("Warning: ChromaKey had invalid color - set to default green");
+                    }
+
+                    if (ck.Tolerance <= 0)
+                    {
+                        // Set default tolerance if invalid
+                        ck.Tolerance = 0.3;
+                        Debug.WriteLine("Warning: ChromaKey had invalid tolerance - set to default 0.3");
+                    }
+                }
             }
 
-            // Check for Blending effects
-            var blending = clip.Effects.OfType<BlendingEffect>().FirstOrDefault();
-            if (blending != null)
+            // Process BlendingEffects
+            var blendingEffects = clip.Effects.OfType<BlendingEffect>().ToList();
+            if (blendingEffects.Any())
             {
-                Debug.WriteLine($"Found BlendingEffect for clip {clip.FileName} with mode {blending.BlendMode}");
+                foreach (var be in blendingEffects)
+                {
+                    Debug.WriteLine($"Restored BlendingEffect for clip {clip.FileName} - Mode={be.BlendMode}");
+                }
             }
         }
     }
@@ -306,6 +386,20 @@ namespace PressPlay.Serialization
 
                 if (root.TryGetProperty("Opacity", out var opacityElement))
                     ti.Opacity = opacityElement.GetDouble();
+
+                // ---- New: Pivot / origin for scale and rotation ----
+                if (root.TryGetProperty("ScaleOrigin", out var so))
+                {
+                    var x = so.GetProperty("X").GetDouble();
+                    var y = so.GetProperty("Y").GetDouble();
+                    ti.ScaleOrigin = new System.Windows.Point(x, y);
+                }
+                if (root.TryGetProperty("RotationOrigin", out var ro))
+                {
+                    var x = ro.GetProperty("X").GetDouble();
+                    var y = ro.GetProperty("Y").GetDouble();
+                    ti.RotationOrigin = new System.Windows.Point(x, y);
+                }
             }
 
             // Special handling for AudioTrackItem
@@ -374,6 +468,17 @@ namespace PressPlay.Serialization
                 writer.WriteNumber("ScaleY", ti.ScaleY);
                 writer.WriteNumber("Rotation", ti.Rotation);
                 writer.WriteNumber("Opacity", ti.Opacity);
+                writer.WritePropertyName("ScaleOrigin");
+                writer.WriteStartObject();
+                writer.WriteNumber("X", ti.ScaleOrigin.X);
+                writer.WriteNumber("Y", ti.ScaleOrigin.Y);
+                writer.WriteEndObject();
+
+                writer.WritePropertyName("RotationOrigin");
+                writer.WriteStartObject();
+                writer.WriteNumber("X", ti.RotationOrigin.X);
+                writer.WriteNumber("Y", ti.RotationOrigin.Y);
+                writer.WriteEndObject();
             }
 
             // Audio-specific properties
@@ -440,35 +545,51 @@ namespace PressPlay.Serialization
         {
             using var doc = JsonDocument.ParseValue(ref reader);
             var root = doc.RootElement;
-
             var typeName = root.GetProperty("Type").GetString();
-            IEffect effect = typeName switch
-            {
-                "Transform" => new TransformEffect(null),
-                "ChromaKey" => new ChromaKeyEffect(),
-                "Blending" => new BlendingEffect(null),
-                _ => throw new JsonException($"Unknown effect type: {typeName}")
-            };
 
-            switch (effect)
+            Debug.WriteLine($"Deserializing effect of type: '{typeName}'");
+
+            IEffect effect;
+
+            // Match effect by name - case-insensitive comparison for robustness
+            if (string.Equals(typeName, "Chroma Key", StringComparison.OrdinalIgnoreCase))
             {
-                case TransformEffect te:
-                    te.Enabled = root.GetProperty("Enabled").GetBoolean();
-                    te.Parameters[0].Value = root.GetProperty("TranslateX").GetDouble();
-                    te.Parameters[1].Value = root.GetProperty("TranslateY").GetDouble();
-                    te.Parameters[2].Value = root.GetProperty("ScaleX").GetDouble();
-                    te.Parameters[3].Value = root.GetProperty("ScaleY").GetDouble();
-                    te.Parameters[4].Value = root.GetProperty("Rotation").GetDouble();
-                    break;
-                case ChromaKeyEffect ck:
-                    ck.Enabled = root.GetProperty("Enabled").GetBoolean();
-                    ck.KeyColor = DeserializeColor(root.GetProperty("KeyColor"));
-                    ck.Tolerance = root.GetProperty("Tolerance").GetDouble();
-                    break;
-                case BlendingEffect be:
-                    be.Enabled = root.GetProperty("Enabled").GetBoolean();
-                    be.BlendMode = Enum.Parse<BlendMode>(root.GetProperty("BlendMode").GetString());
-                    break;
+                effect = new ChromaKeyEffect();
+
+                // Read ChromaKey properties
+                if (root.TryGetProperty("KeyColor", out var keyColorProp))
+                {
+                    ((ChromaKeyEffect)effect).KeyColor = DeserializeColor(keyColorProp);
+                    Debug.WriteLine($"  Deserialized KeyColor: R={((ChromaKeyEffect)effect).KeyColor.R}, G={((ChromaKeyEffect)effect).KeyColor.G}, B={((ChromaKeyEffect)effect).KeyColor.B}");
+                }
+
+                if (root.TryGetProperty("Tolerance", out var toleranceProp))
+                {
+                    ((ChromaKeyEffect)effect).Tolerance = toleranceProp.GetDouble();
+                    Debug.WriteLine($"  Deserialized Tolerance: {((ChromaKeyEffect)effect).Tolerance}");
+                }
+            }
+            else if (string.Equals(typeName, "Transform", StringComparison.OrdinalIgnoreCase))
+            {
+                // Create a null transform effect - we'll connect it to the TrackItem later
+                effect = new TransformEffect(null);
+
+                // Keep it enabled
+                ((TransformEffect)effect).Enabled = true;
+            }
+            else if (string.Equals(typeName, "Blending", StringComparison.OrdinalIgnoreCase))
+            {
+                effect = new BlendingEffect(null);
+
+                if (root.TryGetProperty("BlendMode", out var blendModeProp))
+                {
+                    ((BlendingEffect)effect).BlendMode = Enum.Parse<BlendMode>(blendModeProp.GetString());
+                }
+            }
+            else
+            {
+                Debug.WriteLine($"WARNING: Unknown effect type: {typeName}");
+                throw new JsonException($"Unknown effect type: {typeName}");
             }
 
             return effect;
@@ -477,27 +598,29 @@ namespace PressPlay.Serialization
         public override void Write(Utf8JsonWriter writer, IEffect value, JsonSerializerOptions options)
         {
             writer.WriteStartObject();
+
+            // Use the effect's actual Name property
             writer.WriteString("Type", value.Name);
 
-            switch (value)
+            if (value is ChromaKeyEffect ck)
             {
-                case TransformEffect te:
-                    writer.WriteBoolean("Enabled", te.Enabled);
-                    writer.WriteNumber("TranslateX", (double)te.Parameters[0].Value);
-                    writer.WriteNumber("TranslateY", (double)te.Parameters[1].Value);
-                    writer.WriteNumber("ScaleX", (double)te.Parameters[2].Value);
-                    writer.WriteNumber("ScaleY", (double)te.Parameters[3].Value);
-                    writer.WriteNumber("Rotation", (double)te.Parameters[4].Value);
-                    break;
-                case ChromaKeyEffect ck:
-                    writer.WriteBoolean("Enabled", ck.Enabled);
-                    writer.WritePropertyName("KeyColor"); WriteColor(writer, ck.KeyColor);
-                    writer.WriteNumber("Tolerance", ck.Tolerance);
-                    break;
-                case BlendingEffect be:
-                    writer.WriteBoolean("Enabled", be.Enabled);
-                    writer.WriteString("BlendMode", be.BlendMode.ToString());
-                    break;
+                // Write ChromaKey-specific properties
+                writer.WritePropertyName("KeyColor");
+                WriteColor(writer, ck.KeyColor);
+                writer.WriteNumber("Tolerance", ck.Tolerance);
+                writer.WriteBoolean("Enabled", true);
+
+                Debug.WriteLine($"Serializing ChromaKeyEffect: KeyColor={ck.KeyColor}, Tolerance={ck.Tolerance}");
+            }
+            else if (value is TransformEffect)
+            {
+                // TransformEffect doesn't need properties stored here because
+                // the transform values (TranslateX, etc.) are stored directly on the TrackItem
+                writer.WriteBoolean("Enabled", true);
+            }
+            else if (value is BlendingEffect be)
+            {
+                writer.WriteString("BlendMode", be.BlendMode.ToString());
             }
 
             writer.WriteEndObject();

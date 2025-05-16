@@ -2,6 +2,7 @@
 using System.Windows.Media.Imaging;
 using static PressPlay.MainWindowViewModel;
 using PressPlay.Helpers;
+using System.Windows;
 
 namespace PressPlay.Models
 {
@@ -104,6 +105,27 @@ namespace PressPlay.Models
                 }
             }
         }
+
+        public Point ScaleOrigin
+        {
+            get => _scaleOrigin;
+            set
+            {
+                _scaleOrigin = value;
+            }
+        }
+        private Point _scaleOrigin = new Point(0.5, 0.5);  // default to center
+
+        /// <inheritdoc />
+        public Point RotationOrigin
+        {
+            get => _rotationOrigin;
+            set
+            {
+                _rotationOrigin = value;
+            }
+        }
+        private Point _rotationOrigin = new Point(0.5, 0.5);
         public bool IsCompatibleWith(string trackType)
         {
             // Simple example: return true if trackType is "Video" and this is a video clip.
@@ -128,6 +150,8 @@ namespace PressPlay.Models
             if (Start == null) Start = new TimeCode(0, 25);
             if (End == null) End = new TimeCode(10, 25);
             if (OriginalEnd == null) OriginalEnd = End;
+            RotationOrigin = _rotationOrigin;
+            ScaleOrigin = _scaleOrigin;
         }
 
         // Added missing methods required by ITrackItem interface

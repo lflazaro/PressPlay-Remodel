@@ -2,6 +2,7 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using PressPlay.Effects;
 using PressPlay.Models;
 using static PressPlay.Models.Track;  // your enum lives here
@@ -18,6 +19,9 @@ namespace PressPlay.Models
         TimeCode Duration { get; }
         TimeCode OriginalEnd { get; set; } // Added this property
         public Guid InstanceId { get; set; }
+        Point ScaleOrigin { get; set; }
+
+        Point RotationOrigin { get; set; }
         // Visual properties
         int FadeInFrame { get; set; }
         int FadeOutFrame { get; set; }

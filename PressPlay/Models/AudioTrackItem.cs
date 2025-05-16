@@ -13,6 +13,7 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Text.Json.Serialization;
+using Point = System.Windows.Point;
 
 namespace PressPlay.Models
 {
@@ -54,6 +55,28 @@ namespace PressPlay.Models
                 }
             }
         }
+        public System.Windows.Point ScaleOrigin
+        {
+            get => _scaleOrigin;
+            set
+            {
+                _scaleOrigin = value;
+                OnPropertyChanged();    // if you fire change notifications
+            }
+        }
+        private Point _scaleOrigin = new Point(0.5, 0.5);  // default to center
+
+        /// <inheritdoc />
+        public Point RotationOrigin
+        {
+            get => _rotationOrigin;
+            set
+            {
+                _rotationOrigin = value;
+                OnPropertyChanged();
+            }
+        }
+        private Point _rotationOrigin = new Point(0.5, 0.5);
         // Waveform related properties
         public string WaveformImagePath
         {

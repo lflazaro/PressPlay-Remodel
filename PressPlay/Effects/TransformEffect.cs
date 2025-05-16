@@ -12,9 +12,14 @@ namespace PressPlay.Effects
         public ObservableCollection<EffectParameter> Parameters { get; }
             = new ObservableCollection<EffectParameter>();
 
-        private readonly TrackItem _item;
+        private TrackItem _item;
 
         public TransformEffect(TrackItem item) => _item = item;
+
+        public void SetTrackItem(TrackItem item)
+        {
+            _item = item ?? throw new ArgumentNullException(nameof(item));
+        }
 
         public void ProcessFrame(Mat input, Mat output)
         {
@@ -28,8 +33,8 @@ namespace PressPlay.Effects
             // Get dimensions
             var w = input.Width;
             var h = input.Height;
-            var cx = w / 2.0;
-            var cy = h / 2.0;
+            var originX = _item.RotationOrigin.X * w;
+            var originY = _item.RotationOrigin.Y * h;
 
             // Step 1: Create a larger canvas to avoid border artifacts during transformation
             // Determine the output size based on the transformation
@@ -48,8 +53,8 @@ namespace PressPlay.Effects
 
             // Step 2: Create the transformation matrix
             // Adjust center point for expanded image
-            double expandedCx = cx + padX;
-            double expandedCy = cy + padY;
+            double expandedCx = padX + originX;
+            double expandedCy = padY + originY;
 
             var M = Cv2.GetRotationMatrix2D(
                 new Point2f((float)expandedCx, (float)expandedCy),
