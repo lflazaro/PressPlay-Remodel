@@ -23,55 +23,52 @@ namespace PressPlay.Effects
 
         public void ProcessFrame(Mat input, Mat output)
         {
+            // 0) Fast-path: no transform & full opacity → passthrough
             if (!_item.HasAnyTransform() && _item.Opacity.Approximately(1.0))
             {
-                // No transformation needed, just copy the input
                 input.CopyTo(output);
                 return;
             }
 
-            // Get dimensions
-            var w = input.Width;
-            var h = input.Height;
-            var originX = _item.RotationOrigin.X * w;
-            var originY = _item.RotationOrigin.Y * h;
+            // 1) Base dimensions & compute pivot in px
+            int w = input.Width, h = input.Height;
+            double originX = _item.RotationOrigin.X * w;
+            double originY = _item.RotationOrigin.Y * h;
 
-            // Step 1: Create a larger canvas to avoid border artifacts during transformation
-            // Determine the output size based on the transformation
-            double scaleFactor = Math.Max(_item.ScaleX, _item.ScaleY);
-            int padX = (int)(w * 0.1 + Math.Abs(_item.TranslateX)); // 10% padding + translation
-            int padY = (int)(h * 0.1 + Math.Abs(_item.TranslateY)); // 10% padding + translation
-
-            // Create expanded canvas
+            // 2) Pad out the canvas (10% + any translation) to avoid black edges
+            int padX = (int)(w * 0.1 + Math.Abs(_item.TranslateX));
+            int padY = (int)(h * 0.1 + Math.Abs(_item.TranslateY));
             Size expandedSize = new Size(w + padX * 2, h + padY * 2);
+
             using var expandedMat = new Mat(expandedSize, input.Type(), Scalar.All(0));
+            // Place original image at (padX, padY) in the expandedMat
+            var roi = new Rect(padX, padY, w, h);
+            using (var slot = expandedMat.SubMat(roi))
+                input.CopyTo(slot);
 
-            // Define ROI for placing the original image
-            Rect roi = new Rect(padX, padY, w, h);
-            using var roiMat = expandedMat.SubMat(roi);
-            input.CopyTo(roiMat);
+            // 3) Build a single affine: [scale → rotate] about (px,py), then translate
+            double θ = _item.Rotation * Math.PI / 180.0;
+            double cos = Math.Cos(θ), sin = Math.Sin(θ);
 
-            // Step 2: Create the transformation matrix
-            // Adjust center point for expanded image
-            double expandedCx = padX + originX;
-            double expandedCy = padY + originY;
+            // Combined scale+rotate
+            double a = cos * _item.ScaleX;   // M[0,0]
+            double b = -sin * _item.ScaleY;   // M[0,1]
+            double c = sin * _item.ScaleX;   // M[1,0]
+            double d = cos * _item.ScaleY;   // M[1,1]
 
-            var M = Cv2.GetRotationMatrix2D(
-                new Point2f((float)expandedCx, (float)expandedCy),
-                (float)_item.Rotation,
-                1.0);
+            // Pivot in expanded‐canvas coords
+            double px = padX + originX;
+            double py = padY + originY;
 
-            // Apply scale
-            M.Set(0, 0, M.At<double>(0, 0) * _item.ScaleX);
-            M.Set(0, 1, M.At<double>(0, 1) * _item.ScaleY);
-            M.Set(1, 0, M.At<double>(1, 0) * _item.ScaleX);
-            M.Set(1, 1, M.At<double>(1, 1) * _item.ScaleY);
+            // Translation to keep pivot fixed + user translate
+            double tx = (1 - a) * px - b * py + _item.TranslateX;
+            double ty = c * px + (1 - d) * py + _item.TranslateY;
 
-            // Apply translation
-            M.Set(0, 2, M.At<double>(0, 2) + _item.TranslateX);
-            M.Set(1, 2, M.At<double>(1, 2) + _item.TranslateY);
+            var M = new Mat(2, 3, MatType.CV_64F);
+            M.Set(0, 0, a); M.Set(0, 1, b); M.Set(0, 2, tx);
+            M.Set(1, 0, c); M.Set(1, 1, d); M.Set(1, 2, ty);
 
-            // Step 3: Apply transformation to the expanded image
+            // 4) Warp the entire expandedMat
             using var transformedMat = new Mat();
             Cv2.WarpAffine(
                 expandedMat,
@@ -79,34 +76,20 @@ namespace PressPlay.Effects
                 M,
                 expandedSize,
                 InterpolationFlags.Linear,
-                BorderTypes.Constant,   // Use constant border with black color
-                Scalar.All(0));         // Black borders
+                BorderTypes.Constant,
+                Scalar.All(0)
+            );
 
-            // Step 4: Crop back to original size with the transformed image center-aligned
-            int cropX = (transformedMat.Width - w) / 2;
-            int cropY = (transformedMat.Height - h) / 2;
+            // 5) **Crop at the exact ROI** where we placed the original image
+            var cropRoi = new Rect(padX, padY, w, h);
+            // Guard against out-of-bounds just in case
+            cropRoi.X = Math.Max(0, Math.Min(cropRoi.X, transformedMat.Width - w));
+            cropRoi.Y = Math.Max(0, Math.Min(cropRoi.Y, transformedMat.Height - h));
 
-            // Ensure we don't go out of bounds
-            cropX = Math.Max(0, Math.Min(cropX, transformedMat.Width - w));
-            cropY = Math.Max(0, Math.Min(cropY, transformedMat.Height - h));
+            using var finalMat = transformedMat.SubMat(cropRoi);
+            finalMat.CopyTo(output);
 
-            Rect cropRoi = new Rect(cropX, cropY,
-                                   Math.Min(w, transformedMat.Width - cropX),
-                                   Math.Min(h, transformedMat.Height - cropY));
-
-            // If regions are valid, extract the cropped region to the output
-            if (cropRoi.Width > 0 && cropRoi.Height > 0)
-            {
-                using var croppedMat = transformedMat.SubMat(cropRoi);
-                croppedMat.CopyTo(output);
-            }
-            else
-            {
-                // Fallback if crop is invalid
-                transformedMat.CopyTo(output);
-            }
-
-            // Step 5: Apply opacity if needed
+            // 6) Apply opacity if needed
             if (_item.Opacity < 0.999)
             {
                 using var black = new Mat(output.Size(), output.Type(), Scalar.All(0));
