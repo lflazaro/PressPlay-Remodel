@@ -262,7 +262,7 @@
                                 <Button Content="Add Title" Height="24" Width="78" Background="#FF3A3A3A" Foreground="LightGray" Click="Button_Click"/>
                             </StackPanel>
                             <!-- You may replace this with your media library control -->
-                            <customcontrols:ProjectClipsControl Grid.Row="1" ItemsSource="{Binding CurrentProject.Clips}" Background="#FF2B2B2B" Margin="0,0,0,10"/>
+                            <customcontrols:ProjectClipsControl Grid.Row="1" ItemsSource="{Binding CurrentProject.Clips}" Margin="0,0,0,10" Background="#FF2C2C2C"/>
                         </Grid>
                     </TabItem>
 
@@ -421,7 +421,7 @@
                                         Background="#FF3A3A3A" Foreground="LightGray" BorderBrush="#FF4A4A4A"/>
                                                 </Grid>
 
-                                                
+
                                             </StackPanel>
                                         </Expander>
 
@@ -470,22 +470,24 @@
                             <svgc:SvgIcon UriSource="/Resources/Icons/rew.svg" Fill="LightGray" Width="13" Height="13" Margin="-8"/>
                         </Button>
                         <Button Command="{Binding ProjectPlayCommand}" Width="30" Padding="5" Margin="1,0" Background="#FF3A3A3A">
-                            <svgc:SvgIcon Fill="LightGray" Width="13" Height="13" Margin="-8">
-                                <svgc:SvgIcon.Style>
-                                    <Style TargetType="svgc:SvgIcon">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding CurrentProject.IsPlaying}" Value="False">
-                                                <Setter Property="UriSource" Value="/Resources/Icons/play.svg"/>
-                                                <Setter Property="ToolTip" Value="Play (Space)"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding CurrentProject.IsPlaying}" Value="True">
-                                                <Setter Property="UriSource" Value="/Resources/Icons/pause.svg"/>
-                                                <Setter Property="ToolTip" Value="Pause (Space)"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </svgc:SvgIcon.Style>
-                            </svgc:SvgIcon>
+                            <Grid>
+                                <svgc:SvgIcon Fill="LightGray" Width="13" Height="13" Margin="-8">
+                                    <svgc:SvgIcon.Style>
+                                        <Style TargetType="svgc:SvgIcon">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding CurrentProject.IsPlaying}" Value="False">
+                                                    <Setter Property="UriSource" Value="/Resources/Icons/play.svg"/>
+                                                    <Setter Property="ToolTip" Value="Play (Space)"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding CurrentProject.IsPlaying}" Value="True">
+                                                    <Setter Property="UriSource" Value="/Resources/Icons/pause.svg"/>
+                                                    <Setter Property="ToolTip" Value="Pause (Space)"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </svgc:SvgIcon.Style>
+                                </svgc:SvgIcon>
+                            </Grid>
                         </Button>
                         <Button Command="{Binding ProjectFastForwardCommand}" ToolTip="Fast Forward (L)" Width="30" Padding="5" Margin="1,0" Background="#FF3A3A3A">
                             <svgc:SvgIcon UriSource="/Resources/Icons/ffw.svg" Fill="LightGray" Width="13" Height="13" Margin="-8"/>

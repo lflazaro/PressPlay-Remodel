@@ -544,20 +544,35 @@ namespace PressPlay.Timeline
             if (clip.TrackType == TimelineTrackType.Audio)
             {
                 Debug.WriteLine("Creating AudioTrackItem");
-                ti = new AudioTrackItem(
-                        clip,
-                        position,
-                        new TimeCode(0, clip.FPS),
-                        clip.Length);
+                {
+                    // Compute how many PROJECT frames this clip lasts:
+                    double clipSeconds = clip.Length.TotalSeconds;
+                    int projFrames = (int)Math.Round(clipSeconds * Project.FPS);
+                    var projLength = new TimeCode(projFrames, Project.FPS);
+
+                    ti = new AudioTrackItem(
+                            clip,
+                            position,                           // position already in project-frames
+                            new TimeCode(0, Project.FPS),      // source-start (if you need clip-based, you can keep clip.FPS here)
+                            projLength                          // length in project-frames
+                        );
+                }
             }
             else
             {
                 Debug.WriteLine("Creating TrackItem");
-                ti = new TrackItem(
-                        clip,
-                        position,
-                        new TimeCode(0, clip.FPS),
-                        clip.Length);
+                {
+                    double clipSeconds = clip.Length.TotalSeconds;
+                    int projFrames = (int)Math.Round(clipSeconds * Project.FPS);
+                    var projLength = new TimeCode(projFrames, Project.FPS);
+
+                    ti = new TrackItem(
+                            clip,
+                            position,
+                            new TimeCode(0, Project.FPS),
+                            projLength
+                        );
+                }
             }
 
             // 6) Add it to the track

@@ -88,7 +88,11 @@ namespace PressPlay.Models
         public TimeCode End { get; set; }
 
         // For convenience, we define Duration as the difference between End and Start.
-        public TimeCode Duration => new TimeCode(End?.TotalFrames - Start?.TotalFrames ?? 0, Start?.FPS ?? 25);
+        public TimeCode Duration
+    => new TimeCode(
+           (End?.TotalFrames ?? 0) - (Start?.TotalFrames ?? 0),
+           Start?.FPS ?? 25
+       );
 
         public int FadeInFrame { get; set; }
         public int FadeOutFrame { get; set; }

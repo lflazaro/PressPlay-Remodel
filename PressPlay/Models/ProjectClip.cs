@@ -81,6 +81,7 @@ namespace PressPlay.Models
         public TimeCode Length { get => _length; set { _length = value; OnPropertyChanged(); } }
         public bool UnlimitedLength { get; private set; }
         public ObservableCollection<IEffect> Effects { get; } = new ObservableCollection<IEffect>();
+        [JsonInclude]
         public double FPS { get; private set; }
         public string Thumbnail { get => _thumbnail; set { _thumbnail = value; OnPropertyChanged(); } }
         [JsonIgnore]
@@ -209,6 +210,12 @@ namespace PressPlay.Models
         private void GetInfo()
         {
             var properties = GetClipProperties();
+            Debug.WriteLine(
+                $"[META] {FileName}: " +
+                $"FPS={properties.FPS:F3}, " +
+                $"Frames={properties.Length.TotalFrames}, " +
+                $"LenSecs={properties.Length.TotalSeconds:F3}"
+            );
             UnlimitedLength = properties.UnlimitedLength;
             TrackType = properties.TrackType;
             ItemType = properties.ItemType;
@@ -287,7 +294,6 @@ namespace PressPlay.Models
             {
                 Debug.WriteLine($"Analyzing video file: {FilePath}");
 
-                // FFProbe analysis to detect streams
                 bool hasAudio = false;
                 double fps = 25;
                 long frameCount = 0;
@@ -296,45 +302,69 @@ namespace PressPlay.Models
 
                 try
                 {
-                    // Be explicit about FFmpeg path
+                    // 1) Configure FFMpegCore as before
                     string ffmpegDir = Environment.GetEnvironmentVariable("FFMPEG_CORE_DIR")
                         ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ffmpeg");
-
-                    // Configure FFMpegCore with explicit path
-                    FFMpegCore.GlobalFFOptions.Configure(options => {
-                        options.BinaryFolder = ffmpegDir;
-                        Debug.WriteLine($"Configured FFMpegCore with path: {ffmpegDir}");
-                    });
+                    FFMpegCore.GlobalFFOptions.Configure(opts => opts.BinaryFolder = ffmpegDir);
 
                     var mediaInfo = FFProbe.Analyse(FilePath);
 
-                    // Check for audio streams
                     hasAudio = mediaInfo.AudioStreams?.Any() == true;
                     Debug.WriteLine($"FFProbe detected audio streams: {hasAudio}");
 
-                    if (mediaInfo.PrimaryVideoStream != null)
+                    var vs = mediaInfo.PrimaryVideoStream;
+                    if (vs != null)
                     {
-                        fps = mediaInfo.PrimaryVideoStream.FrameRate > 0
-                            ? mediaInfo.PrimaryVideoStream.FrameRate
-                            : 25;
-                        width = mediaInfo.PrimaryVideoStream.Width > 0
-                            ? mediaInfo.PrimaryVideoStream.Width
-                            : 640;
-                        height = mediaInfo.PrimaryVideoStream.Height > 0
-                            ? mediaInfo.PrimaryVideoStream.Height
-                            : 480;
+                        // native FPS & dimensions
+                        fps = vs.FrameRate > 0 ? vs.FrameRate : fps;
+                        width = vs.Width > 0 ? vs.Width : width;
+                        height = vs.Height > 0 ? vs.Height : height;
 
-                        // Calculate frameCount 
-                        double durationSeconds = mediaInfo.Duration.TotalSeconds;
-                        frameCount = (long)Math.Ceiling(durationSeconds * fps);
+                        // 2) Try an explicit ffprobe count_frames call
+                        long probeFrames = 0;
+                        try
+                        {
+                            var psi = new ProcessStartInfo
+                            {
+                                FileName = Path.Combine(ffmpegDir, "ffprobe"),
+                                Arguments = $"-v error -count_frames -select_streams v:0 " +
+                                                  $"-show_entries stream=nb_read_frames " +
+                                                  $"-of default=nokey=1:noprint_wrappers=1 \"{FilePath}\"",
+                                RedirectStandardOutput = true,
+                                UseShellExecute = false,
+                                CreateNoWindow = true
+                            };
+                            using var p = Process.Start(psi);
+                            if (p != null)
+                            {
+                                string outStr = p.StandardOutput.ReadToEnd().Trim();
+                                if (long.TryParse(outStr, out var parsed) && parsed > 0)
+                                    probeFrames = parsed;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Manual ffprobe -count_frames failed: {ex.Message}");
+                        }
 
-                        Debug.WriteLine($"Video properties: FPS={fps}, Duration={durationSeconds}s, Frames={frameCount}");
+                        if (probeFrames > 0)
+                        {
+                            frameCount = probeFrames;
+                        }
+                        else
+                        {
+                            // 3) Fallback: duration * fps, rounded down
+                            double durSec = mediaInfo.Duration.TotalSeconds;
+                            frameCount = (long)Math.Floor(durSec * fps);
+                        }
+
+                        Debug.WriteLine($"Video: FPS={fps}, Frames={frameCount}, Size={width}×{height}");
                     }
                 }
                 catch (Exception ex)
                 {
                     Debug.WriteLine($"FFProbe analysis failed: {ex.Message}");
-                    // Fallback to OpenCV for video properties
+                    // Fallback to OpenCV for video properties...
                 }
 
                 // Fallback to OpenCV if needed

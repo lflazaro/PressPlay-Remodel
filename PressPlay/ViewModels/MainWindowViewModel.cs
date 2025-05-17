@@ -21,7 +21,13 @@ using PressPlay.Serialization;
 using System.Windows.Input;
 using System.Windows.Media;
 using PressPlay.Export;
+using ClosedXML.Excel;
+using QuestPDF.Fluent;
+using QuestPDF.Infrastructure;
 using TimeCode = PressPlay.Models.TimeCode;
+using BlendMode = PressPlay.Effects.BlendMode;
+using QuestPDF.Helpers;
+using Colors = System.Windows.Media.Colors;
 
 namespace PressPlay
 {
@@ -753,6 +759,8 @@ namespace PressPlay
 
             // Add initial track
             AddNewTrack(TimelineTrackType.Video);
+            PlaybackService?.Pause();
+            PlaybackService?.LoadProject(CurrentProject);
 
             // Reset undo/redo stack
             UndoEngine.Instance.ClearAll();
@@ -1424,18 +1432,71 @@ namespace PressPlay
             }
         }
 
-        private void ExportStepOutlineToPdf(string filePath)
-        {
-            // TODO: Implement PDF export using iText7
-            MessageBox.Show("PDF export not yet implemented", "Not Implemented");
-        }
-
         private void ExportStepOutlineToExcel(string filePath)
         {
-            // TODO: Implement Excel export using ClosedXML
-            MessageBox.Show("Excel export not yet implemented", "Not Implemented");
+            // 1) Create workbook & sheet
+            using var workbook = new XLWorkbook();
+            var sheet = workbook.Worksheets.Add("Step Outline");
+
+            // 2) Header row
+            sheet.Cell(1, 1).Value = "Timecode";
+            sheet.Cell(1, 2).Value = "Description";
+
+            // 3) Data rows
+            int row = 2;
+            foreach (var entry in CurrentProject.StepOutlineEntries)
+            {
+                sheet.Cell(row, 1).Value = entry.Timecode;
+                sheet.Cell(row, 2).Value = entry.Description;
+                row++;
+            }
+
+            // 4) Auto-fit and save
+            sheet.Columns().AdjustToContents();
+            workbook.SaveAs(filePath);
         }
 
+        private void ExportStepOutlineToPdf(string filePath)
+        {
+            QuestPDF.Settings.License = LicenseType.Community;
+            var entries = CurrentProject.StepOutlineEntries.ToList();
+
+            Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4);
+                    page.Margin(1, Unit.Centimetre);
+                    page.Content()
+                        .Table(table =>
+                        {
+                            // Columns: narrow + wide
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.ConstantColumn(50);
+                                columns.RelativeColumn();
+                            });
+
+                            // Header
+                            table.Header(header =>
+                            {
+                                header.Cell().Element(CellStyle).Text("Timecode");
+                                header.Cell().Element(CellStyle).Text("Description");
+                            });
+
+                            // Rows
+                            foreach (var e in entries)
+                            {
+                                table.Cell().Element(CellStyle).Text(e.Timecode);
+                                table.Cell().Element(CellStyle).Text(e.Description);
+                            }
+                        });
+                });
+            })
+            .GeneratePdf(filePath);
+
+            static IContainer CellStyle(IContainer c) => c.Border(1).Padding(5);
+        }
         private void ExportCurrentProject()
         {
             // Make sure project is saved first

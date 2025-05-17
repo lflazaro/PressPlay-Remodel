@@ -8,8 +8,7 @@
         mc:Ignorable="d"
         Title="Export Project" 
         Height="500" Width="600"
-        WindowStartupLocation="CenterOwner"
-        Background="#FF232323">
+        WindowStartupLocation="CenterOwner">
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
@@ -48,6 +47,12 @@
             <Setter Property="Padding" Value="5"/>
         </Style>
     </Window.Resources>
+    <Window.Background>
+        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+            <GradientStop Color="#FF0A0B10"/>
+            <GradientStop Color="#FF181A27" Offset="1"/>
+        </LinearGradientBrush>
+    </Window.Background>
 
     <Grid Margin="10">
         <Grid.RowDefinitions>
@@ -98,14 +103,14 @@
                 <ComboBox x:Name="FormatComboBox" 
                           Grid.Row="0" Grid.Column="1"
                           SelectionChanged="FormatComboBox_SelectionChanged"
-                          Style="{StaticResource DarkComboBox}"/>
+                          Style="{StaticResource DarkComboBox}" Foreground="Black"/>
 
                 <TextBlock Grid.Row="0" Grid.Column="2" 
                            Text="Video Codec:" 
                            Style="{StaticResource DarkLabel}"/>
                 <ComboBox x:Name="CodecComboBox" 
                           Grid.Row="0" Grid.Column="3"
-                          Style="{StaticResource DarkComboBox}"/>
+                          Style="{StaticResource DarkComboBox}" Foreground="Black"/>
 
                 <TextBlock Grid.Row="1" Grid.Column="0" 
                            Text="Quality Preset:" 
@@ -113,7 +118,7 @@
                 <ComboBox x:Name="QualityComboBox" 
                           Grid.Row="1" Grid.Column="1"
                           SelectionChanged="QualityComboBox_SelectionChanged"
-                          Style="{StaticResource DarkComboBox}"/>
+                          Style="{StaticResource DarkComboBox}" Foreground="Black"/>
 
                 <TextBlock Grid.Row="1" Grid.Column="2" 
                            Text="Include Audio:" 

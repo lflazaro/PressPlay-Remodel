@@ -38,6 +38,8 @@ namespace PressPlay.Models
         public event EventHandler<TimeCode> NeedlePositionTimeChanged;
         // In TrackItem class
         public string Id { get => _id; set { _id = value; OnPropertyChanged(); } }
+
+        [JsonInclude]
         public double FPS { get => _fps; set { _fps = value; OnPropertyChanged(); } }
         public int TimelineZoom { get => _timelineZoom; set { _timelineZoom = value; OnPropertyChanged(); } }
         public TimeCode NeedlePositionTime { get => _needlePositionTime; set { _needlePositionTime = value; OnPropertyChanged(); } }
