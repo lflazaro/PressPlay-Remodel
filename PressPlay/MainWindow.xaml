@@ -108,6 +108,8 @@
                 </MenuItem>
                 <Separator />
                 <MenuItem Header="Settings" Command="{Binding ProjectSettingsCommand}" />
+                <Separator />
+                <MenuItem Header="New recording..." Command="{Binding OpenRecordingToolCommand}" />
             </MenuItem>
 
             <!-- TIMELINE Menu -->

@@ -28,6 +28,7 @@ using TimeCode = PressPlay.Models.TimeCode;
 using BlendMode = PressPlay.Effects.BlendMode;
 using QuestPDF.Helpers;
 using Colors = System.Windows.Media.Colors;
+using PressPlay.Recording;
 
 namespace PressPlay
 {
@@ -1225,6 +1226,16 @@ namespace PressPlay
             }
         }
 
+        [RelayCommand]
+        private void OpenRecordingTool()
+        {
+            // Create an adapter function to convert a single string to string[] for ImportMediaFiles
+            Action<string> importAction = filePath => ImportMediaFiles(new[] { filePath });
+
+            var recordingDialog = new RecordingDialog(importAction);
+            recordingDialog.Owner = Application.Current.MainWindow;
+            recordingDialog.ShowDialog();
+        }
         private void ImportMediaDialog()
         {
             var openFileDialog = new OpenFileDialog

@@ -10,6 +10,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using PressPlayTitler;
 using PressPlay.Helpers;
+using CommunityToolkit.Mvvm.Input;
+using PressPlay.Recording;
 
 namespace PressPlay
 {
@@ -152,7 +154,7 @@ namespace PressPlay
                 }
             }
         }
-
+        
         private void VideoPreview_DragEnter(object sender, DragEventArgs e)
         {
             e.Effects = (e.Data.GetDataPresent(typeof(ProjectClip)) ||
