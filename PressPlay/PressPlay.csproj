@@ -7,11 +7,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>PressPlay</RootNamespace>
     <AssemblyName>PressPlay</AssemblyName>
+    <ApplicationIcon>android-chrome-192x192.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <None Remove="Resources\Icons\add.svg" />
     <None Remove="Resources\Icons\bin.svg" />
     <None Remove="Resources\Icons\cut.svg" />
+    <None Remove="Resources\Icons\Delete frames.ico" />
     <None Remove="Resources\Icons\ffw.svg" />
     <None Remove="Resources\Icons\folder.svg" />
     <None Remove="Resources\Icons\pause.svg" />
@@ -22,6 +24,9 @@
     <None Remove="Resources\Icons\select_new.svg" />
     <None Remove="Resources\Icons\sound.svg" />
     <None Remove="Resources\Icons\split.svg" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="android-chrome-192x192.ico" />
   </ItemGroup>
 
   <!-- Same package references as before -->
@@ -48,6 +53,7 @@
     <Resource Include="Resources\Icons\add.svg" />
     <Resource Include="Resources\Icons\bin.svg" />
     <Resource Include="Resources\Icons\cut.svg" />
+    <Resource Include="Resources\Icons\Delete frames.ico" />
     <Resource Include="Resources\Icons\ffw.svg" />
     <Resource Include="Resources\Icons\folder.svg" />
     <Resource Include="Resources\Icons\pause.svg" />
