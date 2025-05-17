@@ -8,7 +8,7 @@
         mc:Ignorable="d"
         Title="Export Project" 
         Height="500" Width="600"
-        WindowStartupLocation="CenterOwner">
+        WindowStartupLocation="CenterOwner" Background="#FF292929">
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
@@ -47,12 +47,6 @@
             <Setter Property="Padding" Value="5"/>
         </Style>
     </Window.Resources>
-    <Window.Background>
-        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-            <GradientStop Color="#FF0A0B10"/>
-            <GradientStop Color="#FF181A27" Offset="1"/>
-        </LinearGradientBrush>
-    </Window.Background>
 
     <Grid Margin="10">
         <Grid.RowDefinitions>
