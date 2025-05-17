@@ -517,24 +517,51 @@ namespace PressPlay.Models
         }
         public void Cut()
         {
-            // Implementation for Cut operation
+            // Find all selected items across all tracks
             var selectedItems = Tracks
                 .SelectMany(t => t.Items.Where(i => i.IsSelected))
                 .ToList();
 
-            // Example implementation - copy items to clipboard
-            // Then delete them from timeline
-            DeleteSelectedItems();
+            if (selectedItems.Count == 0)
+                return;
+
+            // Create a multi-undo unit for this operation
+            var multiUndo = new MultipleUndoUnits("Cut Items");
+
+            // Track which items are being removed from which tracks
+            var trackItemRemoveUndo = new TrackItemRemoveUndoUnit();
+
+            // Process each selected item
+            foreach (var item in selectedItems)
+            {
+                // Find the track containing this item
+                var track = Tracks.FirstOrDefault(t => t.Items.Contains(item));
+                if (track == null)
+                    continue;
+
+                // Add to undo data
+                trackItemRemoveUndo.Items.Add(new TrackAndItemData(track, item));
+
+                // Remove from track
+                track.Items.Remove(item);
+            }
+
+            // Add to undo engine if items were removed
+            if (trackItemRemoveUndo.Items.Count > 0)
+            {
+                multiUndo.UndoUnits.Add(trackItemRemoveUndo);
+                UndoEngine.Instance.AddUndoUnit(multiUndo);
+            }
+
+            // Notify about tracks change
+            OnPropertyChanged(nameof(Tracks));
         }
 
         public void Copy()
         {
-            // Implementation for Copy operation
-            var selectedItems = Tracks
-                .SelectMany(t => t.Items.Where(i => i.IsSelected))
-                .ToList();
-
-            // Example implementation - copy items to clipboard
+            // This is handled by MainWindowViewModel and ClipboardExtensions
+            // No additional implementation needed here
         }
+
     }
 }

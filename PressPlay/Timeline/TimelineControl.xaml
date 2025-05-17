@@ -199,13 +199,7 @@
                                                                                AncestorType={x:Type local:TimelineControl}}}"
                                   Width="{Binding ActualWidth, ElementName=tracksHScrollView}"
                                   Margin="0,30,0,0">
-                        <ItemsControl.ContextMenu>
-                            <ContextMenu>
-                                <MenuItem Header="Paste"
-                                          Click="PasteItem_Click"
-                                          InputGestureText="Ctrl+V"/>
-                            </ContextMenu>
-                        </ItemsControl.ContextMenu>
+                        
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <!-- Styled Border:  height controlled by above header style -->

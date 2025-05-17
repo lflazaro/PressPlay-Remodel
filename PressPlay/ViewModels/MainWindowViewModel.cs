@@ -129,38 +129,55 @@ namespace PressPlay
         [RelayCommand]
         private void Cut()
         {
-            // Find the selected clips and cut them
             var selectedItems = CurrentProject.Tracks
                 .SelectMany(t => t.Items.Where(i => i.IsSelected))
                 .ToList();
 
-            if (selectedItems.Count > 0)
-            {
-                // TODO: Implement Cut (store to clipboard)
-                MessageBox.Show("Cut operation not yet implemented", "Not Implemented");
-            }
+            if (!selectedItems.Any())
+                return;
+
+            Debug.WriteLine($"Cutting {selectedItems.Count} items to clipboard");
+
+            // 1) Copy  
+            this.CopySelectedItemsToClipboard();
+
+            // 2) Delete  
+            CurrentProject.DeleteSelectedItems();
+
+            // 3) Mark modified  
+            HasUnsavedChanges = true;
         }
 
         [RelayCommand]
         private void Copy()
         {
-            // Find the selected clips and copy them
             var selectedItems = CurrentProject.Tracks
                 .SelectMany(t => t.Items.Where(i => i.IsSelected))
                 .ToList();
 
-            if (selectedItems.Count > 0)
+            if (!selectedItems.Any())
             {
-                // TODO: Implement Copy (store to clipboard)
-                MessageBox.Show("Copy operation not yet implemented", "Not Implemented");
+                MessageBox.Show("Please select at least one item on the timeline to copy.",
+                                "No Selection", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
             }
+
+            Debug.WriteLine($"Copying {selectedItems.Count} items to clipboard");
+
+            // Copy only, don’t modify the timeline
+            this.CopySelectedItemsToClipboard();
+
+            // Let the user know
+            //MessageBox.Show(
+               // $"Copied {selectedItems.Count} item{(selectedItems.Count > 1 ? "s" : "")} to clipboard",
+               // "Copy Complete", MessageBoxButton.OK, MessageBoxImage.Information
+           // );
         }
 
         [RelayCommand]
         private void Paste()
         {
-            // TODO: Implement Paste from clipboard
-            MessageBox.Show("Paste operation not yet implemented", "Not Implemented");
+            this.PasteItemsFromClipboard();
         }
 
         [RelayCommand]

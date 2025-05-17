@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using PressPlayTitler;
+using PressPlay.Helpers;
 
 namespace PressPlay
 {
@@ -105,7 +106,14 @@ namespace PressPlay
                 }
             }
 
-            _playbackService.Pause();
+            // Pause playback
+            _playbackService?.Pause();
+
+            // Clear PressPlay data from clipboard on exit
+            if (!e.Cancel)
+            {
+                ClipboardExtensions.ClearClipboard();
+            }
         }
 
         private void VideoPreview_Drop(object sender, DragEventArgs e)
