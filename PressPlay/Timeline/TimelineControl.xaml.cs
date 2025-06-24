@@ -332,7 +332,7 @@ namespace PressPlay.Timeline
             if (!Project.MagnetEnabled)
                 return frame;
 
-            const int threshold = 5;
+            const int threshold = 25;
             var snapPoints = Project.Tracks
                 .SelectMany(t => t.Items)
                 .SelectMany(i => new[]
