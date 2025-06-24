@@ -41,13 +41,27 @@
         <Style TargetType="Border">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Type}" Value="Video">
-                    <Setter Property="Background" Value="#1366a2" />
+                    <Setter Property="Background" >
+                        <Setter.Value>
+                            <LinearGradientBrush EndPoint="0,0.5" StartPoint="1,0.5">
+                                <GradientStop Color="#FF8900CC"/>
+                                <GradientStop Color="#FF2A003E" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Setter.Value>
+                    </Setter>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Type}" Value="Image">
                     <Setter Property="Background" Value="#a44d00" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Type}" Value="Audio">
-                    <Setter Property="Background" Value="#0d3a20" />
+                    <Setter Property="Background" >
+                        <Setter.Value>
+                            <LinearGradientBrush EndPoint="0,0.5" StartPoint="1,0.5">
+                                <GradientStop Color="#FF002509" Offset="1"/>
+                                <GradientStop Color="#FF008220" Offset="0"/>
+                            </LinearGradientBrush>
+                        </Setter.Value>
+                    </Setter>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsSelected}" Value="False">
                     <Setter Property="BorderBrush" Value="Black" />
@@ -203,6 +217,6 @@
             </Polygon.Style>
         </Polygon>
 
-        <Border x:Name="resizeBorder" BorderBrush="Orange" Margin="-1" />
+        <Border x:Name="resizeBorder" BorderBrush="Red" Margin="-1" />
     </Grid>
 </Border>

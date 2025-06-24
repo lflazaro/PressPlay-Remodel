@@ -325,6 +325,31 @@ namespace PressPlay.Timeline
             // If we're here, we might be below all tracks or in an invalid area
             return null;
         }
+
+
+        private int GetSnappedFrame(int frame)
+        {
+            if (!Project.MagnetEnabled)
+                return frame;
+
+            const int threshold = 5;
+            var snapPoints = Project.Tracks
+                .SelectMany(t => t.Items)
+                .SelectMany(i => new[]
+                {
+                    i.Position.TotalFrames,
+                    i.End.TotalFrames
+                })
+                .Distinct();
+
+            foreach (var point in snapPoints)
+            {
+                if (Math.Abs(frame - point) <= threshold)
+                    return point;
+            }
+
+            return frame;
+        }
         private void TimelineControl_PreviewMouseMove(object sender, MouseEventArgs e)
         {
             if (_tracksCanvasLeftMouseButtonDown && _mouseDownTrackItem != null
@@ -345,6 +370,7 @@ namespace PressPlay.Timeline
                 // Calculate new position based on the original position
                 int newPositionFrames = _mouseDownTrackItemPosition.TotalFrames + frameDelta;
                 if (newPositionFrames < 0) newPositionFrames = 0;
+                newPositionFrames = GetSnappedFrame(newPositionFrames);
 
                 // Update track item position
                 _mouseDownTrackItem.Position = new TimeCode(newPositionFrames, Project.FPS);
@@ -385,6 +411,7 @@ namespace PressPlay.Timeline
                 // 4) clamp between zero and one less than the End
                 desiredStart = Math.Max(0, desiredStart);
                 desiredStart = Math.Min(desiredStart, _mouseDownTrackItemEnd.TotalFrames - 1);
+                desiredStart = GetSnappedFrame(desiredStart);
 
                 // 5) apply it
                 _mouseDownTrackItem.Start = new TimeCode(desiredStart, Project.FPS);
@@ -419,6 +446,7 @@ namespace PressPlay.Timeline
 
                 // Ensure we don't make the clip shorter than 1 frame
                 desiredEndFrame = Math.Max(desiredEndFrame, _mouseDownTrackItem.Start.TotalFrames + 1);
+                desiredEndFrame = GetSnappedFrame(desiredEndFrame);
 
                 // Set the new End position
                 _mouseDownTrackItem.End = new TimeCode(desiredEndFrame, Project.FPS);
@@ -467,6 +495,7 @@ namespace PressPlay.Timeline
             double frame = Math.Round(x / Constants.TimelinePixelsInSeparator
                                       * Constants.TimelineZooms[Project.TimelineZoom],
                                       MidpointRounding.ToZero);
+            frame = GetSnappedFrame((int)frame);
             double newX = frame * Constants.TimelinePixelsInSeparator
                           / Constants.TimelineZooms[Project.TimelineZoom];
 

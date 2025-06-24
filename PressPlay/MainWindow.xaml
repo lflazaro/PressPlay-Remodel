@@ -463,12 +463,11 @@
                 </Border>
                 <!-- Transport Controls -->
                 <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="5" Background="#FF2C2C2C">
-                    <ComboBox Margin="5,0" Width="150" ItemsSource="{Binding CurrentProject.PreviewRenderedTranslations}" DisplayMemberPath="Name" SelectedValuePath="Guid" SelectedValue="{Binding CurrentProject.PreviewRenderedTranslation}" Background="#FF3A3A3A" Foreground="LightGray"/>
-                    <StackPanel Orientation="Horizontal">
+                        <StackPanel Orientation="Horizontal">
                         <Button Command="{Binding ProjectRewindCommand}" ToolTip="Rewind (J)" Width="30" Padding="5" Margin="1,0" Background="#FF3A3A3A">
                             <svgc:SvgIcon UriSource="/Resources/Icons/rew.svg" Fill="LightGray" Width="13" Height="13" Margin="-8"/>
                         </Button>
-                        <Button Command="{Binding ProjectPlayCommand}" Width="30" Padding="5" Margin="1,0" Background="#FF3A3A3A">
+                        <Button Command="{Binding ProjectPlayCommand}" Width="30" Padding="5" Margin="1,0" Background="#FF3A3A3A" Height="26">
                             <Grid>
                                 <svgc:SvgIcon Fill="LightGray" Width="13" Height="13" Margin="-8">
                                     <svgc:SvgIcon.Style>

@@ -30,6 +30,7 @@ namespace PressPlay.Models
         private ObservableCollection<ProjectClip> _clips = new ObservableCollection<ProjectClip>();
         private bool _isPlaying;
         private string _currentMediaPath;
+        private bool _magnetEnabled = true;
 
         public Timeline.TimelineSelectedTool SelectedTool { get; set; }
         public ObservableCollection<MainWindowViewModel.StepOutlineEntry> StepOutlineEntries { get; set; } = new ObservableCollection<MainWindowViewModel.StepOutlineEntry>();
@@ -67,6 +68,18 @@ namespace PressPlay.Models
                 if (_isPlaying != value)
                 {
                     _isPlaying = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+        public bool MagnetEnabled
+        {
+            get => _magnetEnabled;
+            set
+            {
+                if (_magnetEnabled != value)
+                {
+                    _magnetEnabled = value;
                     OnPropertyChanged();
                 }
             }
