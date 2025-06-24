@@ -326,7 +326,7 @@ namespace PressPlay.Timeline
             return null;
         }
 
-
+        //added to snap the frame to the nearest point
         private int GetSnappedFrame(int frame)
         {
             if (!Project.MagnetEnabled)
