@@ -128,176 +128,180 @@
         </Border>
 
         <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="15"/>
             </Grid.RowDefinitions>
 
-            <!-- Track Headers -->
-            <Grid Grid.Column="0"
-                  Width="{Binding Project.TrackHeadersWidth,
-                                  RelativeSource={RelativeSource Mode=FindAncestor,
+            <ScrollViewer x:Name="tracksVScrollView"
+                          Grid.Row="0"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Track Headers -->
+                    <Grid Grid.Column="0"
+                          Width="{Binding Project.TrackHeadersWidth,
+                                          RelativeSource={RelativeSource Mode=FindAncestor,
                                                           AncestorType={x:Type local:TimelineControl}}}">
-                <StackPanel>
-                    <Grid Height="30">
-                        <TextBlock Text="Tracks"
-                                   Foreground="WhiteSmoke"
-                                   VerticalAlignment="Center"
-                                   HorizontalAlignment="Center"/>
+                        <StackPanel>
+                            <Grid Height="30">
+                                <TextBlock Text="Tracks"
+                                           Foreground="WhiteSmoke"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Center"/>
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding Project.Tracks,
+                                                            RelativeSource={RelativeSource Mode=FindAncestor,
+                                                                          AncestorType={x:Type local:TimelineControl}}}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <!-- header Border: default height video, override for audio -->
+                                        <Border Background="#FF2C2C2C"
+                                                BorderBrush="Gray"
+                                                BorderThickness="0.5"
+                                                MinHeight="20"
+                                                SnapsToDevicePixels="True">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <!-- default header height for video -->
+                                                    <Setter Property="Height" Value="100"/>
+                                                    <Style.Triggers>
+                                                        <!-- if this track is Audio, bump to 100px -->
+                                                        <DataTrigger Binding="{Binding Type}" Value="Audio">
+                                                            <Setter Property="Height" Value="100"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding Name}"
+                                                       Margin="3,0"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="WhiteSmoke"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
                     </Grid>
-                    <ItemsControl ItemsSource="{Binding Project.Tracks,
-                                                        RelativeSource={RelativeSource Mode=FindAncestor,
-                                                                                AncestorType={x:Type local:TimelineControl}}}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <!-- header Border: default height video, override for audio -->
-                                <Border Background="#FF2C2C2C"
-                                        BorderBrush="Gray"
-                                        BorderThickness="0.5"
-                                        MinHeight="20"
-                                        SnapsToDevicePixels="True">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <!-- default header height for video -->
-                                            <Setter Property="Height" Value="100"/>
-                                            <Style.Triggers>
-                                                <!-- if this track is Audio, bump to 100px -->
-                                                <DataTrigger Binding="{Binding Type}" Value="Audio">
-                                                    <Setter Property="Height" Value="100"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <TextBlock Text="{Binding Name}"
-                                               Margin="3,0"
-                                               VerticalAlignment="Center"
-                                               Foreground="WhiteSmoke"/>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-            </Grid>
 
-            <!-- Timeline Canvas -->
-            <ScrollViewer x:Name="tracksHScrollView"
-                          Grid.Column="1"
-                          HorizontalScrollBarVisibility="Hidden"
-                          VerticalScrollBarVisibility="Auto"
-                          PreviewMouseWheel="TracksScrollView_PreviewMouseWheel">
-                <Canvas x:Name="RootCanvas"
-                        Width="1700"
-                        HorizontalAlignment="Left"
-                        PreviewMouseLeftButtonDown="TracksCanvas_PreviewMouseLeftButtonDown">
+                    <!-- Timeline Canvas -->
+                    <ScrollViewer x:Name="tracksHScrollView"
+                                  Grid.Column="1"
+                                  HorizontalScrollBarVisibility="Hidden"
+                                  VerticalScrollBarVisibility="Disabled"
+                                  PreviewMouseWheel="TracksScrollView_PreviewMouseWheel">
+                        <Canvas x:Name="RootCanvas"
+                                Width="1700"
+                                HorizontalAlignment="Left"
+                                PreviewMouseLeftButtonDown="TracksCanvas_PreviewMouseLeftButtonDown">
 
-                    <local:TimelineHeaderControl x:Name="header"
-                                                 Project="{Binding Project,
-                                                             RelativeSource={RelativeSource Mode=FindAncestor,
-                                                                                     AncestorType={x:Type local:TimelineControl}}}"
-                                                 Width="{Binding ActualWidth, ElementName=RootCanvas}" />
+                            <local:TimelineHeaderControl x:Name="header"
+                                                         Project="{Binding Project,
+                                                                     RelativeSource={RelativeSource Mode=FindAncestor,
+                                                                                 AncestorType={x:Type local:TimelineControl}}}"
+                                                         Width="{Binding ActualWidth, ElementName=RootCanvas}" />
 
-                    <ItemsControl x:Name="tracksControl"
-                                  ItemsSource="{Binding Project.Tracks,
-                                                       RelativeSource={RelativeSource Mode=FindAncestor,
+                            <ItemsControl x:Name="tracksControl"
+                                          ItemsSource="{Binding Project.Tracks,
+                                                               RelativeSource={RelativeSource Mode=FindAncestor,
                                                                                AncestorType={x:Type local:TimelineControl}}}"
-                                  Width="{Binding ActualWidth, ElementName=tracksHScrollView}"
-                                  Margin="0,30,0,0">
-                        
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <!-- Styled Border:  height controlled by above header style -->
-                                <Border Width="{Binding Width,
-                                                        RelativeSource={RelativeSource Mode=FindAncestor,
-                                                                                AncestorType={x:Type ItemsControl}}}"
-                                        Background="#FF2C2C2C"
-                                        BorderBrush="Gray"
-                                        BorderThickness="0.5"
-                                        MinHeight="80"
-                                        SnapsToDevicePixels="True">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="Height" Value="100"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Type}" Value="Audio">
+                                          Width="{Binding ActualWidth, ElementName=tracksHScrollView}"
+                                          Margin="0,30,0,0">
+
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <!-- Styled Border:  height controlled by above header style -->
+                                        <Border Width="{Binding Width,
+                                                            RelativeSource={RelativeSource Mode=FindAncestor,
+                                                                            AncestorType={x:Type ItemsControl}}}"
+                                                Background="#FF2C2C2C"
+                                                BorderBrush="Gray"
+                                                BorderThickness="0.5"
+                                                MinHeight="80"
+                                                SnapsToDevicePixels="True">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
                                                     <Setter Property="Height" Value="100"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Type}" Value="Audio">
+                                                            <Setter Property="Height" Value="100"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
 
-                                    <ItemsControl ItemsSource="{Binding Items}">
-                                        <!-- use ContentPresenter so the correct DataTemplate is applied -->
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <ContentPresenter Content="{Binding}"/>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <Canvas/>
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemContainerStyle>
-                                            <Style TargetType="ContentPresenter">
-                                                <Setter Property="Canvas.Left">
-                                                    <Setter.Value>
-                                                        <MultiBinding Converter="{StaticResource TrackToPosConverter}">
-                                                            <Binding Path="Project"
-                                                                     RelativeSource="{RelativeSource Mode=FindAncestor,
+                                            <ItemsControl ItemsSource="{Binding Items}">
+                                                <!-- use ContentPresenter so the correct DataTemplate is applied -->
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <ContentPresenter Content="{Binding}"/>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <Canvas/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemContainerStyle>
+                                                    <Style TargetType="ContentPresenter">
+                                                        <Setter Property="Canvas.Left">
+                                                            <Setter.Value>
+                                                                <MultiBinding Converter="{StaticResource TrackToPosConverter}">
+                                                                    <Binding Path="Project"
+                                                                             RelativeSource="{RelativeSource Mode=FindAncestor,
                                                                                              AncestorType={x:Type local:TimelineControl}}"/>
-                                                            <Binding Path="Project.TimelineZoom"
-                                                                     RelativeSource="{RelativeSource Mode=FindAncestor,
+                                                                    <Binding Path="Project.TimelineZoom"
+                                                                             RelativeSource="{RelativeSource Mode=FindAncestor,
                                                                                              AncestorType={x:Type local:TimelineControl}}"/>
-                                                            <Binding Path="."/>
-                                                            <Binding Path="Position"/>
-                                                            <Binding Path="Start"/>
-                                                            <Binding Path="End"/>
-                                                        </MultiBinding>
-                                                    </Setter.Value>
-                                                </Setter>
-                                            </Style>
-                                        </ItemsControl.ItemContainerStyle>
-                                    </ItemsControl>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                                                                    <Binding Path="."/>
+                                                                    <Binding Path="Position"/>
+                                                                    <Binding Path="Start"/>
+                                                                    <Binding Path="End"/>
+                                                                </MultiBinding>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </Style>
+                                                </ItemsControl.ItemContainerStyle>
+                                            </ItemsControl>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
 
-                    <local:TimelineNeedleControl x:Name="needle">
-                        <local:TimelineNeedleControl.Style>
-                            <Style TargetType="local:TimelineNeedleControl">
-                                <Setter Property="Canvas.Left">
-                                    <Setter.Value>
-                                        <MultiBinding Converter="{StaticResource NeedlePosConverter}">
-                                            <Binding Path="Project"
-                                                     RelativeSource="{RelativeSource Mode=FindAncestor,
-                                                                                     AncestorType={x:Type local:TimelineControl}}"/>
-                                            <Binding Path="Project.TimelineZoom"
-                                                     RelativeSource="{RelativeSource Mode=FindAncestor,
-                                                                                     AncestorType={x:Type local:TimelineControl}}"/>
-                                            <Binding Path="Project.NeedlePositionTime"
-                                                     RelativeSource="{RelativeSource Mode=FindAncestor,
-                                                                                     AncestorType={x:Type local:TimelineControl}}"/>
-                                        </MultiBinding>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </local:TimelineNeedleControl.Style>
-                    </local:TimelineNeedleControl>
+                            <local:TimelineNeedleControl x:Name="needle">
+                                <local:TimelineNeedleControl.Style>
+                                    <Style TargetType="local:TimelineNeedleControl">
+                                        <Setter Property="Canvas.Left">
+                                            <Setter.Value>
+                                                <MultiBinding Converter="{StaticResource NeedlePosConverter}">
+                                                    <Binding Path="Project"
+                                                             RelativeSource="{RelativeSource Mode=FindAncestor,
+                                                                             AncestorType={x:Type local:TimelineControl}}"/>
+                                                    <Binding Path="Project.TimelineZoom"
+                                                             RelativeSource="{RelativeSource Mode=FindAncestor,
+                                                                             AncestorType={x:Type local:TimelineControl}}"/>
+                                                    <Binding Path="Project.NeedlePositionTime"
+                                                             RelativeSource="{RelativeSource Mode=FindAncestor,
+                                                                             AncestorType={x:Type local:TimelineControl}}"/>
+                                                </MultiBinding>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </local:TimelineNeedleControl.Style>
+                            </local:TimelineNeedleControl>
 
-                </Canvas>
+                        </Canvas>
+                    </ScrollViewer>
+                </Grid>
             </ScrollViewer>
 
             <!-- BindableScrollBar from PressPlay.Timeline -->
-            <local:BindableScrollBar Grid.Column="1"
-                                    Grid.Row="1"
-                                    Orientation="Horizontal"
-                                    VerticalAlignment="Bottom"
-                                    BoundScrollViewer="{Binding ElementName=tracksHScrollView}"/>
+            <local:BindableScrollBar Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Bottom" BoundScrollViewer="{Binding ElementName=tracksHScrollView}"/>
         </Grid>
     </Grid>
 </UserControl>
