@@ -11,19 +11,19 @@ namespace PressPlay.Helpers
         // Zoom levels with multipliers
         public static Dictionary<int, double> TimelineZooms = new Dictionary<int, double>
         {
-            { 1, 1.0 },   // 0.2 pixels per frame
-            { 2, 1.5 },   // 0.3 pixels per frame
-            { 3, 2.0 },   // 0.4 pixels per frame
-            { 4, 3.0 },   // 0.6 pixels per frame
-            { 5, 4.0 },   // 0.8 pixels per frame
-            { 6, 5.0 },   // 1.0 pixels per frame
-            { 7, 6.0 },   // 1.2 pixels per frame
-            { 8, 8.0 },   // 1.6 pixels per frame
-            { 9, 10.0 },  // 2.0 pixels per frame
-            { 10, 15.0 }, // 3.0 pixels per frame
-            { 11, 20.0 }, // 4.0 pixels per frame
-            { 12, 25.0 }, // 5.0 pixels per frame
-            { 13, 30.0 }, // 6.0 pixels per frame
+            { 1, 0.1 },   // 0.2 pixels per frame
+            { 2, 0.3 },   // 0.3 pixels per frame
+            { 3, 0.5 },   // 0.4 pixels per frame
+            { 4, 1.0 },   // 0.6 pixels per frame
+            { 5, 2.0 },   // 0.8 pixels per frame
+            { 6, 3.0 },   // 1.0 pixels per frame
+            { 7, 4.0 },   // 1.2 pixels per frame
+            { 8, 6.0 },   // 1.6 pixels per frame
+            { 9, 8.0 },  // 2.0 pixels per frame
+            { 10, 10.0 }, // 3.0 pixels per frame
+            { 11, 15.0 }, // 4.0 pixels per frame
+            { 12, 20.0 }, // 5.0 pixels per frame
+            { 13, 25.0 }, // 6.0 pixels per frame
         };
 
         // Helper method to safely get zoom factor

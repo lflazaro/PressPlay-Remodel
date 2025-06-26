@@ -8,6 +8,7 @@
     <RootNamespace>PressPlay</RootNamespace>
     <AssemblyName>PressPlay</AssemblyName>
     <ApplicationIcon>android-chrome-192x192.ico</ApplicationIcon>
+    <UseWindowsForms>False</UseWindowsForms>
   </PropertyGroup>
   <ItemGroup>
     <None Remove="Resources\Icons\add.svg" />

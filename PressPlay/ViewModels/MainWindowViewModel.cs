@@ -320,6 +320,7 @@ namespace PressPlay
             };
         }
 
+
         // Transition commands
         [RelayCommand]
         private void AddTransition(string transitionSpecifier)
@@ -1235,6 +1236,24 @@ namespace PressPlay
             var recordingDialog = new RecordingDialog(importAction);
             recordingDialog.Owner = Application.Current.MainWindow;
             recordingDialog.ShowDialog();
+        }
+
+
+        private Teleprompter.TeleprompterDialog? _teleprompterDialog;
+
+        [RelayCommand]
+        private void OpenTeleprompterDialog()
+        {
+            if (_teleprompterDialog == null)
+            {
+                _teleprompterDialog = new Teleprompter.TeleprompterDialog();
+                _teleprompterDialog.Closed += (_, _) => _teleprompterDialog = null;
+                _teleprompterDialog.Show();
+            }
+            else
+            {
+                _teleprompterDialog.Activate();
+            }
         }
         private void ImportMediaDialog()
         {
