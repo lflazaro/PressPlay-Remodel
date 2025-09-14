@@ -249,6 +249,7 @@ namespace PressPlay.Timeline
         {
             if (sender is ItemsControl strip && DataContext is TrackItem item)
             {
+                if (!item.KeyframesEnabled) return;
                 _timelineControl ??= VisualHelper.GetAncestor<TimelineControl>(this);
                 var project = _timelineControl?.Project;
                 if (project == null) return;
@@ -312,7 +313,27 @@ namespace PressPlay.Timeline
                 if (item.Keyframes.TryGetValue(property, out var list))
                 {
                     list.Remove(kf);
+                    item.NotifyKeyframeChange(property);
                     RefreshKeyframeStrip(property);
+
+                    if (list.Count == 0)
+                    {
+                        switch (property)
+                        {
+                            case nameof(TrackItem.TranslateX): item.TranslateX = 0; break;
+                            case nameof(TrackItem.TranslateY): item.TranslateY = 0; break;
+                            case nameof(TrackItem.Rotation): item.Rotation = 0; break;
+                            case nameof(TrackItem.ScaleX): item.ScaleX = 1; break;
+                            case nameof(TrackItem.ScaleY): item.ScaleY = 1; break;
+                            case nameof(TrackItem.Opacity): item.Opacity = 1; break;
+                        }
+                    }
+                    else
+                    {
+                        _timelineControl ??= VisualHelper.GetAncestor<TimelineControl>(this);
+                        int frame = _timelineControl?.Project?.NeedlePositionTime.TotalFrames ?? 0;
+                        item.EvaluateKeyframes(frame);
+                    }
                 }
                 e.Handled = true;
             }

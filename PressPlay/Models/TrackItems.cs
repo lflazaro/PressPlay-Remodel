@@ -497,6 +497,14 @@ namespace PressPlay.Models
             set => SetField(ref _opacity, value);
         }
 
+        private bool _keyframesEnabled = true;
+        [JsonInclude]
+        public bool KeyframesEnabled
+        {
+            get => _keyframesEnabled;
+            set => SetField(ref _keyframesEnabled, value);
+        }
+
         [JsonInclude]
         public Dictionary<string, List<Keyframe>> Keyframes { get; } = new()
         {
