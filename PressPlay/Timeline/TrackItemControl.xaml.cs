@@ -72,34 +72,6 @@ namespace PressPlay.Timeline
             }
         }
 
-        private void PropertySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (sender is Slider slider && DataContext is TrackItem item)
-            {
-                _timelineControl ??= VisualHelper.GetAncestor<TimelineControl>(this);
-                var project = _timelineControl?.Project;
-                if (project == null) return;
-
-                int frame = project.NeedlePositionTime.TotalFrames;
-                string property = slider.Tag as string ?? string.Empty;
-
-                if (!item.Keyframes.TryGetValue(property, out var list))
-                    return;
-
-                var existing = list.FirstOrDefault(k => k.Frame == frame);
-                if (existing != null)
-                {
-                    existing.Value = e.NewValue;
-                }
-                else
-                {
-                    list.Add(new Keyframe { Frame = frame, Value = e.NewValue });
-                }
-
-                RefreshKeyframeStrip(property);
-            }
-        }
-
         private void TrackItem_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             _timelineControl ??= VisualHelper.GetAncestor<TimelineControl>(this);

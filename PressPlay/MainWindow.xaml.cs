@@ -236,5 +236,27 @@ namespace PressPlay
 
             item.NotifyKeyframeChange(property);
         }
+
+        private void PropertySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (DataContext is not MainWindowViewModel vm) return;
+            if (vm.SelectedTrackItem is not TrackItem item) return;
+            if (sender is not Slider slider || slider.Tag is not string property) return;
+
+            int frame = vm.CurrentProject.NeedlePositionTime.TotalFrames;
+            if (!item.Keyframes.TryGetValue(property, out var list)) return;
+
+            var existing = list.FirstOrDefault(k => k.Frame == frame);
+            if (existing != null)
+            {
+                existing.Value = e.NewValue;
+            }
+            else
+            {
+                list.Add(new Keyframe { Frame = frame, Value = e.NewValue });
+            }
+
+            item.NotifyKeyframeChange(property);
+        }
     }
 }
