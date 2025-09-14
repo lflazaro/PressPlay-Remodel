@@ -217,6 +217,7 @@ namespace PressPlay
         private void AddKeyframeButton_Click(object sender, RoutedEventArgs e)
         {
             if (DataContext is not MainWindowViewModel vm) return;
+            if (vm.CurrentProject.IsPlaying) return;
             if (vm.SelectedTrackItem is not TrackItem item) return;
             if (sender is not Button btn || btn.Tag is not string property) return;
 
@@ -242,6 +243,7 @@ namespace PressPlay
         private void PropertySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (DataContext is not MainWindowViewModel vm) return;
+            if (vm.CurrentProject.IsPlaying) return;
             if (vm.SelectedTrackItem is not TrackItem item) return;
             if (sender is not Slider slider || slider.Tag is not string property) return;
 

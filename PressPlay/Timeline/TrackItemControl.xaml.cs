@@ -252,7 +252,7 @@ namespace PressPlay.Timeline
                 if (!item.KeyframesEnabled) return;
                 _timelineControl ??= VisualHelper.GetAncestor<TimelineControl>(this);
                 var project = _timelineControl?.Project;
-                if (project == null) return;
+                if (project == null || project.IsPlaying) return;
 
                 if (e.OriginalSource is Canvas)
                 {
