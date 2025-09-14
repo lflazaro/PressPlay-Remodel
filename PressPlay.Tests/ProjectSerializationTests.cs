@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using PressPlay.Models;
 using PressPlay.Serialization;
+using PressPlay.Effects;
 using Xunit;
 
 namespace PressPlay.Tests;
@@ -57,5 +58,28 @@ public class ProjectSerializationTests
 
         loadedItem.EvaluateKeyframes(0);
         Assert.Equal(12.5, loadedItem.TranslateX);
+    }
+
+    [Fact]
+    public void ColorCorrectionEffect_IsSerializedWithSliderValues()
+    {
+        var project = new Project { FPS = 25 };
+        var clip = new ProjectClip();
+        clip.Effects.Add(new ColorCorrectionEffect
+        {
+            Brightness = 10,
+            Contrast = 1.5,
+            Saturation = 0.5
+        });
+        project.Clips.Add(clip);
+
+        var json = ProjectSerializer.SerializeProject(project);
+        var loaded = ProjectSerializer.DeserializeProject(json);
+
+        var loadedClip = Assert.Single(loaded.Clips);
+        var cc = Assert.IsType<ColorCorrectionEffect>(Assert.Single(loadedClip.Effects));
+        Assert.Equal(10, cc.Brightness);
+        Assert.Equal(1.5, cc.Contrast);
+        Assert.Equal(0.5, cc.Saturation);
     }
 }
