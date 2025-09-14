@@ -372,7 +372,13 @@ namespace PressPlay.Services
 
                     // 5) Draw each with its fade
                     foreach (var item in activeItems)
+                    {
+                        // Update transform properties from keyframes before drawing
+                        if (item is TrackItem ti)
+                            ti.EvaluateKeyframes(idx);
+
                         DrawItemWithFade(item, idx, width, height, dc);
+                    }
                 }
             }
 

@@ -527,6 +527,16 @@ namespace PressPlay.Models
         [JsonIgnore]
         public List<Keyframe> OpacityKeyframes => Keyframes[nameof(Opacity)];
 
+        public void EvaluateKeyframes(int frame)
+        {
+            TranslateX = GetAnimated(nameof(TranslateX), frame);
+            TranslateY = GetAnimated(nameof(TranslateY), frame);
+            Rotation = GetAnimated(nameof(Rotation), frame);
+            ScaleX = GetAnimated(nameof(ScaleX), frame);
+            ScaleY = GetAnimated(nameof(ScaleY), frame);
+            Opacity = GetAnimated(nameof(Opacity), frame);
+        }
+
         public double GetAnimated(string property, int frame)
         {
             if (!Keyframes.TryGetValue(property, out var frames) || frames.Count == 0)
