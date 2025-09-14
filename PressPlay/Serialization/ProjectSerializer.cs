@@ -419,6 +419,26 @@ namespace PressPlay.Serialization
                 }
                 if (root.TryGetProperty("Volume", out var volumeElement))
                     ti.Volume = volumeElement.GetSingle();
+
+                // Keyframe dictionary (optional for backward compatibility)
+                if (root.TryGetProperty("Keyframes", out var kfElement))
+                {
+                    try
+                    {
+                        var dict = JsonSerializer.Deserialize<Dictionary<string, List<Keyframe>>>(kfElement.GetRawText(), options);
+                        if (dict != null)
+                        {
+                            foreach (var kv in dict)
+                            {
+                                ti.Keyframes[kv.Key] = kv.Value ?? new List<Keyframe>();
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Failed to deserialize keyframes: {ex.Message}");
+                    }
+                }
             }
 
             // Special handling for AudioTrackItem
@@ -500,6 +520,10 @@ namespace PressPlay.Serialization
                 writer.WriteNumber("Y", ti.RotationOrigin.Y);
                 writer.WriteEndObject();
                 writer.WriteNumber("Volume", ti.Volume);
+
+                // Serialize keyframe dictionary
+                writer.WritePropertyName("Keyframes");
+                JsonSerializer.Serialize(writer, ti.Keyframes, options);
             }
 
             // Audio-specific properties
