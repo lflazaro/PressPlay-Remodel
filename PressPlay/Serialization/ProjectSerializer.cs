@@ -271,6 +271,15 @@ namespace PressPlay.Serialization
                     Debug.WriteLine($"Restored BlendingEffect for clip {clip.FileName} - Mode={be.BlendMode}");
                 }
             }
+
+            var colorEffects = clip.Effects.OfType<ColorCorrectionEffect>().ToList();
+            if (colorEffects.Any())
+            {
+                foreach (var ce in colorEffects)
+                {
+                    Debug.WriteLine($"Restored ColorCorrectionEffect for clip {clip.FileName} - Brightness={ce.Brightness}, Contrast={ce.Contrast}, Gamma={ce.Gamma}");
+                }
+            }
         }
     }
 
@@ -392,6 +401,13 @@ namespace PressPlay.Serialization
 
                 if (root.TryGetProperty("Opacity", out var opacityElement))
                     ti.Opacity = opacityElement.GetDouble();
+
+                if (root.TryGetProperty("KeyframesEnabled", out var kfeElement))
+                    ti.KeyframesEnabled = kfeElement.GetBoolean();
+                else
+                    ti.KeyframesEnabled = root.TryGetProperty("Keyframes", out var kfeDict) &&
+                        JsonSerializer.Deserialize<Dictionary<string, ObservableCollection<Keyframe>>>(kfeDict.GetRawText(), options)?
+                        .Any(kv => kv.Value != null && kv.Value.Count > 0) == true;
 
                 // ---- New: Pivot / origin for scale and rotation ----
                 if (root.TryGetProperty("ScaleOrigin", out var so))
@@ -520,6 +536,7 @@ namespace PressPlay.Serialization
                 writer.WriteNumber("Y", ti.RotationOrigin.Y);
                 writer.WriteEndObject();
                 writer.WriteNumber("Volume", ti.Volume);
+                writer.WriteBoolean("KeyframesEnabled", ti.KeyframesEnabled);
 
                 // Serialize keyframe dictionary
                 writer.WritePropertyName("Keyframes");
@@ -639,6 +656,23 @@ namespace PressPlay.Serialization
                     be.BlendMode = Enum.Parse<BlendMode>(blendModeProp.GetString());
                 effect = be;
             }
+            else if (string.Equals(typeName, "Color Correction", StringComparison.OrdinalIgnoreCase))
+            {
+                var cc = new ColorCorrectionEffect();
+                if (root.TryGetProperty("TintColor", out var tintProp))
+                    cc.TintColor = DeserializeColor(tintProp);
+                if (root.TryGetProperty("Brightness", out var brProp))
+                    cc.Brightness = brProp.GetDouble();
+                if (root.TryGetProperty("Contrast", out var ctProp))
+                    cc.Contrast = ctProp.GetDouble();
+                if (root.TryGetProperty("Gamma", out var gmProp))
+                    cc.Gamma = gmProp.GetDouble();
+                if (root.TryGetProperty("Enabled", out var enProp))
+                    cc.Enabled = enProp.GetBoolean();
+                else
+                    cc.Enabled = true;
+                effect = cc;
+            }
             else
             {
                 Debug.WriteLine($"WARNING: Unknown effect type: {typeName}");
@@ -676,6 +710,15 @@ namespace PressPlay.Serialization
             else if (value is BlendingEffect be)
             {
                 writer.WriteString("BlendMode", be.BlendMode.ToString());
+            }
+            else if (value is ColorCorrectionEffect cc)
+            {
+                writer.WritePropertyName("TintColor");
+                WriteColor(writer, cc.TintColor);
+                writer.WriteNumber("Brightness", cc.Brightness);
+                writer.WriteNumber("Contrast", cc.Contrast);
+                writer.WriteNumber("Gamma", cc.Gamma);
+                writer.WriteBoolean("Enabled", cc.Enabled);
             }
 
             writer.WriteEndObject();

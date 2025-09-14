@@ -499,6 +499,28 @@
                         </Grid>
                     </TabItem>
 
+                    <TabItem Header="Color Correction">
+                        <Grid>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel Margin="5">
+                                    <TextBlock Text="Select a clip to adjust its color" Foreground="LightGray"
+                                               Visibility="{Binding SelectedProjectClip, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=true}"
+                                               HorizontalAlignment="Center" Margin="0,20,0,0"/>
+
+                                    <StackPanel Visibility="{Binding SelectedProjectClip, Converter={StaticResource NullToVisibilityConverter}}">
+                                        <customcontrols:ColorWheel SelectedColor="{Binding ColorEffect.TintColor, Mode=TwoWay}" Margin="0,0,0,10"/>
+                                        <TextBlock Text="Brightness" Foreground="LightGray"/>
+                                        <Slider Minimum="-100" Maximum="100" Value="{Binding ColorEffect.Brightness, Mode=TwoWay}"/>
+                                        <TextBlock Text="Contrast" Foreground="LightGray" Margin="0,10,0,0"/>
+                                        <Slider Minimum="0" Maximum="3" Value="{Binding ColorEffect.Contrast, Mode=TwoWay}"/>
+                                        <TextBlock Text="Gamma" Foreground="LightGray" Margin="0,10,0,0"/>
+                                        <Slider Minimum="0.1" Maximum="5" Value="{Binding ColorEffect.Gamma, Mode=TwoWay}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Grid>
+                    </TabItem>
+
                 </TabControl>
             </Grid>
 
