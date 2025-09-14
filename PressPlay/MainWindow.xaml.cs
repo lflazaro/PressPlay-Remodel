@@ -220,6 +220,8 @@ namespace PressPlay
             if (vm.SelectedTrackItem is not TrackItem item) return;
             if (sender is not Button btn || btn.Tag is not string property) return;
 
+            if (!item.KeyframesEnabled) return;
+
             int frame = vm.CurrentProject.NeedlePositionTime.TotalFrames;
             if (!item.Keyframes.TryGetValue(property, out var list)) return;
 
@@ -243,6 +245,8 @@ namespace PressPlay
             if (vm.SelectedTrackItem is not TrackItem item) return;
             if (sender is not Slider slider || slider.Tag is not string property) return;
 
+            if (!item.KeyframesEnabled) return;
+
             int frame = vm.CurrentProject.NeedlePositionTime.TotalFrames;
             if (!item.Keyframes.TryGetValue(property, out var list)) return;
 
@@ -257,6 +261,46 @@ namespace PressPlay
             }
 
             item.NotifyKeyframeChange(property);
+        }
+
+        private void KeyframeToggle_Checked(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is MainWindowViewModel vm && vm.SelectedTrackItem is TrackItem item)
+            {
+                item.KeyframesEnabled = true;
+            }
+        }
+
+        private void KeyframeToggle_Unchecked(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not MainWindowViewModel vm) return;
+            if (vm.SelectedTrackItem is not TrackItem item) return;
+
+            bool hasKeyframes = item.Keyframes.Any(kv => kv.Value.Count > 0);
+            if (hasKeyframes)
+            {
+                var result = MessageBox.Show("Disabling keyframes will delete existing keyframes. Continue?", "Disable Keyframes", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (result != MessageBoxResult.Yes)
+                {
+                    item.KeyframesEnabled = true;
+                    if (sender is CheckBox cb) cb.IsChecked = true;
+                    return;
+                }
+            }
+
+            foreach (var list in item.Keyframes.Values)
+            {
+                list.Clear();
+            }
+            foreach (var key in item.Keyframes.Keys.ToList())
+            {
+                item.NotifyKeyframeChange(key);
+            }
+
+            int frame = vm.CurrentProject.NeedlePositionTime.TotalFrames;
+            item.EvaluateKeyframes(frame);
+
+            item.KeyframesEnabled = false;
         }
     }
 }
