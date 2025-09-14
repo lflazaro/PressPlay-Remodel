@@ -499,6 +499,33 @@
                         </Grid>
                     </TabItem>
 
+                    <TabItem Header="Color Correction">
+                        <Grid>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel Margin="5">
+                                    <TextBlock Text="Select a clip to adjust color" Foreground="LightGray"
+                                               Visibility="{Binding SelectedTrackItem, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=true}"
+                                               HorizontalAlignment="Center" Margin="0,20,0,0"/>
+
+                                    <StackPanel Visibility="{Binding SelectedTrackItem, Converter={StaticResource NullToVisibilityConverter}}">
+                                        <customcontrols:ColorWheelControl Width="150" Height="150" Margin="0,0,0,10"
+                                                                         Hue="{Binding SelectedTrackItem.Hue, Mode=TwoWay}"
+                                                                         Saturation="{Binding SelectedTrackItem.Saturation, Mode=TwoWay}"/>
+
+                                        <TextBlock Text="Brightness" Foreground="LightGray"/>
+                                        <Slider Minimum="-100" Maximum="100" Value="{Binding SelectedTrackItem.Brightness, Mode=TwoWay}"/>
+
+                                        <TextBlock Text="Contrast" Foreground="LightGray" Margin="0,10,0,0"/>
+                                        <Slider Minimum="0" Maximum="3" Value="{Binding SelectedTrackItem.Contrast, Mode=TwoWay}"/>
+
+                                        <TextBlock Text="Gamma" Foreground="LightGray" Margin="0,10,0,0"/>
+                                        <Slider Minimum="0.1" Maximum="5" Value="{Binding SelectedTrackItem.Gamma, Mode=TwoWay}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Grid>
+                    </TabItem>
+
                 </TabControl>
             </Grid>
 

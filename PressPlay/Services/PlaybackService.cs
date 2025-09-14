@@ -405,6 +405,11 @@ namespace PressPlay.Services
             double clipSeconds = clipFrame / clip.FPS;
             var bmp = clip.GetFrameAt(TimeSpan.FromSeconds(clipSeconds));
 
+            if (item is TrackItem ccTi)
+            {
+                bmp = ColorCorrectionService.Apply(bmp, ccTi);
+            }
+
             // C) Compute fade parameters
             double framePos = idx - item.Position.TotalFrames;
             double dur = item.Duration.TotalFrames;
