@@ -277,7 +277,7 @@ namespace PressPlay.Serialization
             {
                 foreach (var ce in colorEffects)
                 {
-                    Debug.WriteLine($"Restored ColorCorrectionEffect for clip {clip.FileName} - Brightness={ce.Brightness}, Contrast={ce.Contrast}, Gamma={ce.Gamma}");
+                    Debug.WriteLine($"Restored ColorCorrectionEffect for clip {clip.FileName} - Brightness={ce.Brightness}, Contrast={ce.Contrast}, Gamma={ce.Gamma}, Saturation={ce.Saturation}");
                 }
             }
         }
@@ -667,6 +667,8 @@ namespace PressPlay.Serialization
                     cc.Contrast = ctProp.GetDouble();
                 if (root.TryGetProperty("Gamma", out var gmProp))
                     cc.Gamma = gmProp.GetDouble();
+                if (root.TryGetProperty("Saturation", out var satProp))
+                    cc.Saturation = satProp.GetDouble();
                 if (root.TryGetProperty("Enabled", out var enProp))
                     cc.Enabled = enProp.GetBoolean();
                 else
@@ -718,6 +720,7 @@ namespace PressPlay.Serialization
                 writer.WriteNumber("Brightness", cc.Brightness);
                 writer.WriteNumber("Contrast", cc.Contrast);
                 writer.WriteNumber("Gamma", cc.Gamma);
+                writer.WriteNumber("Saturation", cc.Saturation);
                 writer.WriteBoolean("Enabled", cc.Enabled);
             }
 

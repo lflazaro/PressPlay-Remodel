@@ -32,4 +32,31 @@ public class ColorCorrectionEffectTests
         Assert.Equal(0, pixel2.Item1);
         Assert.Equal(60, pixel2.Item2);
     }
+
+    [Fact]
+    public void Gamma_GreaterThanOne_DarkensImage()
+    {
+        var effect = new ColorCorrectionEffect { Gamma = 2.0 };
+
+        using var input = new Mat(1, 1, MatType.CV_8UC3, new Scalar(128, 128, 128));
+        using var output = new Mat();
+        effect.ProcessFrame(input, output);
+
+        var pixel = output.Get<Vec3b>(0, 0);
+        Assert.True(pixel.Item0 < 128);
+    }
+
+    [Fact]
+    public void Saturation_Zero_ProducesGrayscale()
+    {
+        var effect = new ColorCorrectionEffect { Saturation = 0.0 };
+
+        using var input = new Mat(1, 1, MatType.CV_8UC3, new Scalar(10, 20, 30));
+        using var output = new Mat();
+        effect.ProcessFrame(input, output);
+
+        var pixel = output.Get<Vec3b>(0, 0);
+        Assert.Equal(pixel.Item0, pixel.Item1);
+        Assert.Equal(pixel.Item1, pixel.Item2);
+    }
 }
