@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using System.Windows;
@@ -499,6 +501,67 @@ namespace PressPlay.Models
         {
             get => _opacity;
             set => SetField(ref _opacity, value);
+        }
+
+        [JsonInclude]
+        public Dictionary<string, List<Keyframe>> Keyframes { get; } = new()
+        {
+            [nameof(TranslateX)] = new List<Keyframe>(),
+            [nameof(TranslateY)] = new List<Keyframe>(),
+            [nameof(Rotation)] = new List<Keyframe>(),
+            [nameof(ScaleX)] = new List<Keyframe>(),
+            [nameof(ScaleY)] = new List<Keyframe>(),
+            [nameof(Opacity)] = new List<Keyframe>(),
+        };
+
+        [JsonIgnore]
+        public List<Keyframe> TranslateXKeyframes => Keyframes[nameof(TranslateX)];
+        [JsonIgnore]
+        public List<Keyframe> TranslateYKeyframes => Keyframes[nameof(TranslateY)];
+        [JsonIgnore]
+        public List<Keyframe> RotationKeyframes => Keyframes[nameof(Rotation)];
+        [JsonIgnore]
+        public List<Keyframe> ScaleXKeyframes => Keyframes[nameof(ScaleX)];
+        [JsonIgnore]
+        public List<Keyframe> ScaleYKeyframes => Keyframes[nameof(ScaleY)];
+        [JsonIgnore]
+        public List<Keyframe> OpacityKeyframes => Keyframes[nameof(Opacity)];
+
+        public double GetAnimated(string property, int frame)
+        {
+            if (!Keyframes.TryGetValue(property, out var frames) || frames.Count == 0)
+            {
+                return property switch
+                {
+                    nameof(TranslateX) => TranslateX,
+                    nameof(TranslateY) => TranslateY,
+                    nameof(Rotation) => Rotation,
+                    nameof(ScaleX) => ScaleX,
+                    nameof(ScaleY) => ScaleY,
+                    nameof(Opacity) => Opacity,
+                    _ => 0
+                };
+            }
+
+            var ordered = frames.OrderBy(k => k.Frame).ToList();
+            if (frame <= ordered[0].Frame) return ordered[0].Value;
+            if (frame >= ordered[^1].Frame) return ordered[^1].Value;
+
+            for (int i = 0; i < ordered.Count - 1; i++)
+            {
+                var a = ordered[i];
+                var b = ordered[i + 1];
+                if (frame >= a.Frame && frame <= b.Frame)
+                {
+                    if (string.Equals(a.Interpolation, "Linear", StringComparison.OrdinalIgnoreCase))
+                    {
+                        double t = (frame - a.Frame) / (double)(b.Frame - a.Frame);
+                        return a.Value + (b.Value - a.Value) * t;
+                    }
+                    return a.Value;
+                }
+            }
+            return ordered[^1].Value;
         }
 
     }
