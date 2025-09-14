@@ -16,6 +16,7 @@ namespace PressPlay.Effects
         private double _brightness = 0.0; // -100..100
         private double _contrast = 1.0;   // 0..3
         private double _gamma = 1.0;      // 0.1..5
+        private double _saturation = 1.0; // 0..3
 
         public bool Enabled { get; set; } = true;
 
@@ -59,6 +60,16 @@ namespace PressPlay.Effects
             }
         }
 
+        public double Saturation
+        {
+            get => _saturation;
+            set
+            {
+                _saturation = value;
+                UpdateParameter("Saturation", _saturation);
+            }
+        }
+
         public ObservableCollection<EffectParameter> Parameters { get; }
 
         public ColorCorrectionEffect()
@@ -68,7 +79,8 @@ namespace PressPlay.Effects
                 new EffectParameter("TintColor", _tintColor),
                 new EffectParameter("Brightness", _brightness, -100, 100),
                 new EffectParameter("Contrast", _contrast, 0, 3),
-                new EffectParameter("Gamma", _gamma, 0.1, 5)
+                new EffectParameter("Gamma", _gamma, 0.1, 5),
+                new EffectParameter("Saturation", _saturation, 0, 3)
             };
         }
 
@@ -89,13 +101,29 @@ namespace PressPlay.Effects
             if (Math.Abs(_gamma - 1.0) > 0.001)
             {
                 byte[] lut = new byte[256];
-                double invGamma = 1.0 / _gamma;
                 for (int i = 0; i < 256; i++)
                 {
-                    lut[i] = (byte)Math.Clamp(Math.Pow(i / 255.0, invGamma) * 255.0, 0, 255);
+                    lut[i] = (byte)Math.Clamp(Math.Pow(i / 255.0, _gamma) * 255.0, 0, 255);
                 }
                 using var lutIA = InputArray.Create(lut);
                 Cv2.LUT(outputFrame, lutIA, outputFrame);
+            }
+
+            // saturation adjustment
+            if (Math.Abs(_saturation - 1.0) > 0.001)
+            {
+                using var hsv = new Mat();
+                Cv2.CvtColor(outputFrame, hsv, ColorConversionCodes.BGR2HSV);
+                var channels = Cv2.Split(hsv);
+                channels[1].ConvertTo(channels[1], channels[1].Type(), _saturation, 0);
+                using (var maxMat = new Mat(channels[1].Size(), channels[1].Type(), new Scalar(255)))
+                {
+                    Cv2.Min(channels[1], maxMat, channels[1]);
+                }
+                Cv2.Merge(channels, hsv);
+                Cv2.CvtColor(hsv, outputFrame, ColorConversionCodes.HSV2BGR);
+                foreach (var ch in channels)
+                    ch.Dispose();
             }
 
             // color tint using saturation as strength. Instead of simply
@@ -104,13 +132,13 @@ namespace PressPlay.Effects
             // preserves the luminance details of the original frame while
             // shifting the hue toward the tint color.
             var drawingColor = DrawingColor.FromArgb(_tintColor.A, _tintColor.R, _tintColor.G, _tintColor.B);
-            double sat = drawingColor.GetSaturation();
-            if (sat > 0.001)
+            double tintSat = drawingColor.GetSaturation();
+            if (tintSat > 0.001)
             {
                 using var colorMat = new Mat(outputFrame.Size(), outputFrame.Type(), new Scalar(_tintColor.B, _tintColor.G, _tintColor.R));
                 using var tinted = new Mat();
                 Cv2.Multiply(outputFrame, colorMat, tinted, 1.0 / 255.0);
-                Cv2.AddWeighted(outputFrame, 1.0 - sat, tinted, sat, 0, outputFrame);
+                Cv2.AddWeighted(outputFrame, 1.0 - tintSat, tinted, tintSat, 0, outputFrame);
             }
         }
 

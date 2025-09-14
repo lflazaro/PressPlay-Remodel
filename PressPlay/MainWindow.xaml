@@ -510,11 +510,13 @@
                                     <StackPanel Visibility="{Binding SelectedProjectClip, Converter={StaticResource NullToVisibilityConverter}}">
                                         <customcontrols:ColorWheel SelectedColor="{Binding ColorEffect.TintColor, Mode=TwoWay}" Margin="0,0,0,10"/>
                                         <TextBlock Text="Brightness" Foreground="LightGray"/>
-                                        <Slider Minimum="-100" Maximum="100" Value="{Binding ColorEffect.Brightness, Mode=TwoWay}"/>
+                                        <Slider Minimum="-100" Maximum="100" Value="{Binding ColorEffect.Brightness, Mode=TwoWay}" Width="150" HorizontalAlignment="Left"/>
                                         <TextBlock Text="Contrast" Foreground="LightGray" Margin="0,10,0,0"/>
-                                        <Slider Minimum="0" Maximum="3" Value="{Binding ColorEffect.Contrast, Mode=TwoWay}"/>
+                                        <Slider Minimum="0" Maximum="3" Value="{Binding ColorEffect.Contrast, Mode=TwoWay}" Width="150" HorizontalAlignment="Left"/>
                                         <TextBlock Text="Gamma" Foreground="LightGray" Margin="0,10,0,0"/>
-                                        <Slider Minimum="0.1" Maximum="5" Value="{Binding ColorEffect.Gamma, Mode=TwoWay}"/>
+                                        <Slider Minimum="0.1" Maximum="5" Value="{Binding ColorEffect.Gamma, Mode=TwoWay}" Width="150" HorizontalAlignment="Left"/>
+                                        <TextBlock Text="Saturation" Foreground="LightGray" Margin="0,10,0,0"/>
+                                        <Slider Minimum="0" Maximum="3" Value="{Binding ColorEffect.Saturation, Mode=TwoWay}" Width="150" HorizontalAlignment="Left"/>
                                     </StackPanel>
                                 </StackPanel>
                             </ScrollViewer>
