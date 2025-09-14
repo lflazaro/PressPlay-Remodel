@@ -1,73 +1,73 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <UseWPF>true</UseWPF>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>PressPlay</RootNamespace>
-    <AssemblyName>PressPlay</AssemblyName>
-    <ApplicationIcon>PressPlay.ico</ApplicationIcon>
-    <UseWindowsForms>False</UseWindowsForms>
+	  <OutputType>WinExe</OutputType>
+	  <TargetFramework>net8.0-windows</TargetFramework>
+	  <UseWPF>true</UseWPF>
+	  <Nullable>enable</Nullable>
+	  <ImplicitUsings>enable</ImplicitUsings>
+	  <RootNamespace>PressPlay</RootNamespace>
+	  <AssemblyName>PressPlay</AssemblyName>
+	  <ApplicationIcon>PressPlay.ico</ApplicationIcon>
+	  <UseWindowsForms>False</UseWindowsForms>
   </PropertyGroup>
   <ItemGroup>
-    <None Remove="Resources\Icons\add.svg" />
-    <None Remove="Resources\Icons\bin.svg" />
-    <None Remove="Resources\Icons\cut.svg" />
-    <None Remove="Resources\Icons\Delete frames.ico" />
-    <None Remove="Resources\Icons\ffw.svg" />
-    <None Remove="Resources\Icons\folder.svg" />
-    <None Remove="Resources\Icons\pause.svg" />
-    <None Remove="Resources\Icons\play.svg" />
-    <None Remove="Resources\Icons\rew.svg" />
-    <None Remove="Resources\Icons\select.svg" />
-    <None Remove="Resources\Icons\select_add.svg" />
-    <None Remove="Resources\Icons\select_new.svg" />
-    <None Remove="Resources\Icons\sound.svg" />
-    <None Remove="Resources\Icons\split.svg" />
-	<None Remove="Resources\Icons\splash.png" />
+	  <None Remove="Resources\Icons\add.svg" />
+	  <None Remove="Resources\Icons\bin.svg" />
+	  <None Remove="Resources\Icons\cut.svg" />
+	  <None Remove="Resources\Icons\Delete frames.ico" />
+	  <None Remove="Resources\Icons\ffw.svg" />
+	  <None Remove="Resources\Icons\folder.svg" />
+	  <None Remove="Resources\Icons\pause.svg" />
+	  <None Remove="Resources\Icons\play.svg" />
+	  <None Remove="Resources\Icons\rew.svg" />
+	  <None Remove="Resources\Icons\select.svg" />
+	  <None Remove="Resources\Icons\select_add.svg" />
+	  <None Remove="Resources\Icons\select_new.svg" />
+	  <None Remove="Resources\Icons\sound.svg" />
+	  <None Remove="Resources\Icons\split.svg" />
+	  <None Remove="Resources\Icons\splash.png" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="PressPlay.ico" />
+	  <Content Include="PressPlay.ico" />
   </ItemGroup>
 
   <!-- Same package references as before -->
   <ItemGroup>
-    <PackageReference Include="ClosedXML" Version="0.105.0" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageReference Include="FFMpegCore" Version="5.2.0" />
-    <PackageReference Include="FFMpegCore.Extensions.System.Drawing.Common" Version="5.0.2" />
-    <PackageReference Include="itext7" Version="9.2.0" />
-    <PackageReference Include="NAudio" Version="2.2.1" />
-    <PackageReference Include="NAudio.WaveFormRenderer" Version="2.0.0" />
-    <PackageReference Include="OpenCvSharp4" Version="4.10.0.20241108" />
-    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.10.0.20241108" />
-    <PackageReference Include="OpenCvSharp4.Windows" Version="4.10.0.20241108" />
-    <PackageReference Include="OpenCvSharp4.WpfExtensions" Version="4.10.0.20241108" />
-    <PackageReference Include="QuestPDF" Version="2025.5.0" />
-    <PackageReference Include="SharpVectors.Wpf" Version="1.8.4.2" />
-    <PackageReference Include="SkiaSharp" Version="3.119.0" />
+	  <PackageReference Include="ClosedXML" Version="0.105.0" />
+	  <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+	  <PackageReference Include="FFMpegCore" Version="5.2.0" />
+	  <PackageReference Include="FFMpegCore.Extensions.System.Drawing.Common" Version="5.0.2" />
+	  <PackageReference Include="itext7" Version="9.2.0" />
+	  <PackageReference Include="NAudio" Version="2.2.1" />
+	  <PackageReference Include="NAudio.WaveFormRenderer" Version="2.0.0" />
+	  <PackageReference Include="OpenCvSharp4" Version="4.10.0.20241108" />
+	  <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.10.0.20241108" />
+	  <PackageReference Include="OpenCvSharp4.Windows" Version="4.10.0.20241108" />
+	  <PackageReference Include="OpenCvSharp4.WpfExtensions" Version="4.10.0.20241108" />
+	  <PackageReference Include="QuestPDF" Version="2025.5.0" />
+	  <PackageReference Include="SharpVectors.Wpf" Version="1.8.4.2" />
+	  <PackageReference Include="SkiaSharp" Version="3.119.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\PressPlayTitler\PressPlayTitler.csproj" />
+	  <ProjectReference Include="..\PressPlayTitler\PressPlayTitler.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Resources\Icons\add.svg" />
-    <Resource Include="Resources\Icons\bin.svg" />
-    <Resource Include="Resources\Icons\cut.svg" />
-    <Resource Include="Resources\Icons\Delete frames.ico" />
-    <Resource Include="Resources\Icons\ffw.svg" />
-    <Resource Include="Resources\Icons\folder.svg" />
-    <Resource Include="Resources\Icons\pause.svg" />
-    <Resource Include="Resources\Icons\play.svg" />
-    <Resource Include="Resources\Icons\rew.svg" />
-    <Resource Include="Resources\Icons\select.svg" />
-    <Resource Include="Resources\Icons\select_add.svg" />
-    <Resource Include="Resources\Icons\select_new.svg" />
-    <Resource Include="Resources\Icons\sound.svg" />
-    <Resource Include="Resources\Icons\split.svg" />
+	  <Resource Include="Resources\Icons\add.svg" />
+	  <Resource Include="Resources\Icons\bin.svg" />
+	  <Resource Include="Resources\Icons\cut.svg" />
+	  <Resource Include="Resources\Icons\Delete frames.ico" />
+	  <Resource Include="Resources\Icons\ffw.svg" />
+	  <Resource Include="Resources\Icons\folder.svg" />
+	  <Resource Include="Resources\Icons\pause.svg" />
+	  <Resource Include="Resources\Icons\play.svg" />
+	  <Resource Include="Resources\Icons\rew.svg" />
+	  <Resource Include="Resources\Icons\select.svg" />
+	  <Resource Include="Resources\Icons\select_add.svg" />
+	  <Resource Include="Resources\Icons\select_new.svg" />
+	  <Resource Include="Resources\Icons\sound.svg" />
+	  <Resource Include="Resources\Icons\split.svg" />
   </ItemGroup>
-	<ItemGroup>
-		<SplashScreen Include="Resources\Icons\splash.png" />
-	</ItemGroup>
+  <ItemGroup>
+	  <SplashScreen Include="Resources\Icons\splash.png" />
+  </ItemGroup>
 </Project>
