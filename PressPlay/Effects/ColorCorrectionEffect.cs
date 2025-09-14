@@ -98,13 +98,19 @@ namespace PressPlay.Effects
                 Cv2.LUT(outputFrame, table, outputFrame);
             }
 
-            // color tint using saturation as strength
+            // color tint using saturation as strength. Instead of simply
+            // cross-fading to a solid color (which results in a flat overlay),
+            // multiply the frame with the tint color and blend the result. This
+            // preserves the luminance details of the original frame while
+            // shifting the hue toward the tint color.
             var drawingColor = DrawingColor.FromArgb(_tintColor.A, _tintColor.R, _tintColor.G, _tintColor.B);
             double sat = drawingColor.GetSaturation();
             if (sat > 0.001)
             {
-                using var overlay = new Mat(outputFrame.Size(), outputFrame.Type(), new Scalar(_tintColor.B, _tintColor.G, _tintColor.R));
-                Cv2.AddWeighted(outputFrame, 1.0 - sat, overlay, sat, 0, outputFrame);
+                using var colorMat = new Mat(outputFrame.Size(), outputFrame.Type(), new Scalar(_tintColor.B, _tintColor.G, _tintColor.R));
+                using var tinted = new Mat();
+                Cv2.Multiply(outputFrame, colorMat, tinted, 1.0 / 255.0);
+                Cv2.AddWeighted(outputFrame, 1.0 - sat, tinted, sat, 0, outputFrame);
             }
         }
 
