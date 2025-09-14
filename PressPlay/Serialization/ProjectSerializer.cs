@@ -420,6 +420,21 @@ namespace PressPlay.Serialization
                 if (root.TryGetProperty("Volume", out var volumeElement))
                     ti.Volume = volumeElement.GetSingle();
 
+                bool hasKeyframesEnabledProp = root.TryGetProperty("KeyframesEnabled", out var kfEnabled);
+                if (hasKeyframesEnabledProp)
+                    ti.KeyframesEnabled = kfEnabled.GetBoolean();
+
+                if (root.TryGetProperty("Brightness", out var br))
+                    ti.Brightness = br.GetDouble();
+                if (root.TryGetProperty("Contrast", out var ct))
+                    ti.Contrast = ct.GetDouble();
+                if (root.TryGetProperty("Gamma", out var gm))
+                    ti.Gamma = gm.GetDouble();
+                if (root.TryGetProperty("Hue", out var hue))
+                    ti.Hue = hue.GetDouble();
+                if (root.TryGetProperty("Saturation", out var sat))
+                    ti.Saturation = sat.GetDouble();
+
                 // Keyframe dictionary (optional for backward compatibility)
                 if (root.TryGetProperty("Keyframes", out var kfElement))
                 {
@@ -438,6 +453,13 @@ namespace PressPlay.Serialization
                     {
                         Debug.WriteLine($"Failed to deserialize keyframes: {ex.Message}");
                     }
+                }
+
+                if (!hasKeyframesEnabledProp)
+                {
+                    // Backward compatibility: enable if any keyframes exist
+                    if (ti.Keyframes.Any(kv => kv.Value.Count > 0))
+                        ti.KeyframesEnabled = true;
                 }
             }
 
@@ -520,6 +542,12 @@ namespace PressPlay.Serialization
                 writer.WriteNumber("Y", ti.RotationOrigin.Y);
                 writer.WriteEndObject();
                 writer.WriteNumber("Volume", ti.Volume);
+                writer.WriteBoolean("KeyframesEnabled", ti.KeyframesEnabled);
+                writer.WriteNumber("Brightness", ti.Brightness);
+                writer.WriteNumber("Contrast", ti.Contrast);
+                writer.WriteNumber("Gamma", ti.Gamma);
+                writer.WriteNumber("Hue", ti.Hue);
+                writer.WriteNumber("Saturation", ti.Saturation);
 
                 // Serialize keyframe dictionary
                 writer.WritePropertyName("Keyframes");

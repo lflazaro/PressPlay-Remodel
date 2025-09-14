@@ -497,7 +497,48 @@ namespace PressPlay.Models
             set => SetField(ref _opacity, value);
         }
 
-        private bool _keyframesEnabled = true;
+        // COLOR CORRECTION
+        private double _brightness = 0.0; // add/subtract per pixel
+        [JsonInclude]
+        public double Brightness
+        {
+            get => _brightness;
+            set => SetField(ref _brightness, value);
+        }
+
+        private double _contrast = 1.0; // multiplier
+        [JsonInclude]
+        public double Contrast
+        {
+            get => _contrast;
+            set => SetField(ref _contrast, value);
+        }
+
+        private double _gamma = 1.0; // gamma curve
+        [JsonInclude]
+        public double Gamma
+        {
+            get => _gamma;
+            set => SetField(ref _gamma, value);
+        }
+
+        private double _hue = 0.0; // hue shift degrees (0-360)
+        [JsonInclude]
+        public double Hue
+        {
+            get => _hue;
+            set => SetField(ref _hue, value);
+        }
+
+        private double _saturation = 1.0; // saturation multiplier
+        [JsonInclude]
+        public double Saturation
+        {
+            get => _saturation;
+            set => SetField(ref _saturation, value);
+        }
+
+        private bool _keyframesEnabled = false;
         [JsonInclude]
         public bool KeyframesEnabled
         {

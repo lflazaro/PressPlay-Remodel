@@ -58,4 +58,64 @@ public class ProjectSerializationTests
         loadedItem.EvaluateKeyframes(0);
         Assert.Equal(12.5, loadedItem.TranslateX);
     }
+
+    [Fact]
+    public void KeyframesEnabled_Persists_WhenSerialized()
+    {
+        var project = new Project { FPS = 25 };
+        var track = new Track { Name = "V1" };
+        var item = new TrackItem
+        {
+            Position = new TimeCode(0, 25),
+            Start = new TimeCode(0, 25),
+            End = new TimeCode(5, 25),
+            OriginalEnd = new TimeCode(5, 25),
+            SourceLength = new TimeCode(5, 25),
+            FileName = "clip.mp4",
+            FilePath = "clip.mp4",
+            FullPath = "clip.mp4",
+            KeyframesEnabled = true
+        };
+        track.Items.Add(item);
+        project.Tracks.Add(track);
+
+        var json = ProjectSerializer.SerializeProject(project);
+        var loaded = ProjectSerializer.DeserializeProject(json);
+        var loadedItem = Assert.IsType<TrackItem>(loaded.Tracks[0].Items[0]);
+        Assert.True(loadedItem.KeyframesEnabled);
+    }
+
+    [Fact]
+    public void ColorCorrection_Properties_Persist()
+    {
+        var project = new Project { FPS = 25 };
+        var track = new Track { Name = "V1" };
+        var item = new TrackItem
+        {
+            Position = new TimeCode(0, 25),
+            Start = new TimeCode(0, 25),
+            End = new TimeCode(5, 25),
+            OriginalEnd = new TimeCode(5, 25),
+            SourceLength = new TimeCode(5, 25),
+            FileName = "clip.mp4",
+            FilePath = "clip.mp4",
+            FullPath = "clip.mp4",
+            Brightness = 10,
+            Contrast = 1.5,
+            Gamma = 0.8,
+            Hue = 30,
+            Saturation = 1.2
+        };
+        track.Items.Add(item);
+        project.Tracks.Add(track);
+
+        var json = ProjectSerializer.SerializeProject(project);
+        var loaded = ProjectSerializer.DeserializeProject(json);
+        var loadedItem = Assert.IsType<TrackItem>(loaded.Tracks[0].Items[0]);
+        Assert.Equal(10, loadedItem.Brightness);
+        Assert.Equal(1.5, loadedItem.Contrast);
+        Assert.Equal(0.8, loadedItem.Gamma);
+        Assert.Equal(30, loadedItem.Hue);
+        Assert.Equal(1.2, loadedItem.Saturation);
+    }
 }
