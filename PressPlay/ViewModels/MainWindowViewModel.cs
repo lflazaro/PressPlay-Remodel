@@ -74,10 +74,26 @@ namespace PressPlay
         private ITrackItem _selectedTrackItem;
 
         [NotifyPropertyChangedFor(nameof(HasClip))]
+        [NotifyPropertyChangedFor(nameof(ColorEffect))]
         [ObservableProperty]
         private ProjectClip _selectedProjectClip;
 
         public bool HasClip => SelectedProjectClip != null;
+
+        public ColorCorrectionEffect ColorEffect
+        {
+            get
+            {
+                if (SelectedProjectClip == null) return null;
+                var effect = SelectedProjectClip.Effects.OfType<ColorCorrectionEffect>().FirstOrDefault();
+                if (effect == null)
+                {
+                    effect = new ColorCorrectionEffect();
+                    SelectedProjectClip.Effects.Add(effect);
+                }
+                return effect;
+            }
+        }
 
 
         [ObservableProperty]
