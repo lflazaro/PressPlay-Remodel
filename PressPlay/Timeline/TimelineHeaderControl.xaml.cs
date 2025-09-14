@@ -102,7 +102,7 @@ namespace PressPlay.Timeline
             double totalSeconds = totalFrames / Project.FPS;
 
             // Calculate pixels per frame and per second
-            double pixelsPerFrame = Constants.TimelinePixelsInSeparator / Constants.TimelineZooms[Project.TimelineZoom];
+            double pixelsPerFrame = Constants.GetPixelsPerFrame(Project.TimelineZoom);
             double pixelsPerSecond = pixelsPerFrame * Project.FPS;
 
             // Determine appropriate label interval based on zoom

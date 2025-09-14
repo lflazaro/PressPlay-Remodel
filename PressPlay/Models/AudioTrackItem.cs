@@ -508,14 +508,10 @@ namespace PressPlay.Models
         }
 
         public double GetScaledPosition(int zoomLevel) =>
-            Position.TotalFrames
-            * Constants.TimelinePixelsInSeparator
-            / Constants.TimelineZooms[zoomLevel];
+            Constants.FramesToPixels(Position.TotalFrames, zoomLevel);
 
         public double GetScaledWidth(int zoomLevel) =>
-            Duration.TotalFrames
-            * Constants.TimelinePixelsInSeparator
-            / Constants.TimelineZooms[zoomLevel];
+            Constants.FramesToPixels(Duration.TotalFrames, zoomLevel);
 
         protected void OnPropertyChanged([CallerMemberName] string propName = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));

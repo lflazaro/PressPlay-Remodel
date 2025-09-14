@@ -15,7 +15,7 @@ namespace PressPlay.Converters
                 return 0;
             }
 
-            var x = project.NeedlePositionTime.TotalFrames * Constants.TimelinePixelsInSeparator / Constants.TimelineZooms[project.TimelineZoom];
+            var x = Constants.FramesToPixels(project.NeedlePositionTime.TotalFrames, project.TimelineZoom);
 
             return x;
         }

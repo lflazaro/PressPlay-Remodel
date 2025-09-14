@@ -18,7 +18,7 @@ namespace PressPlay.Converters
                 if (parameter is int zoom)
                     zoomLevel = zoom;
 
-                return frameCount * Constants.TimelinePixelsInSeparator / Constants.TimelineZooms[zoomLevel];
+                return Constants.FramesToPixels(frameCount, zoomLevel);
             }
             return 0;
         }
@@ -32,7 +32,7 @@ namespace PressPlay.Converters
                 if (parameter is int zoom)
                     zoomLevel = zoom;
 
-                return (int)(width * Constants.TimelineZooms[zoomLevel] / Constants.TimelinePixelsInSeparator);
+                return Constants.PixelsToFrames(width, zoomLevel);
             }
             return 0;
         }

@@ -165,18 +165,12 @@ namespace PressPlay.Models
         // Added missing methods required by ITrackItem interface
         public double GetScaledPosition(int zoomLevel)
         {
-            double zoomFactor = Constants.TimelineZooms.ContainsKey(zoomLevel) ?
-                Constants.TimelineZooms[zoomLevel] : 1.0;
-
-            return Position.TotalFrames * Constants.TimelinePixelsInSeparator / zoomFactor;
+            return Constants.FramesToPixels(Position.TotalFrames, zoomLevel);
         }
 
         public double GetScaledWidth(int zoomLevel)
         {
-            double zoomFactor = Constants.TimelineZooms.ContainsKey(zoomLevel) ?
-                Constants.TimelineZooms[zoomLevel] : 1.0;
-
-            return Duration.TotalFrames * Constants.TimelinePixelsInSeparator / zoomFactor;
+            return Constants.FramesToPixels(Duration.TotalFrames, zoomLevel);
         }
 
         // Helper method for null-safe operations

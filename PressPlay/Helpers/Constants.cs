@@ -11,19 +11,19 @@ namespace PressPlay.Helpers
         // Zoom levels with multipliers
         public static Dictionary<int, double> TimelineZooms = new Dictionary<int, double>
         {
-            { 1, 0.1 },   // 0.2 pixels per frame
-            { 2, 0.3 },   // 0.3 pixels per frame
+            { 1, 0.1 },   // 2.0 pixels per frame
+            { 2, 0.3 },   // 0.7 pixels per frame
             { 3, 0.5 },   // 0.4 pixels per frame
-            { 4, 1.0 },   // 0.6 pixels per frame
-            { 5, 2.0 },   // 0.8 pixels per frame
-            { 6, 3.0 },   // 1.0 pixels per frame
-            { 7, 4.0 },   // 1.2 pixels per frame
-            { 8, 6.0 },   // 1.6 pixels per frame
-            { 9, 8.0 },  // 2.0 pixels per frame
-            { 10, 10.0 }, // 3.0 pixels per frame
-            { 11, 15.0 }, // 4.0 pixels per frame
-            { 12, 20.0 }, // 5.0 pixels per frame
-            { 13, 25.0 }, // 6.0 pixels per frame
+            { 4, 1.0 },   // 0.2 pixels per frame
+            { 5, 2.0 },   // 0.1 pixels per frame
+            { 6, 3.0 },   // 0.07 pixels per frame
+            { 7, 4.0 },   // 0.05 pixels per frame
+            { 8, 6.0 },   // 0.03 pixels per frame
+            { 9, 8.0 },   // 0.025 pixels per frame
+            { 10, 10.0 }, // 0.02 pixels per frame
+            { 11, 15.0 }, // 0.013 pixels per frame
+            { 12, 20.0 }, // 0.01 pixels per frame
+            { 13, 25.0 }, // 0.008 pixels per frame
         };
 
         // Helper method to safely get zoom factor
@@ -46,7 +46,7 @@ namespace PressPlay.Helpers
         // Get the actual scale for a zoom level (pixels per frame)
         public static double GetPixelsPerFrame(int zoomLevel)
         {
-            return TimelinePixelsInSeparator * GetZoomFactor(zoomLevel);
+            return TimelinePixelsInSeparator / GetZoomFactor(zoomLevel);
         }
 
         // Convert timeline frames to pixels at a given zoom level
