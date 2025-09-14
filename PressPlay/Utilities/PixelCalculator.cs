@@ -7,7 +7,7 @@ namespace PressPlay.Utilities
     {
         public static double GetPixels(double totalFrames, int zoom)
         {
-            var pixels = totalFrames / Constants.TimelineZooms[zoom] * Constants.TimelinePixelsInSeparator;
+            var pixels = Constants.FramesToPixels((int)totalFrames, zoom);
             return pixels;
         }
     }

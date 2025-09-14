@@ -106,7 +106,7 @@ namespace PressPlay.Models
             return isCompatible;
         }
         public double GetWidth(int zoomLevel)
-            => Length.TotalFrames * Constants.TimelinePixelsInSeparator / Constants.TimelineZooms[zoomLevel];
+            => Constants.FramesToPixels(Length.TotalFrames, zoomLevel);
 
         public string ClipId => Id;
         private VideoCapture _capture;

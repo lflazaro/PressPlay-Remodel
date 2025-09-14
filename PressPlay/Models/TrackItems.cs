@@ -415,19 +415,13 @@ namespace PressPlay.Models
         // Calculate position based on zoom level
         public double GetScaledPosition(int zoomLevel)
         {
-            double zoomFactor = Constants.TimelineZooms.ContainsKey(zoomLevel) ?
-                Constants.TimelineZooms[zoomLevel] : 1.0;
-
-            return Position.TotalFrames * Constants.TimelinePixelsInSeparator / zoomFactor;
+            return Constants.FramesToPixels(Position.TotalFrames, zoomLevel);
         }
 
         // Calculate width based on zoom level
         public double GetScaledWidth(int zoomLevel)
         {
-            double zoomFactor = Constants.TimelineZooms.ContainsKey(zoomLevel) ?
-                Constants.TimelineZooms[zoomLevel] : 1.0;
-
-            return Duration.TotalFrames * Constants.TimelinePixelsInSeparator / zoomFactor;
+            return Constants.FramesToPixels(Duration.TotalFrames, zoomLevel);
         }
 
         protected void OnPropertyChanged([CallerMemberName] string propName = null)

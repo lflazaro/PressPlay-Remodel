@@ -82,8 +82,8 @@ namespace PressPlay.Timeline
         {
             if (e.PropertyName == nameof(Project.TimelineZoom) || e.PropertyName == nameof(Project.NeedlePositionTime))
             {
-                double left = Project.NeedlePositionTime.TotalFrames * Constants.TimelinePixelsInSeparator
-                              / Constants.TimelineZooms[Project.TimelineZoom];
+                double left = Constants.FramesToPixels(Project.NeedlePositionTime.TotalFrames,
+                                                    Project.TimelineZoom);
                 Canvas.SetLeft(needle, left);
                 needle.BringIntoView();
             }
@@ -191,8 +191,8 @@ namespace PressPlay.Timeline
                 double mouseX = e.GetPosition(tracksControl).X;
                 double itemX = tic.TranslatePoint(new Point(), tracksControl).X;
                 double itemRight = itemX + tic.Width;
-                double frame = Math.Round(mouseX / Constants.TimelinePixelsInSeparator
-                                         * Constants.TimelineZooms[Project.TimelineZoom], MidpointRounding.ToZero);
+                double frame = Math.Round(Constants.PixelsToFrames(mouseX, Project.TimelineZoom),
+                                         MidpointRounding.ToZero);
 
                 _mouseDownElement = tic;
                 _mouseDownX = e.GetPosition(_mouseDownElement).X;
@@ -364,7 +364,7 @@ namespace PressPlay.Timeline
                 double mouseDeltaX = mouseX - _trackMouseDownX;
 
                 // Convert pixel delta to frames accurately
-                double pixelsPerFrame = Constants.TimelinePixelsInSeparator / Constants.TimelineZooms[Project.TimelineZoom];
+                double pixelsPerFrame = Constants.GetPixelsPerFrame(Project.TimelineZoom);
                 int frameDelta = (int)Math.Round(mouseDeltaX / pixelsPerFrame);
 
                 // Calculate new position based on the original position
@@ -393,13 +393,9 @@ namespace PressPlay.Timeline
                 // 1) compute frames under the mouse
                 double x = e.GetPosition(tracksControl).X;
                 double itemX = _mouseDownElement.TranslatePoint(new Point(), tracksControl).X;
-                double frame0 = Math.Round(itemX
-                                    / Constants.TimelinePixelsInSeparator
-                                    * Constants.TimelineZooms[Project.TimelineZoom],
+                double frame0 = Math.Round(Constants.PixelsToFrames(itemX, Project.TimelineZoom),
                                     MidpointRounding.ToZero);
-                double currentFr = Math.Round(x
-                                    / Constants.TimelinePixelsInSeparator
-                                    * Constants.TimelineZooms[Project.TimelineZoom],
+                double currentFr = Math.Round(Constants.PixelsToFrames(x, Project.TimelineZoom),
                                     MidpointRounding.ToZero);
 
                 // 2) how many frames we've moved
@@ -421,11 +417,9 @@ namespace PressPlay.Timeline
             {
                 double x = e.GetPosition(tracksControl).X;
                 double itemX = _mouseDownElement.TranslatePoint(new Point(), tracksControl).X;
-                double frame0 = Math.Round(itemX / Constants.TimelinePixelsInSeparator
-                                           * Constants.TimelineZooms[Project.TimelineZoom],
+                double frame0 = Math.Round(Constants.PixelsToFrames(itemX, Project.TimelineZoom),
                                            MidpointRounding.ToZero);
-                double currentFrame = Math.Round(x / Constants.TimelinePixelsInSeparator
-                                                * Constants.TimelineZooms[Project.TimelineZoom],
+                double currentFrame = Math.Round(Constants.PixelsToFrames(x, Project.TimelineZoom),
                                                 MidpointRounding.ToZero);
                 int diff = (int)(currentFrame - frame0);
 
@@ -457,9 +451,9 @@ namespace PressPlay.Timeline
                 double x = e.GetPosition(_mouseDownElement).X;
                 if (_mouseDownTrackItem.IsChangingFadeOut) x -= _mouseDownElement.Width;
                 x -= 5;
-                int destFrame = Convert.ToInt32(Math.Round(x / Constants.TimelinePixelsInSeparator
-                                                         * Constants.TimelineZooms[Project.TimelineZoom],
-                                                         MidpointRounding.ToZero));
+                int destFrame = Convert.ToInt32(Math.Round(
+                    Constants.PixelsToFrames(x, Project.TimelineZoom),
+                    MidpointRounding.ToZero));
                 if (_mouseDownTrackItem.IsChangingFadeIn)
                 {
                     if (destFrame < 0) destFrame = 0;
@@ -492,12 +486,10 @@ namespace PressPlay.Timeline
         {
             double x = Math.Round(needleXPosition);
             if (x < 0) x = 0;
-            double frame = Math.Round(x / Constants.TimelinePixelsInSeparator
-                                      * Constants.TimelineZooms[Project.TimelineZoom],
+            double frame = Math.Round(Constants.PixelsToFrames(x, Project.TimelineZoom),
                                       MidpointRounding.ToZero);
             frame = GetSnappedFrame((int)frame);
-            double newX = frame * Constants.TimelinePixelsInSeparator
-                          / Constants.TimelineZooms[Project.TimelineZoom];
+            double newX = Constants.FramesToPixels((int)frame, Project.TimelineZoom);
 
             Canvas.SetLeft(needle, newX);
             Project.NeedlePositionTime = new TimeCode((int)frame, Project.FPS);
@@ -517,10 +509,8 @@ namespace PressPlay.Timeline
             //    Use the header control to get X in timeline coords
             double dropX = e.GetPosition(header).X;
             int frame = (int)Math.Round(
-                dropX
-              / Constants.TimelinePixelsInSeparator
-              * Constants.TimelineZooms[Project.TimelineZoom],
-              MidpointRounding.ToZero);
+                Constants.PixelsToFrames(dropX, Project.TimelineZoom),
+                MidpointRounding.ToZero);
             var position = new TimeCode(frame, Project.FPS);
 
             Debug.WriteLine($"Drop position: X={dropX}, Frame={frame}");
