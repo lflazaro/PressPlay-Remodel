@@ -365,7 +365,8 @@
                                         <Expander Header="Motion/Transformation" IsExpanded="True" Foreground="White"
                               Visibility="{Binding SelectedTrackItem, Converter={StaticResource NullToVisibilityConverter}}">
                                             <StackPanel Margin="10,5,10,5">
-                                                <CheckBox Content="Enable Keyframes" IsChecked="{Binding SelectedTrackItem.KeyframesEnabled}" Margin="0,0,0,10" Checked="KeyframeToggle_Checked" Unchecked="KeyframeToggle_Unchecked"/>
+                                                <CheckBox Content="Enable Keyframes" Foreground="White" IsChecked="{Binding SelectedTrackItem.KeyframesEnabled}" Margin="0,0,0,10" Checked="KeyframeToggle_Checked" Unchecked="KeyframeToggle_Unchecked"/>
+
 
                                                 <!-- Detailed property editors -->
                                                 <Grid>

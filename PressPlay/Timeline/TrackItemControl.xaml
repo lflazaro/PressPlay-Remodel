@@ -179,6 +179,11 @@
 
         <!-- Keyframe strips -->
         <StackPanel x:Name="KeyframePanel" Orientation="Vertical" VerticalAlignment="Bottom" Panel.ZIndex="2" Background="#40000000" Visibility="{Binding KeyframesEnabled, Converter={StaticResource BoolToVis}}">
+            <StackPanel.Resources>
+                <Style TargetType="ItemsControl">
+                    <Setter Property="Width" Value="{Binding ElementName=itemControl, Path=ActualWidth}"/>
+                </Style>
+            </StackPanel.Resources>
             <ItemsControl x:Name="translateXStrip" Height="10" Tag="TranslateX" ItemsSource="{Binding TranslateXKeyframes}" Background="Transparent" MouseLeftButtonDown="KeyframeStrip_MouseLeftButtonDown" ToolTip="Position X">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
