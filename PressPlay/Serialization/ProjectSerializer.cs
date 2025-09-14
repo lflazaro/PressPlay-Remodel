@@ -455,6 +455,24 @@ namespace PressPlay.Serialization
                         Debug.WriteLine($"Failed to deserialize keyframes: {ex.Message}");
                     }
                 }
+
+                // Deserialize additional track item effects (e.g. color correction)
+                if (root.TryGetProperty("Effects", out var effectsElement))
+                {
+                    try
+                    {
+                        var effects = JsonSerializer.Deserialize<ObservableCollection<IEffect>>(effectsElement.GetRawText(), options);
+                        if (effects != null)
+                        {
+                            foreach (var fx in effects)
+                                ti.Effects.Add(fx);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Failed to deserialize effects: {ex.Message}");
+                    }
+                }
             }
 
             // Special handling for AudioTrackItem
@@ -541,6 +559,10 @@ namespace PressPlay.Serialization
                 // Serialize keyframe dictionary
                 writer.WritePropertyName("Keyframes");
                 JsonSerializer.Serialize(writer, ti.Keyframes, options);
+
+                // Serialize additional effects (e.g. color correction)
+                writer.WritePropertyName("Effects");
+                JsonSerializer.Serialize(writer, ti.Effects, options);
             }
 
             // Audio-specific properties
