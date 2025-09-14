@@ -4,6 +4,8 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 
+//teleprompter dialog for rich text editing
+
 namespace PressPlay.Teleprompter
 {
     public partial class TeleprompterDialog : Window
