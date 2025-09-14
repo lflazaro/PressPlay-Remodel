@@ -94,8 +94,8 @@ namespace PressPlay.Effects
                 {
                     lut[i] = (byte)Math.Clamp(Math.Pow(i / 255.0, invGamma) * 255.0, 0, 255);
                 }
-                using var table = new Mat(1, 256, MatType.CV_8UC1, lut);
-                Cv2.LUT(outputFrame, table, outputFrame);
+                using var lutIA = InputArray.Create(lut);
+                Cv2.LUT(outputFrame, lutIA, outputFrame);
             }
 
             // color tint using saturation as strength
