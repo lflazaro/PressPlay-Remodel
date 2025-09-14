@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>PressPlay</RootNamespace>
     <AssemblyName>PressPlay</AssemblyName>
-    <ApplicationIcon>android-chrome-192x192.ico</ApplicationIcon>
+    <ApplicationIcon>PressPlay.ico</ApplicationIcon>
     <UseWindowsForms>False</UseWindowsForms>
   </PropertyGroup>
   <ItemGroup>
@@ -27,7 +27,7 @@
     <None Remove="Resources\Icons\split.svg" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="android-chrome-192x192.ico" />
+    <Content Include="PressPlay.ico" />
   </ItemGroup>
 
   <!-- Same package references as before -->
