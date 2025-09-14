@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using DocumentFormat.OpenXml.Drawing.Wordprocessing;
+using System.Windows.Media;
 using PressPlay.Helpers;
 using PressPlay.Models;
 using PressPlay.Utilities;
@@ -18,6 +19,8 @@ namespace PressPlay.Timeline
     {
         private TimelineControl _timelineControl;
         private Point _startPoint;
+        private Keyframe? _draggingKeyframe;
+        private ItemsControl? _draggingStrip;
 
         public TrackItemControl()
         {
@@ -66,6 +69,34 @@ namespace PressPlay.Timeline
                     _timelineControl.Project.RaiseNeedlePositionTimeChanged(
                         _timelineControl.Project.NeedlePositionTime);
                 }
+            }
+        }
+
+        private void PropertySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (sender is Slider slider && DataContext is TrackItem item)
+            {
+                _timelineControl ??= VisualHelper.GetAncestor<TimelineControl>(this);
+                var project = _timelineControl?.Project;
+                if (project == null) return;
+
+                int frame = project.NeedlePositionTime.TotalFrames;
+                string property = slider.Tag as string ?? string.Empty;
+
+                if (!item.Keyframes.TryGetValue(property, out var list))
+                    return;
+
+                var existing = list.FirstOrDefault(k => k.Frame == frame);
+                if (existing != null)
+                {
+                    existing.Value = e.NewValue;
+                }
+                else
+                {
+                    list.Add(new Keyframe { Frame = frame, Value = e.NewValue });
+                }
+
+                RefreshKeyframeStrip(property);
             }
         }
 
@@ -240,6 +271,104 @@ namespace PressPlay.Timeline
                 var offset = PixelCalculator.GetPixels(trackItem.Start.TotalFrames, project.TimelineZoom);
                 img.Margin = new Thickness(-offset, 0, 0, 0);
             }
+        }
+
+        private void KeyframeStrip_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is ItemsControl strip && DataContext is TrackItem item)
+            {
+                _timelineControl ??= VisualHelper.GetAncestor<TimelineControl>(this);
+                var project = _timelineControl?.Project;
+                if (project == null) return;
+
+                if (e.OriginalSource is Canvas)
+                {
+                    double x = e.GetPosition(strip).X;
+                    int frame = item.Position.TotalFrames + Constants.PixelsToFrames(x, project.TimelineZoom);
+                    string property = strip.Tag as string ?? string.Empty;
+                    if (!item.Keyframes.TryGetValue(property, out var list)) return;
+                    if (!list.Any(k => k.Frame == frame))
+                    {
+                        double value = item.GetAnimated(property, frame);
+                        list.Add(new Keyframe { Frame = frame, Value = value });
+                        RefreshKeyframeStrip(property);
+                    }
+                }
+            }
+        }
+
+        private void Keyframe_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.DataContext is Keyframe kf)
+            {
+                _draggingKeyframe = kf;
+                _draggingStrip = GetParentItemsControl(fe);
+                fe.CaptureMouse();
+                e.Handled = true;
+            }
+        }
+
+        private void Keyframe_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_draggingKeyframe != null && _draggingStrip != null && DataContext is TrackItem item)
+            {
+                _timelineControl ??= VisualHelper.GetAncestor<TimelineControl>(this);
+                var project = _timelineControl?.Project;
+                if (project == null) return;
+
+                double x = e.GetPosition(_draggingStrip).X;
+                int frame = item.Position.TotalFrames + Constants.PixelsToFrames(x, project.TimelineZoom);
+                _draggingKeyframe.Frame = frame;
+                RefreshKeyframeStrip(_draggingStrip.Tag as string ?? string.Empty);
+            }
+        }
+
+        private void Keyframe_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement fe)
+                fe.ReleaseMouseCapture();
+            _draggingKeyframe = null;
+            _draggingStrip = null;
+        }
+
+        private void Keyframe_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.DataContext is Keyframe kf && DataContext is TrackItem item)
+            {
+                var strip = GetParentItemsControl(fe);
+                string property = strip?.Tag as string ?? string.Empty;
+                if (item.Keyframes.TryGetValue(property, out var list))
+                {
+                    list.Remove(kf);
+                    RefreshKeyframeStrip(property);
+                }
+                e.Handled = true;
+            }
+        }
+
+        private ItemsControl? GetParentItemsControl(DependencyObject child)
+        {
+            while (child != null && child is not ItemsControl)
+            {
+                child = VisualTreeHelper.GetParent(child);
+            }
+            return child as ItemsControl;
+        }
+
+        private void RefreshKeyframeStrip(string property)
+        {
+            ItemsControl? strip = property switch
+            {
+                nameof(TrackItem.TranslateX) => translateXStrip,
+                nameof(TrackItem.TranslateY) => translateYStrip,
+                nameof(TrackItem.Rotation) => rotationStrip,
+                nameof(TrackItem.ScaleX) => scaleXStrip,
+                nameof(TrackItem.ScaleY) => scaleYStrip,
+                nameof(TrackItem.Opacity) => opacityStrip,
+                _ => null
+            };
+
+            strip?.Items.Refresh();
         }
     }
 }
