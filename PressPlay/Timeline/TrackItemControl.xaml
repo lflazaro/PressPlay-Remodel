@@ -173,22 +173,6 @@
             </Grid.Style>
         </Grid>
 
-        <!-- Property editors shown when item is selected -->
-        <StackPanel x:Name="PropertyEditors"
-                    Orientation="Vertical"
-                    Panel.ZIndex="3"
-                    Width="120"
-                    Margin="2"
-                    Background="#80000000"
-                    Visibility="{Binding IsSelected, Converter={converters:BoolToVisibilityConverter}}">
-            <Slider Minimum="-500" Maximum="500" Value="{Binding TranslateX}" Tag="TranslateX" ValueChanged="PropertySlider_ValueChanged" />
-            <Slider Minimum="-500" Maximum="500" Value="{Binding TranslateY}" Tag="TranslateY" ValueChanged="PropertySlider_ValueChanged" />
-            <Slider Minimum="0" Maximum="360" Value="{Binding Rotation}" Tag="Rotation" ValueChanged="PropertySlider_ValueChanged" />
-            <Slider Minimum="0.1" Maximum="5" Value="{Binding ScaleX}" Tag="ScaleX" ValueChanged="PropertySlider_ValueChanged" />
-            <Slider Minimum="0.1" Maximum="5" Value="{Binding ScaleY}" Tag="ScaleY" ValueChanged="PropertySlider_ValueChanged" />
-            <Slider Minimum="0" Maximum="1" Value="{Binding Opacity}" Tag="Opacity" ValueChanged="PropertySlider_ValueChanged" />
-        </StackPanel>
-
         <!-- Keyframe strips -->
         <StackPanel x:Name="KeyframePanel" Orientation="Vertical" VerticalAlignment="Bottom" Panel.ZIndex="2" Background="#40000000">
             <ItemsControl x:Name="translateXStrip" Height="10" Tag="TranslateX" ItemsSource="{Binding TranslateXKeyframes}" Background="Transparent" MouseLeftButtonDown="KeyframeStrip_MouseLeftButtonDown" ToolTip="Position X">
