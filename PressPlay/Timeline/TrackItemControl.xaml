@@ -15,6 +15,10 @@
         SizeChanged="Border_SizeChanged"
         d:DesignHeight="50" d:DesignWidth="100">
 
+    <Border.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Border.Resources>
+
     <!-- width = clip duration -->
     <Border.Width>
         <MultiBinding Converter="{converters:TrackItemDataToLengthConverter}">
@@ -174,7 +178,12 @@
         </Grid>
 
         <!-- Keyframe strips -->
-        <StackPanel x:Name="KeyframePanel" Orientation="Vertical" VerticalAlignment="Bottom" Panel.ZIndex="2" Background="#40000000">
+        <StackPanel x:Name="KeyframePanel" Orientation="Vertical" VerticalAlignment="Bottom" Panel.ZIndex="2" Background="#40000000" Visibility="{Binding KeyframesEnabled, Converter={StaticResource BoolToVis}}">
+            <StackPanel.Resources>
+                <Style TargetType="ItemsControl">
+                    <Setter Property="Width" Value="{Binding ElementName=itemControl, Path=ActualWidth}"/>
+                </Style>
+            </StackPanel.Resources>
             <ItemsControl x:Name="translateXStrip" Height="10" Tag="TranslateX" ItemsSource="{Binding TranslateXKeyframes}" Background="Transparent" MouseLeftButtonDown="KeyframeStrip_MouseLeftButtonDown" ToolTip="Position X">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
@@ -194,7 +203,7 @@
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Rectangle Width="8" Height="8" Fill="Orange" Stroke="Black" RenderTransformOrigin="0.5,0.5"
+                        <Rectangle Width="8" Height="8" Fill="Red" Stroke="Black" RenderTransformOrigin="0.5,0.5"
                                    MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
                                    MouseMove="Keyframe_MouseMove"
                                    MouseLeftButtonUp="Keyframe_MouseLeftButtonUp"
@@ -256,7 +265,7 @@
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Rectangle Width="8" Height="8" Fill="Orange" Stroke="Black" RenderTransformOrigin="0.5,0.5"
+                        <Rectangle Width="8" Height="8" Fill="Yellow" Stroke="Black" RenderTransformOrigin="0.5,0.5"
                                    MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
                                    MouseMove="Keyframe_MouseMove"
                                    MouseLeftButtonUp="Keyframe_MouseLeftButtonUp"
@@ -287,7 +296,7 @@
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Rectangle Width="8" Height="8" Fill="Orange" Stroke="Black" RenderTransformOrigin="0.5,0.5"
+                        <Rectangle Width="8" Height="8" Fill="Green" Stroke="Black" RenderTransformOrigin="0.5,0.5"
                                    MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
                                    MouseMove="Keyframe_MouseMove"
                                    MouseLeftButtonUp="Keyframe_MouseLeftButtonUp"
@@ -318,7 +327,7 @@
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Rectangle Width="8" Height="8" Fill="Orange" Stroke="Black" RenderTransformOrigin="0.5,0.5"
+                        <Rectangle Width="8" Height="8" Fill="Blue" Stroke="Black" RenderTransformOrigin="0.5,0.5"
                                    MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
                                    MouseMove="Keyframe_MouseMove"
                                    MouseLeftButtonUp="Keyframe_MouseLeftButtonUp"
@@ -349,7 +358,7 @@
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Rectangle Width="8" Height="8" Fill="Orange" Stroke="Black" RenderTransformOrigin="0.5,0.5"
+                        <Rectangle Width="8" Height="8" Fill="Purple" Stroke="Black" RenderTransformOrigin="0.5,0.5"
                                    MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
                                    MouseMove="Keyframe_MouseMove"
                                    MouseLeftButtonUp="Keyframe_MouseLeftButtonUp"
