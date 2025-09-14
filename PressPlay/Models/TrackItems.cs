@@ -506,28 +506,28 @@ namespace PressPlay.Models
         }
 
         [JsonInclude]
-        public Dictionary<string, List<Keyframe>> Keyframes { get; } = new()
+        public Dictionary<string, ObservableCollection<Keyframe>> Keyframes { get; } = new()
         {
-            [nameof(TranslateX)] = new List<Keyframe>(),
-            [nameof(TranslateY)] = new List<Keyframe>(),
-            [nameof(Rotation)] = new List<Keyframe>(),
-            [nameof(ScaleX)] = new List<Keyframe>(),
-            [nameof(ScaleY)] = new List<Keyframe>(),
-            [nameof(Opacity)] = new List<Keyframe>(),
+            [nameof(TranslateX)] = new ObservableCollection<Keyframe>(),
+            [nameof(TranslateY)] = new ObservableCollection<Keyframe>(),
+            [nameof(Rotation)]  = new ObservableCollection<Keyframe>(),
+            [nameof(ScaleX)]    = new ObservableCollection<Keyframe>(),
+            [nameof(ScaleY)]    = new ObservableCollection<Keyframe>(),
+            [nameof(Opacity)]   = new ObservableCollection<Keyframe>(),
         };
 
         [JsonIgnore]
-        public List<Keyframe> TranslateXKeyframes => Keyframes[nameof(TranslateX)];
+        public ObservableCollection<Keyframe> TranslateXKeyframes => Keyframes[nameof(TranslateX)];
         [JsonIgnore]
-        public List<Keyframe> TranslateYKeyframes => Keyframes[nameof(TranslateY)];
+        public ObservableCollection<Keyframe> TranslateYKeyframes => Keyframes[nameof(TranslateY)];
         [JsonIgnore]
-        public List<Keyframe> RotationKeyframes => Keyframes[nameof(Rotation)];
+        public ObservableCollection<Keyframe> RotationKeyframes  => Keyframes[nameof(Rotation)];
         [JsonIgnore]
-        public List<Keyframe> ScaleXKeyframes => Keyframes[nameof(ScaleX)];
+        public ObservableCollection<Keyframe> ScaleXKeyframes    => Keyframes[nameof(ScaleX)];
         [JsonIgnore]
-        public List<Keyframe> ScaleYKeyframes => Keyframes[nameof(ScaleY)];
+        public ObservableCollection<Keyframe> ScaleYKeyframes    => Keyframes[nameof(ScaleY)];
         [JsonIgnore]
-        public List<Keyframe> OpacityKeyframes => Keyframes[nameof(Opacity)];
+        public ObservableCollection<Keyframe> OpacityKeyframes   => Keyframes[nameof(Opacity)];
 
         public void EvaluateKeyframes(int frame)
         {
