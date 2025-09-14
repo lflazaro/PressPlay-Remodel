@@ -80,6 +80,7 @@ namespace PressPlay.Models
         public bool IsSelected { get => _isSelected; set { _isSelected = value; OnPropertyChanged(); } }
         public TimeCode Length { get => _length; set { _length = value; OnPropertyChanged(); } }
         public bool UnlimitedLength { get; private set; }
+        [JsonInclude]
         public ObservableCollection<IEffect> Effects { get; } = new ObservableCollection<IEffect>();
         [JsonInclude]
         public double FPS { get; private set; }
