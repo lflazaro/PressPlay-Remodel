@@ -191,7 +191,7 @@
 
         <!-- Keyframe strips -->
         <StackPanel x:Name="KeyframePanel" Orientation="Vertical" VerticalAlignment="Bottom" Panel.ZIndex="2" Background="#40000000">
-            <ItemsControl x:Name="translateXStrip" Height="10" Tag="TranslateX" ItemsSource="{Binding TranslateXKeyframes}" Background="Transparent" MouseLeftButtonDown="KeyframeStrip_MouseLeftButtonDown">
+            <ItemsControl x:Name="translateXStrip" Height="10" Tag="TranslateX" ItemsSource="{Binding TranslateXKeyframes}" Background="Transparent" MouseLeftButtonDown="KeyframeStrip_MouseLeftButtonDown" ToolTip="Position X">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
@@ -210,15 +210,19 @@
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Rectangle Width="6" Height="6" Fill="Yellow" Stroke="Black"
+                        <Rectangle Width="8" Height="8" Fill="Orange" Stroke="Black" RenderTransformOrigin="0.5,0.5"
                                    MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
                                    MouseMove="Keyframe_MouseMove"
                                    MouseLeftButtonUp="Keyframe_MouseLeftButtonUp"
-                                   MouseRightButtonDown="Keyframe_MouseRightButtonDown"/>
+                                   MouseRightButtonDown="Keyframe_MouseRightButtonDown">
+                            <Rectangle.RenderTransform>
+                                <RotateTransform Angle="45"/>
+                            </Rectangle.RenderTransform>
+                        </Rectangle>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <ItemsControl x:Name="translateYStrip" Height="10" Tag="TranslateY" ItemsSource="{Binding TranslateYKeyframes}" Background="Transparent" MouseLeftButtonDown="KeyframeStrip_MouseLeftButtonDown">
+            <ItemsControl x:Name="translateYStrip" Height="10" Tag="TranslateY" ItemsSource="{Binding TranslateYKeyframes}" Background="Transparent" MouseLeftButtonDown="KeyframeStrip_MouseLeftButtonDown" ToolTip="Position Y">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
@@ -237,15 +241,19 @@
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Rectangle Width="6" Height="6" Fill="Yellow" Stroke="Black"
+                        <Rectangle Width="8" Height="8" Fill="Orange" Stroke="Black" RenderTransformOrigin="0.5,0.5"
                                    MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
                                    MouseMove="Keyframe_MouseMove"
                                    MouseLeftButtonUp="Keyframe_MouseLeftButtonUp"
-                                   MouseRightButtonDown="Keyframe_MouseRightButtonDown"/>
+                                   MouseRightButtonDown="Keyframe_MouseRightButtonDown">
+                            <Rectangle.RenderTransform>
+                                <RotateTransform Angle="45"/>
+                            </Rectangle.RenderTransform>
+                        </Rectangle>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <ItemsControl x:Name="rotationStrip" Height="10" Tag="Rotation" ItemsSource="{Binding RotationKeyframes}" Background="Transparent" MouseLeftButtonDown="KeyframeStrip_MouseLeftButtonDown">
+            <ItemsControl x:Name="rotationStrip" Height="10" Tag="Rotation" ItemsSource="{Binding RotationKeyframes}" Background="Transparent" MouseLeftButtonDown="KeyframeStrip_MouseLeftButtonDown" ToolTip="Rotation">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
@@ -264,15 +272,19 @@
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Rectangle Width="6" Height="6" Fill="Yellow" Stroke="Black"
+                        <Rectangle Width="8" Height="8" Fill="Orange" Stroke="Black" RenderTransformOrigin="0.5,0.5"
                                    MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
                                    MouseMove="Keyframe_MouseMove"
                                    MouseLeftButtonUp="Keyframe_MouseLeftButtonUp"
-                                   MouseRightButtonDown="Keyframe_MouseRightButtonDown"/>
+                                   MouseRightButtonDown="Keyframe_MouseRightButtonDown">
+                            <Rectangle.RenderTransform>
+                                <RotateTransform Angle="45"/>
+                            </Rectangle.RenderTransform>
+                        </Rectangle>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <ItemsControl x:Name="scaleXStrip" Height="10" Tag="ScaleX" ItemsSource="{Binding ScaleXKeyframes}" Background="Transparent" MouseLeftButtonDown="KeyframeStrip_MouseLeftButtonDown">
+            <ItemsControl x:Name="scaleXStrip" Height="10" Tag="ScaleX" ItemsSource="{Binding ScaleXKeyframes}" Background="Transparent" MouseLeftButtonDown="KeyframeStrip_MouseLeftButtonDown" ToolTip="Scale X">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
@@ -291,15 +303,19 @@
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Rectangle Width="6" Height="6" Fill="Yellow" Stroke="Black"
+                        <Rectangle Width="8" Height="8" Fill="Orange" Stroke="Black" RenderTransformOrigin="0.5,0.5"
                                    MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
                                    MouseMove="Keyframe_MouseMove"
                                    MouseLeftButtonUp="Keyframe_MouseLeftButtonUp"
-                                   MouseRightButtonDown="Keyframe_MouseRightButtonDown"/>
+                                   MouseRightButtonDown="Keyframe_MouseRightButtonDown">
+                            <Rectangle.RenderTransform>
+                                <RotateTransform Angle="45"/>
+                            </Rectangle.RenderTransform>
+                        </Rectangle>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <ItemsControl x:Name="scaleYStrip" Height="10" Tag="ScaleY" ItemsSource="{Binding ScaleYKeyframes}" Background="Transparent" MouseLeftButtonDown="KeyframeStrip_MouseLeftButtonDown">
+            <ItemsControl x:Name="scaleYStrip" Height="10" Tag="ScaleY" ItemsSource="{Binding ScaleYKeyframes}" Background="Transparent" MouseLeftButtonDown="KeyframeStrip_MouseLeftButtonDown" ToolTip="Scale Y">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
@@ -318,15 +334,19 @@
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Rectangle Width="6" Height="6" Fill="Yellow" Stroke="Black"
+                        <Rectangle Width="8" Height="8" Fill="Orange" Stroke="Black" RenderTransformOrigin="0.5,0.5"
                                    MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
                                    MouseMove="Keyframe_MouseMove"
                                    MouseLeftButtonUp="Keyframe_MouseLeftButtonUp"
-                                   MouseRightButtonDown="Keyframe_MouseRightButtonDown"/>
+                                   MouseRightButtonDown="Keyframe_MouseRightButtonDown">
+                            <Rectangle.RenderTransform>
+                                <RotateTransform Angle="45"/>
+                            </Rectangle.RenderTransform>
+                        </Rectangle>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <ItemsControl x:Name="opacityStrip" Height="10" Tag="Opacity" ItemsSource="{Binding OpacityKeyframes}" Background="Transparent" MouseLeftButtonDown="KeyframeStrip_MouseLeftButtonDown">
+            <ItemsControl x:Name="opacityStrip" Height="10" Tag="Opacity" ItemsSource="{Binding OpacityKeyframes}" Background="Transparent" MouseLeftButtonDown="KeyframeStrip_MouseLeftButtonDown" ToolTip="Opacity">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
@@ -345,11 +365,15 @@
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Rectangle Width="6" Height="6" Fill="Yellow" Stroke="Black"
+                        <Rectangle Width="8" Height="8" Fill="Orange" Stroke="Black" RenderTransformOrigin="0.5,0.5"
                                    MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
                                    MouseMove="Keyframe_MouseMove"
                                    MouseLeftButtonUp="Keyframe_MouseLeftButtonUp"
-                                   MouseRightButtonDown="Keyframe_MouseRightButtonDown"/>
+                                   MouseRightButtonDown="Keyframe_MouseRightButtonDown">
+                            <Rectangle.RenderTransform>
+                                <RotateTransform Angle="45"/>
+                            </Rectangle.RenderTransform>
+                        </Rectangle>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

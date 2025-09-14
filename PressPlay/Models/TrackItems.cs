@@ -574,5 +574,30 @@ namespace PressPlay.Models
             return ordered[^1].Value;
         }
 
+        public void NotifyKeyframeChange(string property)
+        {
+            switch (property)
+            {
+                case nameof(TranslateX):
+                    OnPropertyChanged(nameof(TranslateXKeyframes));
+                    break;
+                case nameof(TranslateY):
+                    OnPropertyChanged(nameof(TranslateYKeyframes));
+                    break;
+                case nameof(Rotation):
+                    OnPropertyChanged(nameof(RotationKeyframes));
+                    break;
+                case nameof(ScaleX):
+                    OnPropertyChanged(nameof(ScaleXKeyframes));
+                    break;
+                case nameof(ScaleY):
+                    OnPropertyChanged(nameof(ScaleYKeyframes));
+                    break;
+                case nameof(Opacity):
+                    OnPropertyChanged(nameof(OpacityKeyframes));
+                    break;
+            }
+        }
+
     }
 }

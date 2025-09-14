@@ -213,5 +213,28 @@ namespace PressPlay
                 }
             }
         }
+
+        private void AddKeyframeButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not MainWindowViewModel vm) return;
+            if (vm.SelectedTrackItem is not TrackItem item) return;
+            if (sender is not Button btn || btn.Tag is not string property) return;
+
+            int frame = vm.CurrentProject.NeedlePositionTime.TotalFrames;
+            if (!item.Keyframes.TryGetValue(property, out var list)) return;
+
+            var existing = list.FirstOrDefault(k => k.Frame == frame);
+            if (existing != null)
+            {
+                list.Remove(existing);
+            }
+            else
+            {
+                double value = item.GetAnimated(property, frame);
+                list.Add(new Keyframe { Frame = frame, Value = value });
+            }
+
+            item.NotifyKeyframeChange(property);
+        }
     }
 }
