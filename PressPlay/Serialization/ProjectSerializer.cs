@@ -425,12 +425,12 @@ namespace PressPlay.Serialization
                 {
                     try
                     {
-                        var dict = JsonSerializer.Deserialize<Dictionary<string, List<Keyframe>>>(kfElement.GetRawText(), options);
+                        var dict = JsonSerializer.Deserialize<Dictionary<string, ObservableCollection<Keyframe>>>(kfElement.GetRawText(), options);
                         if (dict != null)
                         {
                             foreach (var kv in dict)
                             {
-                                ti.Keyframes[kv.Key] = kv.Value ?? new List<Keyframe>();
+                                ti.Keyframes[kv.Key] = kv.Value ?? new ObservableCollection<Keyframe>();
                             }
                         }
                     }
