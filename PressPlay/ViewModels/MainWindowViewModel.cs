@@ -17,6 +17,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Windows;
+using System.ComponentModel;
 using PressPlay.Serialization;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -78,6 +79,8 @@ namespace PressPlay
         [ObservableProperty]
         private ProjectClip _selectedProjectClip;
 
+        private ColorCorrectionEffect _currentColorEffect;
+
         public bool HasClip => SelectedProjectClip != null;
 
         public ColorCorrectionEffect ColorEffect
@@ -91,8 +94,33 @@ namespace PressPlay
                     effect = new ColorCorrectionEffect();
                     SelectedProjectClip.Effects.Add(effect);
                 }
+
+                if (_currentColorEffect != effect)
+                {
+                    if (_currentColorEffect != null)
+                        _currentColorEffect.PropertyChanged -= ColorEffect_PropertyChanged;
+                    _currentColorEffect = effect;
+                    _currentColorEffect.PropertyChanged += ColorEffect_PropertyChanged;
+                }
+
                 return effect;
             }
+        }
+
+        partial void OnSelectedProjectClipChanged(ProjectClip value)
+        {
+            if (_currentColorEffect != null)
+                _currentColorEffect.PropertyChanged -= ColorEffect_PropertyChanged;
+
+            _currentColorEffect = value?.Effects.OfType<ColorCorrectionEffect>().FirstOrDefault();
+
+            if (_currentColorEffect != null)
+                _currentColorEffect.PropertyChanged += ColorEffect_PropertyChanged;
+        }
+
+        private void ColorEffect_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            HasUnsavedChanges = true;
         }
 
 
