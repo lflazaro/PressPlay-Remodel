@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using OpenCvSharp;
 using DrawingColor = System.Drawing.Color;
@@ -8,7 +9,7 @@ using System.Windows.Media;
 
 namespace PressPlay.Effects
 {
-    public class ColorCorrectionEffect : IEffect
+    public class ColorCorrectionEffect : IEffect, INotifyPropertyChanged
     {
         public string Name => "Color Correction";
 
@@ -17,16 +18,38 @@ namespace PressPlay.Effects
         private double _contrast = 1.0;   // 0..3
         private double _gamma = 1.0;      // 0.1..5
         private double _saturation = 1.0; // 0..3
+        private bool _enabled = true;
 
-        public bool Enabled { get; set; } = true;
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        private void OnPropertyChanged(string propertyName) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+        public bool Enabled
+        {
+            get => _enabled;
+            set
+            {
+                if (_enabled != value)
+                {
+                    _enabled = value;
+                    UpdateParameter("Enabled", _enabled);
+                    OnPropertyChanged(nameof(Enabled));
+                }
+            }
+        }
 
         public MediaColor TintColor
         {
             get => _tintColor;
             set
             {
-                _tintColor = value;
-                UpdateParameter("TintColor", _tintColor);
+                if (_tintColor != value)
+                {
+                    _tintColor = value;
+                    UpdateParameter("TintColor", _tintColor);
+                    OnPropertyChanged(nameof(TintColor));
+                }
             }
         }
 
@@ -35,8 +58,12 @@ namespace PressPlay.Effects
             get => _brightness;
             set
             {
-                _brightness = value;
-                UpdateParameter("Brightness", _brightness);
+                if (Math.Abs(_brightness - value) > 0.0001)
+                {
+                    _brightness = value;
+                    UpdateParameter("Brightness", _brightness);
+                    OnPropertyChanged(nameof(Brightness));
+                }
             }
         }
 
@@ -45,8 +72,12 @@ namespace PressPlay.Effects
             get => _contrast;
             set
             {
-                _contrast = value;
-                UpdateParameter("Contrast", _contrast);
+                if (Math.Abs(_contrast - value) > 0.0001)
+                {
+                    _contrast = value;
+                    UpdateParameter("Contrast", _contrast);
+                    OnPropertyChanged(nameof(Contrast));
+                }
             }
         }
 
@@ -55,8 +86,12 @@ namespace PressPlay.Effects
             get => _gamma;
             set
             {
-                _gamma = value;
-                UpdateParameter("Gamma", _gamma);
+                if (Math.Abs(_gamma - value) > 0.0001)
+                {
+                    _gamma = value;
+                    UpdateParameter("Gamma", _gamma);
+                    OnPropertyChanged(nameof(Gamma));
+                }
             }
         }
 
@@ -65,8 +100,12 @@ namespace PressPlay.Effects
             get => _saturation;
             set
             {
-                _saturation = value;
-                UpdateParameter("Saturation", _saturation);
+                if (Math.Abs(_saturation - value) > 0.0001)
+                {
+                    _saturation = value;
+                    UpdateParameter("Saturation", _saturation);
+                    OnPropertyChanged(nameof(Saturation));
+                }
             }
         }
 
