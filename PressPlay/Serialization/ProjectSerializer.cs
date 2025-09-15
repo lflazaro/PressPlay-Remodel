@@ -83,6 +83,7 @@ namespace PressPlay.Serialization
             };
             options.Converters.Add(new JsonStringEnumConverter());
             options.Converters.Add(new TrackItemConverter());
+            options.Converters.Add(new ProjectClipConverter());
             options.Converters.Add(new TimeCodeConverter());
             options.Converters.Add(new EffectConverter());
             return options;
@@ -578,6 +579,58 @@ namespace PressPlay.Serialization
             }
 
             writer.WriteEndObject();
+        }
+    }
+
+    /// <summary>
+    /// Converter for ProjectClip to ensure clip-level effects are preserved.
+    /// </summary>
+    public class ProjectClipConverter : System.Text.Json.Serialization.JsonConverter<ProjectClip>
+    {
+        public override ProjectClip Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            using var doc = JsonDocument.ParseValue(ref reader);
+            var root = doc.RootElement;
+
+            // Use default serialization for most properties, excluding this converter to avoid recursion
+            var innerOptions = new JsonSerializerOptions(options);
+            var self = innerOptions.Converters.FirstOrDefault(c => c is ProjectClipConverter);
+            if (self != null)
+                innerOptions.Converters.Remove(self);
+
+            var clip = JsonSerializer.Deserialize<ProjectClip>(root.GetRawText(), innerOptions) ?? new ProjectClip();
+
+            // Explicitly deserialize effects collection
+            if (root.TryGetProperty("Effects", out var effectsElement))
+            {
+                try
+                {
+                    var effects = JsonSerializer.Deserialize<ObservableCollection<IEffect>>(effectsElement.GetRawText(), innerOptions);
+                    if (effects != null)
+                    {
+                        clip.Effects.Clear();
+                        foreach (var fx in effects)
+                            clip.Effects.Add(fx);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Failed to deserialize clip effects: {ex.Message}");
+                }
+            }
+
+            return clip;
+        }
+
+        public override void Write(Utf8JsonWriter writer, ProjectClip value, JsonSerializerOptions options)
+        {
+            // Delegate to the default serializer, ensuring this converter does not recurse
+            var innerOptions = new JsonSerializerOptions(options);
+            var self = innerOptions.Converters.FirstOrDefault(c => c is ProjectClipConverter);
+            if (self != null)
+                innerOptions.Converters.Remove(self);
+
+            JsonSerializer.Serialize(writer, value, innerOptions);
         }
     }
 
