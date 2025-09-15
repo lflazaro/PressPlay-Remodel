@@ -296,6 +296,10 @@ namespace PressPlay.Export
                     // Draw each item
                     foreach (var item in activeItems)
                     {
+                        // Update transform properties from keyframes before drawing
+                        if (item is TrackItem ti)
+                            ti.EvaluateKeyframes(idx);
+
                         DrawItemWithFade(item, idx, width, height, drawingContext);
                     }
                 }
