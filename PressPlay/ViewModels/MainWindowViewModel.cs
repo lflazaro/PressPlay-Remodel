@@ -1586,7 +1586,7 @@ namespace PressPlay
             })
             .GeneratePdf(filePath);
 
-            static IContainer CellStyle(IContainer c) => c.Border(1).Padding(5);
+            static QuestPDF.Infrastructure.IContainer CellStyle(QuestPDF.Infrastructure.IContainer c) => c.Border(1).Padding(5);
         }
         private void ExportCurrentProject()
         {
