@@ -275,16 +275,10 @@ namespace PressPlay.Timeline
 
                 if (e.OriginalSource is Canvas)
                 {
-                    double x = position.X;
-                    int frame = item.Position.TotalFrames + Constants.PixelsToFrames(x, project.TimelineZoom);
-                    string property = strip.Tag as string ?? string.Empty;
-                    if (!item.Keyframes.TryGetValue(property, out var list)) return;
-                    if (!list.Any(k => k.Frame == frame))
-                    {
-                        double value = item.GetAnimated(property, frame);
-                        list.Add(new Keyframe { Frame = frame, Value = value });
-                        RefreshKeyframeStrip(property);
-                    }
+                    // Clicking on a keyframe strip should no longer create keyframes.
+                    // Keyframes are now created exclusively through slider interaction
+                    // (see PropertySlider_ValueChanged) so simply exit here.
+                    return;
                 }
             }
         }
