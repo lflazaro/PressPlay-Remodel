@@ -95,6 +95,8 @@ namespace PressPlay.Timeline
 
             if (DataContext is TrackItem trackItem)
             {
+                DeselectKeyframes(trackItem);
+
                 // Update selection state
                 UpdateSelection(true);
 
@@ -277,12 +279,16 @@ namespace PressPlay.Timeline
                     return;
                 }
 
-                if (e.OriginalSource is Canvas)
+                if (e.OriginalSource is FrameworkElement fe && fe.DataContext is Keyframe)
                 {
-                    // Clicking on a keyframe strip should no longer create keyframes.
-                    // Keyframes are now created exclusively through slider interaction
-                    // (see PropertySlider_ValueChanged) so simply exit here.
                     return;
+                }
+
+                // Clicking on empty space within the strip should simply clear any keyframe selection.
+                // Keyframes are now created exclusively through slider interaction.
+                if (DeselectKeyframes(item))
+                {
+                    e.Handled = true;
                 }
             }
         }
@@ -291,6 +297,11 @@ namespace PressPlay.Timeline
         {
             if (sender is FrameworkElement fe && fe.DataContext is Keyframe kf)
             {
+                if (DataContext is TrackItem trackItem)
+                {
+                    DeselectKeyframes(trackItem, kf);
+                }
+
                 _draggingKeyframe = kf;
                 _draggingStrip = GetParentItemsControl(fe);
                 _keyframeDragInitiated = false;
@@ -421,6 +432,25 @@ namespace PressPlay.Timeline
             };
 
             strip?.Items.Refresh();
+        }
+
+        private static bool DeselectKeyframes(TrackItem item, Keyframe? exceptKeyframe = null)
+        {
+            bool changed = false;
+
+            foreach (var collection in item.Keyframes.Values)
+            {
+                foreach (var keyframe in collection)
+                {
+                    if (!ReferenceEquals(keyframe, exceptKeyframe) && keyframe.IsSelected)
+                    {
+                        keyframe.IsSelected = false;
+                        changed = true;
+                    }
+                }
+            }
+
+            return changed;
         }
     }
 }
