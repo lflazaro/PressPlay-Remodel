@@ -4,6 +4,7 @@ using PressPlay.Helpers;
 using PressPlay.Undo;
 using PressPlay.Undo.UndoUnits;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
@@ -36,6 +37,7 @@ namespace PressPlay.Timeline
         private TimeCode _mouseDownTrackItemEnd;
         private bool _resizingLeft;
         private bool _resizingRight;
+        private Dictionary<Keyframe, int>? _mouseDownKeyframeFrames;
 
         public Project Project
         {
@@ -203,6 +205,18 @@ namespace PressPlay.Timeline
                 _mouseDownTrackItemPosition = item.Position;
                 _mouseDownTrackItemStart = item.Start;
                 _mouseDownTrackItemEnd = item.End;
+                _mouseDownKeyframeFrames = null;
+                if (item is TrackItem trackItem && trackItem.KeyframesEnabled)
+                {
+                    _mouseDownKeyframeFrames = new Dictionary<Keyframe, int>();
+                    foreach (var collection in trackItem.Keyframes.Values)
+                    {
+                        foreach (var keyframe in collection)
+                        {
+                            _mouseDownKeyframeFrames[keyframe] = keyframe.Frame;
+                        }
+                    }
+                }
 
                 if (Project.SelectedTool == TimelineSelectedTool.SelectionTool)
                 {
@@ -230,6 +244,7 @@ namespace PressPlay.Timeline
                 _mouseDownTrackItemEnd = ti.End;
                 _mouseDownFadeControl = fadeControl;
                 _mouseDownElement = VisualHelper.GetAncestor<TrackItemControl>(fadeControl);
+                _mouseDownKeyframeFrames = null;
             }
             else
             {
@@ -271,6 +286,11 @@ namespace PressPlay.Timeline
                 var multi = new MultipleUndoUnits();
                 multi.UndoUnits.Add(new TrackItemResizeUndoUnit(data));
 
+                if (_mouseDownTrackItem is TrackItem trackItemWithKeyframes)
+                {
+                    data.SetNewKeyframeFrames(trackItemWithKeyframes);
+                }
+
                 if (_mouseDownTrack != _mouseUpTrack)
                 {
                     var rem = new TrackItemRemoveUndoUnit();
@@ -305,6 +325,7 @@ namespace PressPlay.Timeline
             _resizingLeft = false;
             _resizingRight = false;
             _tracksCanvasLeftMouseButtonDown = false;
+            _mouseDownKeyframeFrames = null;
         }
         private Track GetTrackAtPosition(Point position)
         {
@@ -374,6 +395,29 @@ namespace PressPlay.Timeline
 
                 // Update track item position
                 _mouseDownTrackItem.Position = new TimeCode(newPositionFrames, Project.FPS);
+
+                if (_mouseDownKeyframeFrames != null && _mouseDownTrackItem is TrackItem trackItem)
+                {
+                    int frameOffset = newPositionFrames - _mouseDownTrackItemPosition.TotalFrames;
+                    if (frameOffset != 0)
+                    {
+                        foreach (var collection in trackItem.Keyframes.Values)
+                        {
+                            foreach (var keyframe in collection)
+                            {
+                                if (_mouseDownKeyframeFrames.TryGetValue(keyframe, out int originalFrame))
+                                {
+                                    int newFrame = originalFrame + frameOffset;
+                                    if (newFrame < 0)
+                                    {
+                                        newFrame = 0;
+                                    }
+                                    keyframe.Frame = newFrame;
+                                }
+                            }
+                        }
+                    }
+                }
 
                 var originTrack = Project.Tracks.First(t => t.Items.Contains(_mouseDownTrackItem));
                 var mousePosition = e.GetPosition(tracksControl.Parent as IInputElement);

@@ -183,6 +183,19 @@
                 <Style TargetType="ItemsControl">
                     <Setter Property="Width" Value="{Binding ElementName=itemControl, Path=ActualWidth}"/>
                 </Style>
+                <Style x:Key="KeyframeRectangleStyle" TargetType="Rectangle">
+                    <Setter Property="Width" Value="8"/>
+                    <Setter Property="Height" Value="8"/>
+                    <Setter Property="Stroke" Value="Black"/>
+                    <Setter Property="StrokeThickness" Value="1"/>
+                    <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                            <Setter Property="Fill" Value="#FFFFF176"/>
+                            <Setter Property="Stroke" Value="White"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
             </StackPanel.Resources>
             <ItemsControl x:Name="translateXStrip" Height="10" Tag="TranslateX" ItemsSource="{Binding TranslateXKeyframes}" Background="Transparent" MouseLeftButtonDown="KeyframeStrip_MouseLeftButtonDown" ToolTip="Position X">
                 <ItemsControl.ItemsPanel>
@@ -203,11 +216,15 @@
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Rectangle Width="8" Height="8" Fill="Red" Stroke="Black" RenderTransformOrigin="0.5,0.5"
-                                   MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
+                        <Rectangle MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
                                    MouseMove="Keyframe_MouseMove"
                                    MouseLeftButtonUp="Keyframe_MouseLeftButtonUp"
                                    MouseRightButtonDown="Keyframe_MouseRightButtonDown">
+                            <Rectangle.Style>
+                                <Style TargetType="Rectangle" BasedOn="{StaticResource KeyframeRectangleStyle}">
+                                    <Setter Property="Fill" Value="Red"/>
+                                </Style>
+                            </Rectangle.Style>
                             <Rectangle.RenderTransform>
                                 <RotateTransform Angle="45"/>
                             </Rectangle.RenderTransform>
@@ -234,11 +251,15 @@
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Rectangle Width="8" Height="8" Fill="Orange" Stroke="Black" RenderTransformOrigin="0.5,0.5"
-                                   MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
+                        <Rectangle MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
                                    MouseMove="Keyframe_MouseMove"
                                    MouseLeftButtonUp="Keyframe_MouseLeftButtonUp"
                                    MouseRightButtonDown="Keyframe_MouseRightButtonDown">
+                            <Rectangle.Style>
+                                <Style TargetType="Rectangle" BasedOn="{StaticResource KeyframeRectangleStyle}">
+                                    <Setter Property="Fill" Value="Orange"/>
+                                </Style>
+                            </Rectangle.Style>
                             <Rectangle.RenderTransform>
                                 <RotateTransform Angle="45"/>
                             </Rectangle.RenderTransform>
@@ -265,11 +286,15 @@
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Rectangle Width="8" Height="8" Fill="Yellow" Stroke="Black" RenderTransformOrigin="0.5,0.5"
-                                   MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
+                        <Rectangle MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
                                    MouseMove="Keyframe_MouseMove"
                                    MouseLeftButtonUp="Keyframe_MouseLeftButtonUp"
                                    MouseRightButtonDown="Keyframe_MouseRightButtonDown">
+                            <Rectangle.Style>
+                                <Style TargetType="Rectangle" BasedOn="{StaticResource KeyframeRectangleStyle}">
+                                    <Setter Property="Fill" Value="Yellow"/>
+                                </Style>
+                            </Rectangle.Style>
                             <Rectangle.RenderTransform>
                                 <RotateTransform Angle="45"/>
                             </Rectangle.RenderTransform>
@@ -296,11 +321,15 @@
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Rectangle Width="8" Height="8" Fill="Green" Stroke="Black" RenderTransformOrigin="0.5,0.5"
-                                   MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
+                        <Rectangle MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
                                    MouseMove="Keyframe_MouseMove"
                                    MouseLeftButtonUp="Keyframe_MouseLeftButtonUp"
                                    MouseRightButtonDown="Keyframe_MouseRightButtonDown">
+                            <Rectangle.Style>
+                                <Style TargetType="Rectangle" BasedOn="{StaticResource KeyframeRectangleStyle}">
+                                    <Setter Property="Fill" Value="Green"/>
+                                </Style>
+                            </Rectangle.Style>
                             <Rectangle.RenderTransform>
                                 <RotateTransform Angle="45"/>
                             </Rectangle.RenderTransform>
@@ -327,11 +356,15 @@
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Rectangle Width="8" Height="8" Fill="Blue" Stroke="Black" RenderTransformOrigin="0.5,0.5"
-                                   MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
+                        <Rectangle MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
                                    MouseMove="Keyframe_MouseMove"
                                    MouseLeftButtonUp="Keyframe_MouseLeftButtonUp"
                                    MouseRightButtonDown="Keyframe_MouseRightButtonDown">
+                            <Rectangle.Style>
+                                <Style TargetType="Rectangle" BasedOn="{StaticResource KeyframeRectangleStyle}">
+                                    <Setter Property="Fill" Value="Blue"/>
+                                </Style>
+                            </Rectangle.Style>
                             <Rectangle.RenderTransform>
                                 <RotateTransform Angle="45"/>
                             </Rectangle.RenderTransform>
@@ -358,11 +391,15 @@
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Rectangle Width="8" Height="8" Fill="Purple" Stroke="Black" RenderTransformOrigin="0.5,0.5"
-                                   MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
+                        <Rectangle MouseLeftButtonDown="Keyframe_MouseLeftButtonDown"
                                    MouseMove="Keyframe_MouseMove"
                                    MouseLeftButtonUp="Keyframe_MouseLeftButtonUp"
                                    MouseRightButtonDown="Keyframe_MouseRightButtonDown">
+                            <Rectangle.Style>
+                                <Style TargetType="Rectangle" BasedOn="{StaticResource KeyframeRectangleStyle}">
+                                    <Setter Property="Fill" Value="Purple"/>
+                                </Style>
+                            </Rectangle.Style>
                             <Rectangle.RenderTransform>
                                 <RotateTransform Angle="45"/>
                             </Rectangle.RenderTransform>
