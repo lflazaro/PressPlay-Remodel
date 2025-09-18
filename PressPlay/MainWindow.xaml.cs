@@ -1,6 +1,7 @@
 ﻿using PressPlay.Models;
 using PressPlay.Services;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;                  // ← for File.Exists
@@ -8,6 +9,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using PressPlayTitler;
 using PressPlay.Helpers;
 using CommunityToolkit.Mvvm.Input;
@@ -18,6 +20,16 @@ namespace PressPlay
     public partial class MainWindow : Window
     {
         private readonly IPlaybackService _playbackService;
+        private readonly HashSet<Slider> _activePropertySliderInteractions = new();
+        private static readonly HashSet<string> _keyframeSliderProperties = new(new[]
+        {
+            nameof(TrackItem.Opacity),
+            nameof(TrackItem.Rotation),
+            nameof(TrackItem.TranslateX),
+            nameof(TrackItem.TranslateY),
+            nameof(TrackItem.ScaleX),
+            nameof(TrackItem.ScaleY),
+        });
 
         public MainWindow()
         {
@@ -240,12 +252,98 @@ namespace PressPlay
             item.NotifyKeyframeChange(property);
         }
 
+        private static bool IsKeyframePropertySlider(Slider slider)
+        {
+            return slider.Tag is string property && _keyframeSliderProperties.Contains(property);
+        }
+
+        private void BeginPropertySliderInteraction(Slider slider)
+        {
+            if (IsKeyframePropertySlider(slider))
+            {
+                _activePropertySliderInteractions.Add(slider);
+            }
+        }
+
+        private void EndPropertySliderInteraction(Slider slider)
+        {
+            if (IsKeyframePropertySlider(slider))
+            {
+                _activePropertySliderInteractions.Remove(slider);
+            }
+        }
+
+        private void PropertySlider_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Slider slider)
+            {
+                BeginPropertySliderInteraction(slider);
+            }
+        }
+
+        private void PropertySlider_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Slider slider)
+            {
+                EndPropertySliderInteraction(slider);
+            }
+        }
+
+        private void PropertySlider_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (sender is Slider slider)
+            {
+                BeginPropertySliderInteraction(slider);
+                Dispatcher.BeginInvoke(new Action(() => EndPropertySliderInteraction(slider)), DispatcherPriority.Background);
+            }
+        }
+
+        private void PropertySlider_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (sender is Slider slider)
+            {
+                BeginPropertySliderInteraction(slider);
+            }
+        }
+
+        private void PropertySlider_PreviewKeyUp(object sender, KeyEventArgs e)
+        {
+            if (sender is Slider slider)
+            {
+                EndPropertySliderInteraction(slider);
+            }
+        }
+
+        private void PropertySlider_LostMouseCapture(object sender, MouseEventArgs e)
+        {
+            if (sender is Slider slider)
+            {
+                EndPropertySliderInteraction(slider);
+            }
+        }
+
+        private void PropertySlider_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            if (sender is Slider slider)
+            {
+                EndPropertySliderInteraction(slider);
+            }
+        }
+
         private void PropertySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (DataContext is not MainWindowViewModel vm) return;
             if (vm.CurrentProject.IsPlaying) return;
             if (vm.SelectedTrackItem is not TrackItem item) return;
             if (sender is not Slider slider || slider.Tag is not string property) return;
+
+            if (!IsKeyframePropertySlider(slider)) return;
+
+            bool userInitiated = _activePropertySliderInteractions.Contains(slider) || slider.IsMouseCaptureWithin;
+            if (!userInitiated)
+            {
+                return;
+            }
 
             if (!item.KeyframesEnabled) return;
 
