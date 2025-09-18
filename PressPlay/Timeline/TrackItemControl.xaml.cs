@@ -21,6 +21,9 @@ namespace PressPlay.Timeline
         private Point _startPoint;
         private Keyframe? _draggingKeyframe;
         private ItemsControl? _draggingStrip;
+        private bool _keyframeToggleOnClick;
+        private bool _keyframeDragInitiated;
+        private Point _keyframeMouseDownPoint;
 
         public TrackItemControl()
         {
@@ -289,6 +292,23 @@ namespace PressPlay.Timeline
             {
                 _draggingKeyframe = kf;
                 _draggingStrip = GetParentItemsControl(fe);
+                _keyframeDragInitiated = false;
+                _keyframeToggleOnClick = kf.IsSelected;
+                if (_draggingStrip != null)
+                {
+                    _keyframeMouseDownPoint = e.GetPosition(_draggingStrip);
+                }
+                else
+                {
+                    _keyframeMouseDownPoint = e.GetPosition(fe);
+                }
+
+                if (!kf.IsSelected)
+                {
+                    kf.IsSelected = true;
+                    _keyframeToggleOnClick = false;
+                }
+
                 fe.CaptureMouse();
                 e.Handled = true;
             }
@@ -302,8 +322,24 @@ namespace PressPlay.Timeline
                 var project = _timelineControl?.Project;
                 if (project == null) return;
 
-                double x = e.GetPosition(_draggingStrip).X;
-                int frame = item.Position.TotalFrames + Constants.PixelsToFrames(x, project.TimelineZoom);
+                var position = e.GetPosition(_draggingStrip);
+
+                if (!_keyframeDragInitiated)
+                {
+                    if (Math.Abs(position.X - _keyframeMouseDownPoint.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                        Math.Abs(position.Y - _keyframeMouseDownPoint.Y) > SystemParameters.MinimumVerticalDragDistance)
+                    {
+                        _keyframeDragInitiated = true;
+                        _keyframeToggleOnClick = false;
+                    }
+                }
+
+                double pixelsPerFrame = Constants.GetPixelsPerFrame(project.TimelineZoom);
+                int relativeFrames = (int)Math.Round(position.X / pixelsPerFrame, MidpointRounding.AwayFromZero);
+                int frame = item.Position.TotalFrames + relativeFrames;
+                int clipStartFrame = item.Position.TotalFrames;
+                int clipEndFrame = clipStartFrame + item.Duration.TotalFrames;
+                frame = Math.Max(clipStartFrame, Math.Min(clipEndFrame, frame));
                 _draggingKeyframe.Frame = frame;
                 RefreshKeyframeStrip(_draggingStrip.Tag as string ?? string.Empty);
             }
@@ -313,8 +349,14 @@ namespace PressPlay.Timeline
         {
             if (sender is FrameworkElement fe)
                 fe.ReleaseMouseCapture();
+            if (_draggingKeyframe != null && _keyframeToggleOnClick)
+            {
+                _draggingKeyframe.IsSelected = false;
+            }
             _draggingKeyframe = null;
             _draggingStrip = null;
+            _keyframeToggleOnClick = false;
+            _keyframeDragInitiated = false;
         }
 
         private void Keyframe_MouseRightButtonDown(object sender, MouseButtonEventArgs e)

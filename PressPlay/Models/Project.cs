@@ -189,6 +189,10 @@ namespace PressPlay.Models
             resizeData.NewPosition = item.Position;
             resizeData.NewStart = item.Start;
             resizeData.NewEnd = item.End;
+            if (item is TrackItem updatedTrackItem)
+            {
+                resizeData.SetNewKeyframeFrames(updatedTrackItem);
+            }
 
             multiUndo.UndoUnits.Add(new TrackItemResizeUndoUnit(resizeData));
 
