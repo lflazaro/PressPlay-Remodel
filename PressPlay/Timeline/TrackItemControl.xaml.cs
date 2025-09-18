@@ -24,6 +24,7 @@ namespace PressPlay.Timeline
         private bool _keyframeToggleOnClick;
         private bool _keyframeDragInitiated;
         private Point _keyframeMouseDownPoint;
+        private int _keyframeInitialFrame;
 
         public TrackItemControl()
         {
@@ -294,6 +295,7 @@ namespace PressPlay.Timeline
                 _draggingStrip = GetParentItemsControl(fe);
                 _keyframeDragInitiated = false;
                 _keyframeToggleOnClick = kf.IsSelected;
+                _keyframeInitialFrame = kf.Frame;
                 if (_draggingStrip != null)
                 {
                     _keyframeMouseDownPoint = e.GetPosition(_draggingStrip);
@@ -335,8 +337,9 @@ namespace PressPlay.Timeline
                 }
 
                 double pixelsPerFrame = Constants.GetPixelsPerFrame(project.TimelineZoom);
-                int relativeFrames = (int)Math.Round(position.X / pixelsPerFrame, MidpointRounding.AwayFromZero);
-                int frame = item.Position.TotalFrames + relativeFrames;
+                double deltaPixels = position.X - _keyframeMouseDownPoint.X;
+                int frameOffset = (int)Math.Round(deltaPixels / pixelsPerFrame, MidpointRounding.AwayFromZero);
+                int frame = _keyframeInitialFrame + frameOffset;
                 int clipStartFrame = item.Position.TotalFrames;
                 int clipEndFrame = clipStartFrame + item.Duration.TotalFrames;
                 frame = Math.Max(clipStartFrame, Math.Min(clipEndFrame, frame));
@@ -357,6 +360,7 @@ namespace PressPlay.Timeline
             _draggingStrip = null;
             _keyframeToggleOnClick = false;
             _keyframeDragInitiated = false;
+            _keyframeInitialFrame = 0;
         }
 
         private void Keyframe_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
