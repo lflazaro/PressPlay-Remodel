@@ -250,22 +250,35 @@ namespace PressPlay.Timeline
             if (sender is ItemsControl strip && DataContext is TrackItem item)
             {
                 if (!item.KeyframesEnabled) return;
+
                 _timelineControl ??= VisualHelper.GetAncestor<TimelineControl>(this);
                 var project = _timelineControl?.Project;
                 if (project == null || project.IsPlaying) return;
 
+                if (e.OriginalSource is not DependencyObject originalSource)
+                {
+                    return;
+                }
+
+                var originatingStrip = VisualHelper.GetAncestor<ItemsControl>(originalSource);
+                if (!ReferenceEquals(originatingStrip, strip) && !ReferenceEquals(originalSource, strip))
+                {
+                    return;
+                }
+
+                var position = e.GetPosition(strip);
+                if (position.X < 0 || position.X > strip.ActualWidth ||
+                    position.Y < 0 || position.Y > strip.ActualHeight)
+                {
+                    return;
+                }
+
                 if (e.OriginalSource is Canvas)
                 {
-                    double x = e.GetPosition(strip).X;
-                    int frame = item.Position.TotalFrames + Constants.PixelsToFrames(x, project.TimelineZoom);
-                    string property = strip.Tag as string ?? string.Empty;
-                    if (!item.Keyframes.TryGetValue(property, out var list)) return;
-                    if (!list.Any(k => k.Frame == frame))
-                    {
-                        double value = item.GetAnimated(property, frame);
-                        list.Add(new Keyframe { Frame = frame, Value = value });
-                        RefreshKeyframeStrip(property);
-                    }
+                    // Clicking on a keyframe strip should no longer create keyframes.
+                    // Keyframes are now created exclusively through slider interaction
+                    // (see PropertySlider_ValueChanged) so simply exit here.
+                    return;
                 }
             }
         }
