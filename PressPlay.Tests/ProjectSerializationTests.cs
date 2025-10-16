@@ -1,3 +1,5 @@
+using System;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using PressPlay.Models;
 using PressPlay.Serialization;
@@ -121,5 +123,45 @@ public class ProjectSerializationTests
         Assert.Equal(10, cc.Brightness);
         Assert.Equal(1.5, cc.Contrast);
         Assert.Equal(0.5, cc.Saturation);
+    }
+
+    [Fact]
+    public void DeserializeProject_WithNullJson_ThrowsJsonException()
+    {
+        Assert.Throws<JsonException>(() => ProjectSerializer.DeserializeProject("null"));
+    }
+
+    [Fact]
+    public void Deserializing_LegacyAudioTrackItemWithoutIsAudio_StillCreatesAudioTrackItem()
+    {
+        var project = new Project { FPS = 25 };
+        var clip = new ProjectClip { FilePath = "audio.mp3" };
+        project.Clips.Add(clip);
+
+        var track = new Track { Name = "A1", Type = Track.TimelineTrackType.Audio };
+        var audioItem = new AudioTrackItem
+        {
+            ClipId = clip.Id,
+            FilePath = clip.FilePath,
+            Start = new TimeCode(0, 25),
+            End = new TimeCode(10, 25),
+            OriginalEnd = new TimeCode(10, 25),
+            SourceLength = new TimeCode(10, 25)
+        };
+        track.Items.Add(audioItem);
+        project.Tracks.Add(track);
+
+        var json = ProjectSerializer.SerializeProject(project);
+        var node = JsonNode.Parse(json)!;
+        var item = node["Tracks"]?[0]?["Items"]?[0] as JsonObject;
+        item?.Remove("IsAudio");
+        item?["InstanceId"] = "not-a-guid";
+        item?["FadeColor"] = "NotAColor";
+        json = node.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+
+        var loaded = ProjectSerializer.DeserializeProject(json);
+        var loadedItem = Assert.IsType<AudioTrackItem>(loaded.Tracks[0].Items[0]);
+        Assert.NotEqual(Guid.Empty, loadedItem.InstanceId);
+        Assert.Equal(Track.FadeColor.Black, loadedItem.FadeColor);
     }
 }
