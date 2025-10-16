@@ -45,6 +45,12 @@ namespace PressPlay.Serialization
             {
                 var options = CreateSerializerOptions();
                 var project = JsonSerializer.Deserialize<Project>(json, options);
+
+                if (project == null)
+                {
+                    throw new JsonException("Unable to deserialize project – JSON payload produced a null project instance.");
+                }
+
                 PostProcessProject(project);
                 project.RefreshAllTransformEffects();
                 return project;
@@ -294,14 +300,27 @@ namespace PressPlay.Serialization
             using var doc = JsonDocument.ParseValue(ref reader);
             var root = doc.RootElement;
 
-            // Determine item type 
-            bool isAudio = root.GetProperty("IsAudio").GetBoolean();
+            // Determine item type
+            bool isAudio = false;
+            if (root.TryGetProperty("IsAudio", out var isAudioElement) &&
+                isAudioElement.ValueKind is JsonValueKind.True or JsonValueKind.False)
+            {
+                isAudio = isAudioElement.GetBoolean();
+            }
+            else if (root.TryGetProperty("ClipId", out _))
+            {
+                // Legacy projects stored ClipId without the IsAudio flag – treat those as audio clips.
+                isAudio = true;
+                Debug.WriteLine("Legacy track item detected without IsAudio flag – inferring audio item from ClipId.");
+            }
+
             ITrackItem item = isAudio ? new AudioTrackItem() : new TrackItem();
 
             // Make sure InstanceId is preserved correctly
-            if (root.TryGetProperty("InstanceId", out var instanceIdElement))
+            if (root.TryGetProperty("InstanceId", out var instanceIdElement) &&
+                Guid.TryParse(instanceIdElement.GetString(), out var instanceId))
             {
-                item.InstanceId = Guid.Parse(instanceIdElement.GetString());
+                item.InstanceId = instanceId;
             }
             else
             {
@@ -310,9 +329,11 @@ namespace PressPlay.Serialization
             }
 
             // Ensure FadeColor is properly deserialized
-            if (root.TryGetProperty("FadeColor", out var fadeColorElement))
+            if (root.TryGetProperty("FadeColor", out var fadeColorElement) &&
+                fadeColorElement.ValueKind == JsonValueKind.String &&
+                Enum.TryParse<Track.FadeColor>(fadeColorElement.GetString(), true, out var fadeColor))
             {
-                item.FadeColor = Enum.Parse<Track.FadeColor>(fadeColorElement.GetString());
+                item.FadeColor = fadeColor;
             }
             else
             {
@@ -366,7 +387,8 @@ namespace PressPlay.Serialization
             if (root.TryGetProperty("FullPath", out var fullPathElement))
                 item.FullPath = fullPathElement.GetString();
 
-            if (root.TryGetProperty("Thumbnail", out var thumbnailElement))
+            if (root.TryGetProperty("Thumbnail", out var thumbnailElement) &&
+                thumbnailElement.ValueKind == JsonValueKind.String)
                 item.Thumbnail = thumbnailElement.GetBytesFromBase64();
 
             if (root.TryGetProperty("UnlimitedSourceLength", out var unlimitedElement))
