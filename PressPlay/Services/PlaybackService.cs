@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -54,6 +55,7 @@ namespace PressPlay.Services
 
         private DateTime _playStartTimeUtc;
         private TimeCode _startPosition;
+        private bool _ignoreNeedlePropertyEvent;
 
         public event Action<TimeSpan> PositionChanged;
 
@@ -61,6 +63,8 @@ namespace PressPlay.Services
         {
             _project = project ?? throw new ArgumentNullException(nameof(project));
             _previewControl = previewControl ?? throw new ArgumentNullException(nameof(previewControl));
+
+            AttachProjectEvents(_project);
 
             _timer = new DispatcherTimer(DispatcherPriority.Render)
             {
@@ -73,6 +77,7 @@ namespace PressPlay.Services
             if (project == null) throw new ArgumentNullException(nameof(project));
 
             // 1) Pause and tear down any existing playback
+            DetachProjectEvents(_project);
             Pause();
             _timer.Stop();
 
@@ -100,6 +105,7 @@ namespace PressPlay.Services
 
             // 4) Adopt the new project
             _project = project;
+            AttachProjectEvents(_project);
 
             // 5) Reset timer interval to match its FPS
             _timer.Interval = TimeSpan.FromMilliseconds(1000.0 / _project.FPS);
@@ -773,12 +779,13 @@ namespace PressPlay.Services
             _mainAudioPath = null;
         }
 
-
         // Update the Dispose method
         public void Dispose()
         {
             Pause();
             _timer.Tick -= OnTick;
+
+            DetachProjectEvents(_project);
 
             // Dispose all audio players
             foreach (var playerState in _audioPlayers)
@@ -788,6 +795,52 @@ namespace PressPlay.Services
             _audioPlayers.Clear();
 
             StopMainAudio();
+        }
+
+        private void AttachProjectEvents(Project project)
+        {
+            if (project == null) return;
+
+            project.NeedlePositionTimeChanged -= OnNeedlePositionTimeChanged;
+            project.NeedlePositionTimeChanged += OnNeedlePositionTimeChanged;
+            project.PropertyChanged -= OnProjectPropertyChanged;
+            project.PropertyChanged += OnProjectPropertyChanged;
+        }
+
+        private void DetachProjectEvents(Project project)
+        {
+            if (project == null) return;
+
+            project.NeedlePositionTimeChanged -= OnNeedlePositionTimeChanged;
+            project.PropertyChanged -= OnProjectPropertyChanged;
+        }
+
+        private void OnNeedlePositionTimeChanged(object sender, TimeCode time)
+        {
+            _ignoreNeedlePropertyEvent = true;
+            try
+            {
+                RenderFrame();
+                UpdateAudio();
+            }
+            finally
+            {
+                _ignoreNeedlePropertyEvent = false;
+            }
+        }
+
+        private void OnProjectPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(Project.IsPlaying) && !_project.IsPlaying)
+            {
+                RenderFrame();
+                UpdateAudio();
+            }
+            else if (e.PropertyName == nameof(Project.NeedlePositionTime) && !_project.IsPlaying && !_ignoreNeedlePropertyEvent)
+            {
+                RenderFrame();
+                UpdateAudio();
+            }
         }
 
     }
