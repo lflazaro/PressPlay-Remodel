@@ -7,6 +7,7 @@ using PressPlay.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -47,6 +48,9 @@ namespace PressPlay.Models
         private TimeCode _length;
         private int _width;
         private int _height;
+        private readonly object _frameLock = new object();
+        private int _lastFrameIndex = -1;
+        private BitmapSource _imageCache;
         public bool HasAudio
         {
             get
@@ -90,9 +94,18 @@ namespace PressPlay.Models
         [JsonIgnore]
         public List<FrameCache> FramesCache { get; } = new List<FrameCache>();
 
-        public ProjectClip() { }
-        public ProjectClip(string filePath) { FilePath = filePath; }
-        public ProjectClip(string filePath, double fps) { FilePath = filePath; FPS = fps; }
+        public ProjectClip()
+        {
+            Effects.CollectionChanged += EffectsCollectionChanged;
+        }
+        public ProjectClip(string filePath) : this()
+        {
+            FilePath = filePath;
+        }
+        public ProjectClip(string filePath, double fps) : this(filePath)
+        {
+            FPS = fps;
+        }
 
         public bool IsCompatibleWith(TimelineTrackType trackType)
         {
@@ -118,18 +131,22 @@ namespace PressPlay.Models
             // Image file handling
             if (FileFormats.SupportedImageFormats.Contains(ext))
             {
+                if (_imageCache != null)
+                    return _imageCache;
+
                 // First load the image natively to preserve transparency
                 var bi = new BitmapImage();
                 bi.BeginInit();
                 bi.UriSource = new Uri(FilePath);
                 bi.CacheOption = BitmapCacheOption.OnLoad;
                 bi.EndInit();
+                bi.Freeze();
 
                 // Check if we have any effects to apply
                 if (Effects.Count == 0)
                 {
-                    // No effects, return the image directly to preserve transparency
-                    return bi;
+                    _imageCache = bi;
+                    return _imageCache;
                 }
 
                 Debug.WriteLine($"Applying {Effects.Count} effects to image {Path.GetFileName(FilePath)}");
@@ -152,8 +169,8 @@ namespace PressPlay.Models
                 if (mat1.Empty())
                 {
                     Debug.WriteLine($"Failed to load image via OpenCV: {FilePath}");
-                    // Just return the original image if OpenCV loading fails
-                    return bi;
+                    _imageCache = bi;
+                    return _imageCache;
                 }
 
                 // Apply effects
@@ -165,33 +182,20 @@ namespace PressPlay.Models
 
                 // Convert back to WPF BitmapSource
                 var resultBmp = mat1.ToBitmapSource();
+                resultBmp.Freeze();
                 mat1.Dispose();
-                return resultBmp;
+                _imageCache = resultBmp;
+                return _imageCache;
             }
 
             // 2) Lazy‐init video capture
-            if (_capture == null)
-                _capture = new VideoCapture(FilePath);
+            EnsureCapture();
 
             // 3) Compute frame index
-            double fps = _capture.Fps > 0 ? _capture.Fps : FPS;
-            int maxFrames = (int)_capture.FrameCount;
-            int target = (int)Math.Round(position.TotalSeconds * fps);
-            target = Math.Clamp(target, 0, maxFrames - 1);
-            _capture.PosFrames = target;
+            var target = GetFrameRequest(position);
 
             // 4) Retrieve the raw frame
-            Mat mat = _capture.RetrieveMat();
-            if (mat.Empty())
-            {
-                mat.Dispose();
-                mat = new Mat(
-                    _capture.FrameHeight,
-                    _capture.FrameWidth,
-                    MatType.CV_8UC3,
-                    new Scalar(0, 0, 0)
-                );
-            }
+            var mat = RetrieveFrame(target);
 
             // 5) Apply all registered effects, in order
             foreach (var fx in Effects)
@@ -202,8 +206,90 @@ namespace PressPlay.Models
 
             // 6) Convert to WPF BitmapSource and clean up
             var bmp = mat.ToBitmapSource();
+            bmp.Freeze();
             mat.Dispose();
             return bmp;
+        }
+
+        private void EnsureCapture()
+        {
+            lock (_frameLock)
+            {
+                if (_capture == null || !_capture.IsOpened())
+                {
+                    _capture?.Dispose();
+                    _capture = new VideoCapture(FilePath);
+                    _lastFrameIndex = -1;
+                }
+            }
+        }
+
+        private int GetFrameRequest(TimeSpan position)
+        {
+            lock (_frameLock)
+            {
+                double fps = _capture.Fps > 0 ? _capture.Fps : FPS;
+                int maxFrames = Math.Max(1, (int)_capture.FrameCount);
+                int target = (int)Math.Round(position.TotalSeconds * fps);
+                return Math.Clamp(target, 0, maxFrames - 1);
+            }
+        }
+
+        private Mat RetrieveFrame(int target)
+        {
+            lock (_frameLock)
+            {
+                Mat mat = null;
+
+                // Fast-path for sequential playback
+                if (_lastFrameIndex >= 0 && target == _lastFrameIndex + 1)
+                {
+                    mat = new Mat();
+                    if (!_capture.Read(mat) || mat.Empty())
+                    {
+                        mat.Dispose();
+                        mat = null;
+                    }
+                }
+
+                if (mat == null)
+                {
+                    _capture.PosFrames = target;
+                    mat = _capture.RetrieveMat();
+                }
+
+                if (mat.Empty())
+                {
+                    mat.Dispose();
+                    mat = new Mat(
+                        _capture.FrameHeight > 0 ? _capture.FrameHeight : 1,
+                        _capture.FrameWidth > 0 ? _capture.FrameWidth : 1,
+                        MatType.CV_8UC3,
+                        new Scalar(0, 0, 0)
+                    );
+                }
+
+                _lastFrameIndex = target;
+                return mat;
+            }
+        }
+
+        private void ResetFrameCache()
+        {
+            lock (_frameLock)
+            {
+                _capture?.Release();
+                _capture?.Dispose();
+                _capture = null;
+                _lastFrameIndex = -1;
+            }
+
+            _imageCache = null;
+        }
+
+        private void EffectsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            ResetFrameCache();
         }
 
 
@@ -241,6 +327,7 @@ namespace PressPlay.Models
 
         private void OnFilePathChanged()
         {
+            ResetFrameCache();
             GetInfo();
             GetThumbnail();
         }
