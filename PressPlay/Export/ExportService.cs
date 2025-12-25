@@ -6,7 +6,6 @@ using FFMpegCore.Extensions.System.Drawing.Common;
 using OpenCvSharp;
 using PressPlay.Helpers;
 using PressPlay.Models;
-using PressPlay.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -143,17 +142,12 @@ namespace PressPlay.Export
             // Setup progress tracking
             int processedFrames = 0;
 
-            // Setup frame and audio processing
-            var framePipeSource = new MultithreadedFramePipeSource(fps, totalFrames);
+            // Setup audio processing
             string audioFile = Path.Combine(_tempFolder, "audio.wav");
 
-            // Start background threads for frame processing
-            var frameRenderTask = Task.Run(() => ProcessFramesAsync(framePipeSource, frameWidth, frameHeight, totalFrames, cancellationToken));
-            var audioRenderTask = Task.Run(() => RenderAudioAsync(audioFile, fps, totalFrames, cancellationToken));
-
-            // Wait for rendering tasks to complete
-            await frameRenderTask;
-            await audioRenderTask;
+            // Render audio track first so we can stream frames straight into FFmpeg
+            OnProgressChanged(new ExportProgressEventArgs(0.1, "Rendering audio mix…"));
+            await Task.Run(() => RenderAudioAsync(audioFile, fps, totalFrames, cancellationToken));
 
             // Check for cancellation
             cancellationToken.ThrowIfCancellationRequested();
@@ -204,61 +198,6 @@ namespace PressPlay.Export
                 .ProcessAsynchronously();
 
             return success;
-        }
-
-        /// <summary>
-        /// Processes all frames in the timeline and adds them to the frame pipe
-        /// </summary>
-        private async Task ProcessFramesAsync(MultithreadedFramePipeSource framePipeSource, int width, int height, int totalFrames, CancellationToken cancellationToken)
-        {
-            int processedFrames = 0;
-
-            // Render each frame
-            for (int frameIndex = 0; frameIndex < totalFrames; frameIndex++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // Update progress every few frames
-                if (frameIndex % 10 == 0)
-                {
-                    double progress = (double)frameIndex / totalFrames * 0.7; // 70% of progress is frame rendering
-                    OnProgressChanged(new ExportProgressEventArgs(progress, $"Rendering frame {frameIndex}/{totalFrames}"));
-                }
-
-                // Convert frame index to TimeCode
-                var timeCode = new TimeCode(frameIndex, _project.FPS);
-
-                // Render frame
-                using (var frameBitmap = RenderFrame(timeCode, width, height))
-                {
-                    if (frameBitmap != null)
-                    {
-                        // Convert to bytes
-                        byte[] frameBytes;
-                        using (var memoryStream = new MemoryStream())
-                        {
-                            frameBitmap.Save(memoryStream, System.Drawing.Imaging.ImageFormat.Png);
-                            frameBytes = memoryStream.ToArray();
-                        }
-
-                        // Add to pipe source
-                        var frameContainer = new FrameContainer(frameIndex, frameBytes);
-                        framePipeSource.AddFrame(frameContainer);
-
-                        // Update counter
-                        processedFrames++;
-                    }
-                }
-
-                // Optional: Add some delay to prevent thread starvation
-                if (frameIndex % 10 == 0)
-                    await Task.Delay(1);
-            }
-
-            // Mark the pipe as finished
-            framePipeSource.IsFinished = true;
-
-            OnProgressChanged(new ExportProgressEventArgs(0.7, $"All frames rendered: {processedFrames}/{totalFrames}"));
         }
 
         /// <summary>
