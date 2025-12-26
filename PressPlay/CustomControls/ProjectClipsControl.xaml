@@ -9,6 +9,27 @@
              d:DesignHeight="300"
              d:DesignWidth="300">
     <Grid Background="{Binding Background, RelativeSource={RelativeSource AncestorType=UserControl}}">
+        <TextBlock Text="Add or drop media to get started — your clips will appear here"
+                   TextWrapping="Wrap"
+                   FontSize="20"
+                   FontWeight="Bold"
+                   Foreground="#66FFFFFF"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Opacity="0.9"
+                   Margin="16">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                    <Setter Property="Visibility" Value="Visible"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasItems, ElementName=PART_ClipsList}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
+
         <ListBox x:Name="PART_ClipsList"
                  ItemsSource="{Binding ItemsSource, RelativeSource={RelativeSource AncestorType=UserControl}}"
                  PreviewMouseMove="PART_ClipsList_PreviewMouseMove"

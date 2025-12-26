@@ -43,37 +43,56 @@
 
     <Border.Style>
         <Style TargetType="Border">
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="BorderBrush" Value="#33222222"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#77000000" BlurRadius="10" ShadowDepth="2" Direction="270" Opacity="0.45"/>
+                </Setter.Value>
+            </Setter>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Type}" Value="Video">
                     <Setter Property="Background" >
                         <Setter.Value>
-                            <LinearGradientBrush EndPoint="0,0.5" StartPoint="1,0.5">
-                                <GradientStop Color="#FF8900CC"/>
-                                <GradientStop Color="#FF2A003E" Offset="1"/>
+                            <LinearGradientBrush EndPoint="1,1" StartPoint="0,0">
+                                <GradientStop Color="#FF3F2F9F" Offset="0"/>
+                                <GradientStop Color="#FF8A63FF" Offset="0.6"/>
+                                <GradientStop Color="#FF1D0F4A" Offset="1"/>
                             </LinearGradientBrush>
                         </Setter.Value>
                     </Setter>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Type}" Value="Image">
-                    <Setter Property="Background" Value="#a44d00" />
+                    <Setter Property="Background">
+                        <Setter.Value>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#FF5F3A0F" Offset="0"/>
+                                <GradientStop Color="#FFBB7A33" Offset="0.5"/>
+                                <GradientStop Color="#FF2E1C0A" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Setter.Value>
+                    </Setter>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Type}" Value="Audio">
                     <Setter Property="Background" >
                         <Setter.Value>
-                            <LinearGradientBrush EndPoint="0,0.5" StartPoint="1,0.5">
-                                <GradientStop Color="#FF002509" Offset="1"/>
-                                <GradientStop Color="#FF008220" Offset="0"/>
+                            <LinearGradientBrush EndPoint="1,1" StartPoint="0,0">
+                                <GradientStop Color="#FF0B4B2A" Offset="0"/>
+                                <GradientStop Color="#FF10B773" Offset="0.6"/>
+                                <GradientStop Color="#FF0A2617" Offset="1"/>
                             </LinearGradientBrush>
                         </Setter.Value>
                     </Setter>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsSelected}" Value="False">
-                    <Setter Property="BorderBrush" Value="Black" />
-                    <Setter Property="Opacity"      Value="0.9"   />
+                    <Setter Property="BorderBrush" Value="#AAFFFFFF" />
+                    <Setter Property="Opacity"      Value="0.92"   />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                    <Setter Property="BorderBrush"    Value="White" />
-                    <Setter Property="BorderThickness" Value="2"     />
+                    <Setter Property="BorderBrush"    Value="#FFFBF5FF" />
+                    <Setter Property="BorderThickness" Value="2.5"     />
                     <Setter Property="Opacity"          Value="1.0" />
                 </DataTrigger>
             </Style.Triggers>
